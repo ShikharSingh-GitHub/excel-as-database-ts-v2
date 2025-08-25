@@ -1,0 +1,10 @@
+{
+  "folderPath": "/Users/shikhar/Desktop/workbook",
+  "pkName": "id",
+  "cacheTtlMs": 2000,
+  "pageSizeDefault": 25,
+  "maxPageSize": 200,
+  "readOnlySheets": [],
+  "ignoreSheets": [],
+  "autoRefreshSeconds": 0
+}
