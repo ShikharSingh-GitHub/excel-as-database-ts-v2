@@ -39,6 +39,7 @@
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
+            zIndex: 1000,
           },
         },
         React.createElement(
@@ -46,18 +47,106 @@
           {
             style: {
               background: "#fff",
-              padding: 20,
+              padding: 32,
               minWidth: 400,
-              borderRadius: 6,
+              maxWidth: 520,
+              maxHeight: "80vh",
+              overflowY: "auto",
+              borderRadius: 12,
+              boxShadow: "0 4px 24px rgba(0,0,0,0.12)",
+              fontFamily: "'Segoe UI', 'Roboto', 'Arial', sans-serif",
             },
           },
-          React.createElement("h3", null, title),
+          React.createElement(
+            "h3",
+            {
+              style: {
+                marginTop: 0,
+                marginBottom: 18,
+                fontWeight: 600,
+                fontSize: 22,
+                color: "#2d3748",
+              },
+            },
+            title
+          ),
           children,
           React.createElement(
             "div",
-            { style: { marginTop: 12, textAlign: "right" } },
-            React.createElement("button", { onClick: onClose }, "Close")
+            { style: { marginTop: 18, textAlign: "right" } },
+            React.createElement(
+              "button",
+              {
+                onClick: onClose,
+                style: {
+                  background: "#e2e8f0",
+                  color: "#2d3748",
+                  border: "none",
+                  borderRadius: 6,
+                  padding: "7px 18px",
+                  marginRight: 8,
+                  cursor: "pointer",
+                  fontWeight: 500,
+                  transition: "background 0.2s",
+                },
+                onMouseOver: (e) => (e.target.style.background = "#cbd5e1"),
+                onMouseOut: (e) => (e.target.style.background = "#e2e8f0"),
+              },
+              "Close"
+            )
           )
+        )
+      );
+    }
+
+    function Actions({ onEdit, onDelete }) {
+      return React.createElement(
+        "div",
+        {
+          style: {
+            display: "flex",
+            gap: "12px",
+            justifyContent: "center",
+            marginTop: "10px",
+          },
+        },
+        React.createElement(
+          "button",
+          {
+            onClick: onEdit,
+            style: {
+              padding: "6px 16px",
+              background: "#2563eb",
+              color: "#fff",
+              border: "none",
+              borderRadius: 6,
+              fontWeight: 500,
+              cursor: "pointer",
+              transition: "background 0.2s",
+            },
+            onMouseOver: (e) => (e.target.style.background = "#1d4ed8"),
+            onMouseOut: (e) => (e.target.style.background = "#2563eb"),
+          },
+          "Edit"
+        ),
+        React.createElement(
+          "button",
+          {
+            onClick: onDelete,
+            style: {
+              padding: "6px 16px",
+              background: "#e11d48",
+              color: "#fff",
+              border: "none",
+              borderRadius: 6,
+              fontWeight: 500,
+              cursor: "pointer",
+              transition: "background 0.2s",
+            },
+            onMouseOver: (e) => (e.target.style.background = "#be123c"),
+            onMouseOut: (e) => (e.target.style.background = "#e11d48"),
+          },
+          "Delete"
         )
       );
     }
@@ -1000,7 +1089,8 @@
                   null,
                   (sheetRows.headers || []).map((h, index) => {
                     const t = typeHintForColumn(h);
-                    const value = modal.data ? modal.data[h] : "";
+                    const value =
+                      modal.data && modal.data[h] != null ? modal.data[h] : ""; // Default to empty string
                     const err = modal.errors && modal.errors[h];
                     const isRequired =
                       h &&
@@ -1027,15 +1117,13 @@
                           type: "checkbox",
                           checked: !!value,
                           onChange: (e) =>
-                            setModal((prev) => {
-                              const copy = Object.assign({}, prev);
-                              copy.data = Object.assign({}, copy.data);
-                              copy.data[h] = e.target.checked;
-                              return copy;
-                            }),
-                          onKeyDown: (e) => {
-                            if (e.key === "Enter") modalSubmit();
-                          },
+                            setModal((prev) => ({
+                              ...prev,
+                              data: {
+                                ...prev.data,
+                                [h]: e.target.checked,
+                              },
+                            })),
                         }),
                         err
                           ? React.createElement(
@@ -1061,31 +1149,23 @@
                             )
                           : null
                       ),
-                      React.createElement(
-                        "div",
-                        null,
-                        React.createElement("input", {
-                          type:
-                            t === "date"
-                              ? "date"
-                              : t === "number"
-                              ? "number"
-                              : "text",
-                          value: value ?? "",
-                          onChange: (e) =>
-                            setModal((prev) => {
-                              const copy = Object.assign({}, prev);
-                              copy.data = Object.assign({}, copy.data);
-                              copy.data[h] = e.target.value;
-                              return copy;
-                            }),
-                          style: { width: "100%" },
-                          autoFocus: (sheetRows.headers || []).indexOf(h) === 0,
-                          onKeyDown: (e) => {
-                            if (e.key === "Enter") modalSubmit();
-                          },
-                        })
-                      ),
+                      React.createElement("input", {
+                        type: "text",
+                        value: value, // Ensure value defaults to empty string
+                        onChange: (e) =>
+                          setModal((prev) => ({
+                            ...prev,
+                            data: {
+                              ...prev.data,
+                              [h]: e.target.value,
+                            },
+                          })),
+                        style: { width: "100%" },
+                        autoFocus: (sheetRows.headers || []).indexOf(h) === 0,
+                        onKeyDown: (e) => {
+                          if (e.key === "Enter") modalSubmit();
+                        },
+                      }),
                       err
                         ? React.createElement(
                             "div",
