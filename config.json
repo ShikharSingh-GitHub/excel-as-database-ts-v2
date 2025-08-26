@@ -8,6 +8,13 @@
   "ignoreSheets": ["_metadata", "config", "temp"],
   "autoRefreshSeconds": 0,
   "recentWorkbooks": [],
+  "headerRowConfig": {
+    "Sample.xlsm": {
+      "Sheet1": 5,
+      "Sheet2": 5,
+      "Sheet3": 5
+    }
+  },
   "ui": {
     "theme": "auto",
     "defaultSort": "asc",

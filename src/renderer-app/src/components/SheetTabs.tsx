@@ -6,7 +6,13 @@ export default function SheetTabs({
   onSelect,
   readOnlySheets = [],
 }: {
-  sheets?: { name: string; rows?: number; unavailable?: boolean }[];
+  sheets?: {
+    name: string;
+    rows?: number;
+    unavailable?: boolean;
+    headerRow?: number;
+    totalRows?: number;
+  }[];
   active?: string | null;
   onSelect?: (name: string) => void;
   readOnlySheets?: string[];
@@ -17,6 +23,7 @@ export default function SheetTabs({
         {sheets.map((s) => {
           const isReadOnly = readOnlySheets.includes(s.name);
           const isUnavailable = s.unavailable;
+          const hasCustomHeader = s.headerRow && s.headerRow > 1;
 
           return (
             <button
@@ -32,6 +39,13 @@ export default function SheetTabs({
               }`}>
               <span className="truncate">{s.name}</span>
               <span className="text-xs text-slate-400">({s.rows ?? 0})</span>
+              {hasCustomHeader && (
+                <span
+                  className="text-xs bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded"
+                  title={`Headers at row ${s.headerRow}`}>
+                  R{s.headerRow}
+                </span>
+              )}
               {isReadOnly && (
                 <span className="text-xs bg-orange-100 text-orange-800 px-1.5 py-0.5 rounded">
                   RO

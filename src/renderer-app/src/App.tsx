@@ -316,6 +316,13 @@ export default function App() {
                 Export
               </button>
             )}
+            {activeFile && (
+              <button
+                onClick={openConfigModal}
+                className="px-3 py-1 rounded bg-purple-500 text-white">
+                Config
+              </button>
+            )}
             {activeSheet &&
               !((config && config.readOnlySheets) || []).includes(
                 activeSheet || ""

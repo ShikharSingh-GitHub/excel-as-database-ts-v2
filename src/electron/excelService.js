@@ -59,6 +59,7 @@ function readConfig() {
         enableTypeHints: true,
         strictMode: false,
       },
+      headerRowConfig: {}, // Added for configurable header rows
     };
   }
 }
@@ -149,6 +150,24 @@ function scanFolder(folderPath) {
   return { folder: dir, files };
 }
 
+// Get header row position for a specific sheet
+function getHeaderRowPosition(filePath, sheetName) {
+  const cfg = readConfig();
+  const fileName = path.basename(filePath);
+  const headerConfig = cfg.headerRowConfig || {};
+
+  // Check if there's a specific config for this file and sheet
+  if (
+    headerConfig[fileName] &&
+    headerConfig[fileName][sheetName] !== undefined
+  ) {
+    return headerConfig[fileName][sheetName];
+  }
+
+  // Default to row 1 (0-based index)
+  return 0;
+}
+
 // Workbook metadata
 function getWorkbookMeta(filePath) {
   if (!filePath || !fs.existsSync(filePath)) return { error: "not-found" };
@@ -171,11 +190,24 @@ function getWorkbookMeta(filePath) {
           }
 
           const range = XLSX.utils.decode_range(ws["!ref"] || "A1:A1");
+          const headerRow = getHeaderRowPosition(filePath, name);
+
+          // Check if the header row is within the sheet range
+          if (headerRow > range.e.r) {
+            return {
+              name,
+              columns: [],
+              rows: 0,
+              unavailable: true,
+              error: "Header row beyond sheet range",
+            };
+          }
+
           const headers = [];
           const seen = new Set();
 
           for (let C = range.s.c; C <= range.e.c; ++C) {
-            const cell = ws[XLSX.utils.encode_cell({ c: C, r: 0 })];
+            const cell = ws[XLSX.utils.encode_cell({ c: C, r: headerRow })];
             const val = cell ? String(cell.v).trim() : "";
             if (val) {
               let orig = val;
@@ -189,17 +221,30 @@ function getWorkbookMeta(filePath) {
             }
           }
 
-          const rows = Math.max(0, range.e.r - range.s.r);
+          // Calculate rows excluding header rows
+          const dataRows = Math.max(0, range.e.r - headerRow);
           const unavailable = headers.length === 0;
 
           if (unavailable) {
-            log("WARN", `Sheet '${name}' has no headers and is unavailable`, {
-              filePath,
-              sheetName: name,
-            });
+            log(
+              "WARN",
+              `Sheet '${name}' has no headers at row ${headerRow + 1}`,
+              {
+                filePath,
+                sheetName: name,
+                headerRow: headerRow + 1,
+              }
+            );
           }
 
-          return { name, columns: headers, rows, unavailable };
+          return {
+            name,
+            columns: headers,
+            rows: dataRows,
+            unavailable,
+            headerRow: headerRow + 1, // Convert to 1-based for display
+            totalRows: range.e.r + 1,
+          };
         } catch (sheetError) {
           log("ERROR", `Error processing sheet '${name}'`, {
             filePath,
@@ -320,11 +365,27 @@ function readSheet(filePath, sheetName, opts = {}) {
     }
 
     const range = XLSX.utils.decode_range(ws["!ref"] || "A1:A1");
+    const headerRow = getHeaderRowPosition(filePath, sheetName);
+
+    // Check if header row is within sheet range
+    if (headerRow > range.e.r) {
+      log("ERROR", "Header row beyond sheet range", {
+        filePath,
+        sheetName,
+        headerRow,
+        maxRow: range.e.r,
+      });
+      return {
+        error: "sheet-unavailable",
+        message: `Header row ${headerRow + 1} is beyond the sheet range`,
+      };
+    }
+
     const headers = [];
     const seenHeaders = new Set();
 
     for (let C = range.s.c; C <= range.e.c; ++C) {
-      const cell = ws[XLSX.utils.encode_cell({ c: C, r: 0 })];
+      const cell = ws[XLSX.utils.encode_cell({ c: C, r: headerRow })];
       let val = cell ? String(cell.v).trim() : "";
       if (val) {
         // Handle duplicate column names by appending a number
@@ -340,17 +401,30 @@ function readSheet(filePath, sheetName, opts = {}) {
     }
 
     if (headers.length === 0) {
-      log("WARN", `Sheet '${sheetName}' has no headers and is unavailable`, {
-        filePath,
-        sheetName,
-      });
+      log(
+        "WARN",
+        `Sheet '${sheetName}' has no headers at row ${headerRow + 1}`,
+        {
+          filePath,
+          sheetName,
+          headerRow: headerRow + 1,
+        }
+      );
       return {
         error: "sheet-unavailable",
-        message: "No headers (row 1 empty) - sheet unavailable for table view",
+        message: `No headers found at row ${
+          headerRow + 1
+        } - sheet unavailable for table view`,
       };
     }
 
-    const json = XLSX.utils.sheet_to_json(ws, { defval: null });
+    // Read data starting from the row after headers
+    const dataStartRow = headerRow + 1;
+    const json = XLSX.utils.sheet_to_json(ws, {
+      defval: null,
+      range: dataStartRow, // Start reading from the row after headers
+      header: headers, // Use the headers we found
+    });
 
     // apply global filter (contains across any column)
     let filtered = filter
@@ -405,6 +479,8 @@ function readSheet(filePath, sheetName, opts = {}) {
       sheetName,
       rows: result.rows.length,
       headers,
+      headerRow: headerRow + 1,
+      dataStartRow: dataStartRow + 1,
     });
 
     try {
