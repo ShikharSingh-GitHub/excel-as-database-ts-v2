@@ -26,8 +26,28 @@ function createWindow() {
     },
   });
 
-  const indexHtml = path.join(__dirname, "renderer", "index.html");
-  mainWindow.loadFile(indexHtml);
+  // In dev, we expect the Vite renderer dev server to run and provide RENDERER_DEV_URL
+  const devUrl =
+    process.env.RENDERER_DEV_URL || process.env.VITE_DEV_SERVER_URL || null;
+  if (devUrl) {
+    console.log("[main] Loading renderer from dev server:", devUrl);
+    mainWindow.loadURL(devUrl);
+  } else {
+    // Production: load the built renderer from the packaged app
+    // prefer src/renderer-app/dist/index.html if present, otherwise fall back to legacy renderer/index.html
+    const builtIndex = path.join(
+      __dirname,
+      "renderer-app",
+      "dist",
+      "index.html"
+    );
+    if (fs.existsSync(builtIndex)) {
+      mainWindow.loadFile(builtIndex);
+    } else {
+      const indexHtml = path.join(__dirname, "renderer", "index.html");
+      mainWindow.loadFile(indexHtml);
+    }
+  }
 }
 
 app.whenReady().then(() => {
@@ -63,6 +83,14 @@ ipcMain.handle("folder:scan", async (event, folderPath) => {
 
 ipcMain.handle("workbook:meta", async (event, filePath) => {
   return excelService.getWorkbookMeta(filePath);
+});
+
+ipcMain.handle("sort:get", async (event, filePath) => {
+  return excelService.getSortState(filePath);
+});
+
+ipcMain.handle("sort:set", async (event, filePath, state) => {
+  return excelService.setSortState(filePath, state);
 });
 
 ipcMain.handle("sheet:read", async (event, filePath, sheetName, opts) => {
@@ -127,3 +155,14 @@ ipcMain.handle("folder:refresh", async () => {
 
 // simple ping
 ipcMain.handle("ping", async () => "pong");
+
+// Listen for forwarded renderer console events
+ipcMain.on("renderer:console", (event, payload) => {
+  try {
+    const { level, args } = payload || {};
+    const msg = args && args.length ? args.map(String).join(" ") : "";
+    log("RENDERER", msg || "(no message)");
+  } catch (e) {
+    console.error("Failed to log renderer console", e);
+  }
+});

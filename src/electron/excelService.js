@@ -21,6 +21,20 @@ function writeConfig(partial) {
   return cfg;
 }
 
+function getSortState(filePath) {
+  const cfg = readConfig() || {};
+  const sortState = cfg.sortState || {};
+  return sortState[filePath] || null;
+}
+
+function setSortState(filePath, state) {
+  const cfg = readConfig() || {};
+  cfg.sortState = cfg.sortState || {};
+  cfg.sortState[filePath] = state;
+  fs.writeFileSync(CONFIG_PATH, JSON.stringify(cfg, null, 2), "utf8");
+  return cfg.sortState[filePath];
+}
+
 function isVisibleExcel(filename) {
   const lower = filename.toLowerCase();
   return (
@@ -200,6 +214,8 @@ async function readSheet(filePath, sheetName, opts) {
   const page = Math.max(1, opts.page || 1);
   const pageSize = Math.max(1, Math.min(opts.pageSize || 25, 200));
   const filter = (opts.filter || "").toLowerCase();
+  const columnFilters = opts.columnFilters || {}; // { columnName: filterText }
+  const sort = opts.sort || null; // { key, dir }
 
   if (!filePath || !fs.existsSync(filePath)) return { error: "not-found" };
   try {
@@ -214,7 +230,11 @@ async function readSheet(filePath, sheetName, opts) {
       "::" +
       pageSize +
       "::" +
-      filter;
+      filter +
+      "::" +
+      JSON.stringify(columnFilters || {}) +
+      "::" +
+      JSON.stringify(sort || {});
     const cached = cacheGet(cacheKey, ttl);
     if (cached) return cached;
 
@@ -262,14 +282,48 @@ async function readSheet(filePath, sheetName, opts) {
     }
 
     const json = XLSX.utils.sheet_to_json(ws, { defval: null });
-    const filtered = filter
+    // apply global filter (contains across any column)
+    let filtered = filter
       ? json.filter((row) =>
           Object.values(row).some(
             (v) => v != null && String(v).toLowerCase().includes(filter)
           )
         )
       : json;
+
+    // apply per-column filters (contains semantics)
+    const colFilterEntries = Object.entries(columnFilters || {}).filter(
+      ([, v]) => v != null && String(v).trim() !== ""
+    );
+    if (colFilterEntries.length > 0) {
+      filtered = filtered.filter((row) => {
+        return colFilterEntries.every(([col, val]) => {
+          const cell = row[col];
+          if (cell == null) return false;
+          return String(cell).toLowerCase().includes(String(val).toLowerCase());
+        });
+      });
+    }
     const total = filtered.length;
+    // apply server-side sort if requested
+    if (sort && sort.key) {
+      const key = sort.key;
+      const dir = sort.dir === "desc" ? "desc" : "asc";
+      filtered.sort((a, b) => {
+        const A = a[key];
+        const B = b[key];
+        if (A == null && B == null) return 0;
+        if (A == null) return -1;
+        if (B == null) return 1;
+        if (typeof A === "number" && typeof B === "number")
+          return dir === "asc" ? A - B : B - A;
+        const sA = String(A).toLowerCase();
+        const sB = String(B).toLowerCase();
+        if (sA < sB) return dir === "asc" ? -1 : 1;
+        if (sA > sB) return dir === "asc" ? 1 : -1;
+        return 0;
+      });
+    }
     const start = (page - 1) * pageSize;
     const rows = filtered.slice(start, start + pageSize);
     const result = { rows, total, page, pageSize, headers };
@@ -626,6 +680,28 @@ async function refreshFolder() {
   return null;
 }
 
+// Adding improved error handling to excelService.js
+async function loadWorkbook(filePath) {
+  try {
+    const workbook = await someAsyncLoadFunction(filePath);
+    return workbook;
+  } catch (error) {
+    console.error("Failed to load workbook:", error);
+    throw new Error(
+      "Could not load the workbook. Please check the file and try again."
+    );
+  }
+}
+
+async function saveWorkbook(filePath, data) {
+  try {
+    await someAsyncSaveFunction(filePath, data);
+  } catch (error) {
+    console.error("Failed to save workbook:", error);
+    throw new Error("Could not save the workbook. Please try again.");
+  }
+}
+
 module.exports = {
   readConfig,
   writeConfig,
@@ -640,4 +716,6 @@ module.exports = {
   cacheGet,
   cacheSet,
   invalidateCache,
+  getSortState,
+  setSortState,
 };

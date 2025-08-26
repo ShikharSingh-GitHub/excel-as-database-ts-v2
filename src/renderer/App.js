@@ -1,3 +1,9 @@
+const Sidebar = window.Sidebar;
+const SheetTabs = window.SheetTabs;
+const DataGrid = window.DataGrid;
+const CrudModal = window.CrudModal;
+const Toast = window.Toast;
+
 // UMD-compatible App (uses global React)
 (function () {
   const { useState, useEffect } = React;
@@ -23,6 +29,7 @@
       key: null,
       direction: "asc",
     });
+    const [darkMode, setDarkMode] = useState(false);
 
     function Modal({ open, title, children, onClose }) {
       if (!open) return null;
@@ -404,6 +411,7 @@
           conflict: null,
         });
         loadSheet(activeSheet, 1);
+        showToast("Row added successfully", 3000);
       } catch (e) {
         showErrorToast(e.message || "Unexpected error while adding row");
       }
@@ -470,7 +478,7 @@
         conflict: null,
       });
       loadSheet(activeSheet, sheetRows.page);
-      showToast("Row updated");
+      showToast("Row updated successfully", 3000);
     }
 
     // Conflict handlers
@@ -513,6 +521,7 @@
         conflict: null,
       });
       loadSheet(activeSheet, sheetRows.page);
+      showToast("Conflict resolved by overwriting", 3000);
     }
 
     function conflictReload() {
@@ -588,7 +597,7 @@
           );
         return;
       }
-      showToast("Row deleted");
+      showToast("Row deleted successfully", 3000);
       loadSheet(activeSheet, 1);
     }
 
@@ -710,552 +719,75 @@
 
     return React.createElement(
       "div",
-      { style: { display: "flex", height: "100vh", fontFamily: "sans-serif" } },
-      // Aside: folder and files
+      { className: darkMode ? "dark" : "" },
       React.createElement(
-        "aside",
-        { style: { width: 320, borderRight: "1px solid #ddd", padding: 12 } },
-        React.createElement("h3", null, "Workbooks"),
+        "div",
+        { className: "flex h-screen" },
+        React.createElement(Sidebar, {
+          files: files,
+          activePath: active,
+          onOpen: openWorkbook,
+          onRefresh: refreshFiles,
+          autoRefresh: config?.autoRefreshSeconds > 0,
+          onToggleAutoRefresh: () =>
+            setConfig((prev) => ({
+              ...prev,
+              autoRefreshSeconds: prev?.autoRefreshSeconds > 0 ? 0 : 30, // toggle example
+            })),
+        }),
         React.createElement(
-          "div",
-          { style: { display: "flex", gap: 8, marginBottom: 12 } },
+          "main",
+          {
+            className:
+              "flex-1 p-4 bg-white dark:bg-gray-900 text-black dark:text-white",
+          },
           React.createElement(
             "button",
-            { onClick: pickFolder },
-            folder ? "Change Folder" : "Choose Folder"
-          ),
-          folder &&
-            React.createElement("button", { onClick: refreshFiles }, "Refresh")
-        ),
-        React.createElement(
-          "div",
-          { style: { marginTop: 12, fontSize: 12, color: "#444" } },
-          folder || "No folder selected"
-        ),
-        React.createElement(
-          "div",
-          { style: { marginTop: 12 } },
-          files.map((f) =>
-            React.createElement(
-              "div",
-              {
-                key: f.path,
-                style: { padding: 8, borderBottom: "1px solid #eee" },
-              },
-              React.createElement(
-                "div",
-                { style: { display: "flex", alignItems: "center", gap: 8 } },
-                React.createElement(
-                  "div",
-                  { style: { flex: 1 } },
-                  React.createElement("strong", null, f.name)
-                ),
-                React.createElement(
-                  "button",
-                  { onClick: () => openWorkbook(f) },
-                  "Open"
-                )
-              ),
-              React.createElement(
-                "div",
-                { style: { fontSize: 11, color: "#666", marginTop: 4 } },
-                `${Math.round(f.size / 1024)} KB • ${new Date(
-                  f.mtimeMs
-                ).toLocaleString()}`
-              )
-            )
-          )
-        )
-      ),
-      // Main
-      React.createElement(
-        "main",
-        { style: { flex: 1, padding: 12 } },
-        active
-          ? React.createElement(
-              "div",
-              null,
-              React.createElement("h2", null, `Active: ${active}`),
-              meta
-                ? React.createElement(
-                    "div",
-                    null,
-                    React.createElement("h4", null, "Sheets"),
-                    React.createElement(
-                      "div",
-                      {
-                        style: {
-                          display: "flex",
-                          gap: 8,
-                          alignItems: "center",
-                        },
-                      },
-                      (meta?.sheets || []).map((s) =>
-                        React.createElement(
-                          "button",
-                          {
-                            key: s.name,
-                            onClick: () => loadSheet(s.name),
-                            style: isReadOnly(s.name)
-                              ? { backgroundColor: "#f5f5f5", color: "#666" }
-                              : {},
-                          },
-                          `${s.name} (${s.rows})${
-                            isReadOnly(s.name) ? " 🔒" : ""
-                          }`
-                        )
-                      ),
-                      React.createElement(
-                        "div",
-                        { style: { marginLeft: "auto" } },
-                        activeSheet &&
-                          !isReadOnly(activeSheet) &&
-                          React.createElement(
-                            "button",
-                            { onClick: openAddModal },
-                            "Add Row"
-                          ),
-                        React.createElement(
-                          "button",
-                          {
-                            onClick: async () => {
-                              const r = await window.api.invoke(
-                                "workbook:export",
-                                active
-                              );
-                              if (r && r.error)
-                                alert(
-                                  "Export failed: " +
-                                    r.error +
-                                    (r.message ? " - " + r.message : "")
-                                );
-                              else alert("Exported to: " + r.path);
-                            },
-                            style: { marginLeft: 8 },
-                          },
-                          "Export Workbook"
-                        )
-                      )
-                    ),
-                    activeSheet &&
-                      React.createElement(
-                        "div",
-                        { style: { marginTop: 12 } },
-                        React.createElement(
-                          "div",
-                          null,
-                          React.createElement("input", {
-                            placeholder: "Global filter",
-                            value: filterText,
-                            onChange: (e) => setFilterText(e.target.value),
-                          }),
-                          React.createElement(
-                            "button",
-                            { onClick: () => loadSheet(activeSheet, 1) },
-                            "Apply"
-                          )
-                        ),
-                        React.createElement(
-                          "div",
-                          { style: { marginTop: 8 } },
-                          React.createElement(
-                            "div",
-                            { style: { overflowX: "auto" } },
-                            React.createElement(
-                              "table",
-                              {
-                                border: 1,
-                                cellPadding: 6,
-                                style: {
-                                  borderCollapse: "collapse",
-                                  width: "100%",
-                                  position: "sticky",
-                                  top: 0,
-                                },
-                              },
-                              React.createElement(
-                                "thead",
-                                null,
-                                React.createElement(
-                                  "tr",
-                                  null,
-                                  (sheetRows.headers || []).map((h, index) =>
-                                    React.createElement(
-                                      "th",
-                                      {
-                                        key: `${h}-${index}`,
-                                        style: {
-                                          background: "#f9f9f9",
-                                          position: "sticky",
-                                          top: 0,
-                                          cursor: "pointer",
-                                          userSelect: "none",
-                                        },
-                                        onClick: () => handleSort(h),
-                                      },
-                                      h +
-                                        (sortConfig.key === h
-                                          ? sortConfig.direction === "asc"
-                                            ? " ↑"
-                                            : " ↓"
-                                          : "")
-                                    )
-                                  ),
-                                  React.createElement(
-                                    "th",
-                                    {
-                                      style: {
-                                        background: "#f9f9f9",
-                                        position: "sticky",
-                                        top: 0,
-                                      },
-                                    },
-                                    "Actions"
-                                  )
-                                )
-                              ),
-                              React.createElement(
-                                "tbody",
-                                null,
-                                sortRows(
-                                  sheetRows.rows || [],
-                                  sheetRows.headers
-                                ).map((r, idx) =>
-                                  React.createElement(
-                                    "tr",
-                                    { key: idx },
-                                    (sheetRows.headers || []).map((h, colIdx) =>
-                                      React.createElement(
-                                        "td",
-                                        { key: `${h}-${colIdx}-${idx}` },
-                                        String(r[h] ?? "")
-                                      )
-                                    ),
-                                    React.createElement(
-                                      "td",
-                                      null,
-                                      !isReadOnly(activeSheet) &&
-                                        React.createElement(
-                                          "button",
-                                          { onClick: () => openEditModal(r) },
-                                          "Edit"
-                                        ),
-                                      !isReadOnly(activeSheet) &&
-                                        React.createElement(
-                                          "button",
-                                          {
-                                            onClick: () => deleteRow(r),
-                                            style: { marginLeft: 8 },
-                                          },
-                                          "Delete"
-                                        ),
-                                      isReadOnly(activeSheet) &&
-                                        React.createElement(
-                                          "span",
-                                          {
-                                            style: {
-                                              color: "#999",
-                                              fontSize: 12,
-                                            },
-                                          },
-                                          "Read-only"
-                                        )
-                                    )
-                                  )
-                                )
-                              )
-                            ),
-                            React.createElement(
-                              "div",
-                              { style: { marginTop: 8 } },
-                              React.createElement(
-                                "button",
-                                {
-                                  disabled: sheetRows.page <= 1,
-                                  onClick: () =>
-                                    loadSheet(activeSheet, sheetRows.page - 1),
-                                },
-                                "Prev"
-                              ),
-                              React.createElement(
-                                "span",
-                                { style: { margin: "0 8px" } },
-                                `Page ${sheetRows.page} / ${
-                                  Math.ceil(
-                                    sheetRows.total / sheetRows.pageSize
-                                  ) || 1
-                                }`
-                              ),
-                              React.createElement(
-                                "button",
-                                {
-                                  disabled:
-                                    sheetRows.page * sheetRows.pageSize >=
-                                    sheetRows.total,
-                                  onClick: () =>
-                                    loadSheet(activeSheet, sheetRows.page + 1),
-                                },
-                                "Next"
-                              )
-                            )
-                          )
-                        )
-                      )
-                  )
-                : React.createElement("div", null, "Loading workbook...")
-            )
-          : React.createElement("div", null, "No workbook selected")
-      ),
-      // Modal UI (placed at root)
-      React.createElement(
-        Modal,
-        {
-          open: modal.open,
-          title: modal.mode === "add" ? "Add Row" : "Edit Row",
-          onClose: () => setModal({ open: false, mode: null, data: null }),
-        },
-        modal.open &&
-          React.createElement(
-            "div",
-            null,
-            modal.mode === "conflict" &&
-              modal.conflict &&
-              modal.conflict.current
-              ? React.createElement(
-                  "div",
-                  null,
-                  React.createElement(
-                    "p",
-                    null,
-                    "Version conflict detected. Latest row (server):"
-                  ),
-                  React.createElement(
-                    "pre",
-                    {
-                      style: {
-                        background: "#f5f5f5",
-                        padding: 8,
-                        maxHeight: 200,
-                        overflow: "auto",
-                      },
-                    },
-                    JSON.stringify(modal.conflict.current, null, 2)
-                  ),
-                  React.createElement("p", null, "Your attempted changes:"),
-                  React.createElement(
-                    "pre",
-                    {
-                      style: {
-                        background: "#f9f9f9",
-                        padding: 8,
-                        maxHeight: 200,
-                        overflow: "auto",
-                      },
-                    },
-                    JSON.stringify(modal.data, null, 2)
-                  ),
-                  React.createElement(
-                    "div",
-                    { style: { marginTop: 12, textAlign: "right" } },
-                    React.createElement(
-                      "button",
-                      { onClick: conflictReload },
-                      "Reload Latest"
-                    ),
-                    React.createElement(
-                      "button",
-                      { onClick: conflictOverwrite, style: { marginLeft: 8 } },
-                      "Overwrite with my changes"
-                    ),
-                    React.createElement(
-                      "button",
-                      {
-                        onClick: () =>
-                          setModal({
-                            open: false,
-                            mode: null,
-                            data: null,
-                            errors: null,
-                            conflict: null,
-                          }),
-                        style: { marginLeft: 8 },
-                      },
-                      "Cancel"
-                    )
-                  )
-                )
-              : React.createElement(
-                  "div",
-                  null,
-                  (sheetRows.headers || []).map((h, index) => {
-                    const t = typeHintForColumn(h);
-                    const value =
-                      modal.data && modal.data[h] != null ? modal.data[h] : ""; // Default to empty string
-                    const err = modal.errors && modal.errors[h];
-                    const isRequired =
-                      h &&
-                      (String(h).trim().endsWith("*") ||
-                        /\(required\)/i.test(String(h)));
-                    if (t === "checkbox") {
-                      return React.createElement(
-                        "div",
-                        { key: `${h}-${index}`, style: { marginBottom: 8 } },
-                        React.createElement(
-                          "label",
-                          null,
-                          h,
-                          isRequired
-                            ? React.createElement(
-                                "span",
-                                { style: { color: "red", marginLeft: 6 } },
-                                "*"
-                              )
-                            : null,
-                          " "
-                        ),
-                        React.createElement("input", {
-                          type: "checkbox",
-                          checked: !!value,
-                          onChange: (e) =>
-                            setModal((prev) => ({
-                              ...prev,
-                              data: {
-                                ...prev.data,
-                                [h]: e.target.checked,
-                              },
-                            })),
-                        }),
-                        err
-                          ? React.createElement(
-                              "div",
-                              { style: { color: "red", fontSize: 12 } },
-                              err
-                            )
-                          : null
-                      );
-                    }
-                    return React.createElement(
-                      "div",
-                      { key: `${h}-${index}`, style: { marginBottom: 8 } },
-                      React.createElement(
-                        "label",
-                        null,
-                        h,
-                        isRequired
-                          ? React.createElement(
-                              "span",
-                              { style: { color: "red", marginLeft: 6 } },
-                              "*"
-                            )
-                          : null
-                      ),
-                      React.createElement("input", {
-                        type: "text",
-                        value: value, // Ensure value defaults to empty string
-                        onChange: (e) =>
-                          setModal((prev) => ({
-                            ...prev,
-                            data: {
-                              ...prev.data,
-                              [h]: e.target.value,
-                            },
-                          })),
-                        style: { width: "100%" },
-                        autoFocus: (sheetRows.headers || []).indexOf(h) === 0,
-                        onKeyDown: (e) => {
-                          if (e.key === "Enter") modalSubmit();
-                        },
-                      }),
-                      err
-                        ? React.createElement(
-                            "div",
-                            { style: { color: "red", fontSize: 12 } },
-                            err
-                          )
-                        : null
-                    );
-                  }),
-                  // preview of normalized value
-                  React.createElement(
-                    "div",
-                    { style: { marginTop: 8, color: "#666", fontSize: 12 } },
-                    "Preview:\u00A0",
-                    React.createElement(
-                      "div",
-                      {
-                        style: {
-                          fontFamily: "monospace",
-                          maxHeight: 160,
-                          overflow: "auto",
-                          background: "#fafafa",
-                          padding: 8,
-                          borderRadius: 4,
-                        },
-                      },
-                      (sheetRows.headers || []).map((hh, previewIdx) =>
-                        React.createElement(
-                          "div",
-                          {
-                            key: `${hh}-${previewIdx}`,
-                            style: { marginBottom: 4 },
-                          },
-                          React.createElement("strong", null, hh + ": "),
-                          React.createElement("span", null, getFieldPreview(hh))
-                        )
-                      )
-                    )
-                  ),
-                  React.createElement(
-                    "div",
-                    { style: { marginTop: 12, textAlign: "right" } },
-                    React.createElement(
-                      "button",
-                      {
-                        onClick: () =>
-                          setModal({
-                            open: false,
-                            mode: null,
-                            data: null,
-                            errors: null,
-                            conflict: null,
-                          }),
-                      },
-                      "Cancel"
-                    ),
-                    React.createElement(
-                      "button",
-                      {
-                        onClick: () => {
-                          if (modal.mode === "add") submitAdd(modal.data);
-                          else submitEdit(modal.data);
-                        },
-                        style: { marginLeft: 8 },
-                      },
-                      "Submit"
-                    )
-                  )
-                )
-          )
-      ),
-      // Toast element
-      toast
-        ? React.createElement(
-            "div",
             {
-              style: {
-                position: "fixed",
-                right: 20,
-                bottom: 20,
-                background: "rgba(0,0,0,0.8)",
-                color: "#fff",
-                padding: "8px 12px",
-                borderRadius: 6,
-                fontSize: 13,
-              },
+              onClick: () => setDarkMode(!darkMode),
+              className: "mb-4 px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded",
             },
-            toast
-          )
-        : null
+            "Toggle Dark Mode"
+          ),
+          meta &&
+            React.createElement(SheetTabs, {
+              sheets: meta.sheets || [],
+              active: activeSheet,
+              onSelect: loadSheet,
+              onReload: () => loadSheet(activeSheet),
+            }),
+          activeSheet &&
+            React.createElement(DataGrid, {
+              headers: sheetRows.headers,
+              rows: sheetRows.rows,
+              onEdit: (row) => openEditModal(row),
+              onDelete: (row) => deleteRow(row),
+              onSort: (header) => handleSort(header),
+              sortKey: sortConfig.key,
+              sortDirection: sortConfig.direction,
+            }),
+          React.createElement(CrudModal, {
+            open: modal.open,
+            title: modal.mode === "add" ? "Add Row" : "Edit Row",
+            headers: sheetRows.headers,
+            data: modal.data || {},
+            errors: modal.errors || {},
+            onClose: () => setModal({ open: false, mode: null, data: null }),
+            onSubmit: modalSubmit,
+            onChange: (header, value) =>
+              setModal((prev) => ({
+                ...prev,
+                data: { ...prev.data, [header]: value },
+              })),
+          }),
+          toast &&
+            React.createElement(Toast, {
+              message: toast,
+              type: "success",
+              onClose: () => setToast(null),
+            })
+        )
+      )
     );
   }
 
