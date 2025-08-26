@@ -10,9 +10,23 @@
   "recentWorkbooks": [],
   "headerRowConfig": {
     "Sample.xlsm": {
-      "Sheet1": 5,
-      "Sheet2": 5,
-      "Sheet3": 5
+      "Application": 4,
+      "Test Set": 4,
+      "Test Case": 4,
+      "Test Case Step": 4,
+      "Playwright Configuration": 4,
+      "Tags": 4,
+      "Step_Template": 4,
+      "backlog": 4,
+      "Release": 4,
+      "masters": 4,
+      "API": 4,
+      "API Attribute": 4,
+      "Page": 4,
+      "UI Element": 4,
+      "Function": 4,
+      "Function Step": 4,
+      "Test Case Function Step": 4
     }
   },
   "ui": {
