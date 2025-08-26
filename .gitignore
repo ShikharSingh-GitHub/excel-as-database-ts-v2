@@ -1,3 +1,25 @@
+# Node deps and build outputs
+node_modules/
+**/node_modules/
+dist/
+**/dist/
+build/
+**/build/
+# Vite / bundler caches
+.vite/
+**/.vite/
+.cache/
+**/.cache/
+# editor and OS files
+.DS_Store
+*.log
+# npm artifacts
+package-lock.json
+# logs
+logs/
+# local renderer app outputs
+src/renderer-app/dist/
+src/renderer-app/node_modules/
 node_modules
 dist
 build
