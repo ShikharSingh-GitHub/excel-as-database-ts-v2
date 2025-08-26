@@ -15,6 +15,7 @@ export default function App() {
   const [activeFile, setActiveFile] = useState<string | null>(null);
   const [meta, setMeta] = useState<any>(null);
   const [activeSheet, setActiveSheet] = useState<string | null>(null);
+  const [recentWorkbooks, setRecentWorkbooks] = useState<string[]>([]);
 
   const [sheetRows, setSheetRows] = useState<any>({
     rows: [],
@@ -45,21 +46,26 @@ export default function App() {
   useEffect(() => {
     (async () => {
       try {
-        const cfg = await (window as any).api.invoke("config:get");
+        const cfg = await (window as any).api.config.get();
         setConfig(cfg || {});
+
+        // Load recent workbooks
+        const recent = await (window as any).api.config.getRecentWorkbooks();
+        setRecentWorkbooks(recent || []);
+
         const folder = cfg && cfg.folderPath;
         if (!folder) {
-          const p = await (window as any).api.invoke("folder:pick");
+          const p = await (window as any).api.folder.pick();
           if (p) {
-            await (window as any).api.invoke("config:set", { folderPath: p });
+            await (window as any).api.config.set({ folderPath: p });
             setConfig((prev: any) => ({ ...(prev || {}), folderPath: p }));
-            const res = await (window as any).api.invoke("folder:scan", p);
+            const res = await (window as any).api.folder.scan(p);
             if (!res.error) setFiles(res.files || []);
           } else {
             setToast("No folder selected");
           }
         } else {
-          const res = await (window as any).api.invoke("folder:scan", folder);
+          const res = await (window as any).api.folder.scan(folder);
           if (!res.error) setFiles(res.files || []);
         }
       } catch (err) {
@@ -74,7 +80,7 @@ export default function App() {
     try {
       const folder = (config && config.folderPath) || null;
       if (!folder) return;
-      const res = await (window as any).api.invoke("folder:scan", folder);
+      const res = await (window as any).api.folder.scan(folder);
       if (!res.error) setFiles(res.files || []);
     } catch (e) {
       console.error(e);
@@ -85,7 +91,13 @@ export default function App() {
     async (file: FileEntry) => {
       try {
         setActiveFile(file.path);
-        const m = await (window as any).api.invoke("workbook:meta", file.path);
+
+        // Add to recent workbooks
+        await (window as any).api.config.addRecentWorkbook(file.path);
+        const recent = await (window as any).api.config.getRecentWorkbooks();
+        setRecentWorkbooks(recent || []);
+
+        const m = await (window as any).api.workbook.meta(file.path);
         if (m && !m.error) {
           setMeta(m);
           setActiveSheet(null);
@@ -96,16 +108,12 @@ export default function App() {
             pageSize: config?.pageSizeDefault || 25,
             headers: [],
           });
+
           // load persisted sort state for this workbook
           try {
-            const sort = await (window as any).api.invoke(
-              "sort:get",
-              file.path
-            );
+            const sort = await (window as any).api.sort.get(file.path);
             // store into state if needed; for now we just set columnFilters to empty
             // DataGrid will reflect sort via server-side ordering when implemented
-            // Optionally trigger load of first sheet later when selected
-            // We can store in config state if needed
             setTimeout(() => {}, 0);
           } catch (e) {}
         } else {
@@ -127,8 +135,7 @@ export default function App() {
     async (sheetName: string, page = 1) => {
       if (!activeFile || !sheetName) return;
       try {
-        const res = await (window as any).api.invoke(
-          "sheet:read",
+        const res = await (window as any).api.sheet.read(
           activeFile,
           sheetName,
           {
@@ -162,8 +169,17 @@ export default function App() {
 
   const submitAdd = async (data: any) => {
     if (!activeFile || !activeSheet) return setToast("No active sheet");
-    const res = await (window as any).api.invoke(
-      "sheet:create",
+
+    // Check if sheet is read-only
+    const isReadOnly = await (window as any).api.config.isSheetReadOnly(
+      activeSheet
+    );
+    if (isReadOnly) {
+      setToast("Cannot add rows to read-only sheet");
+      return;
+    }
+
+    const res = await (window as any).api.sheet.create(
       activeFile,
       activeSheet,
       data
@@ -187,14 +203,23 @@ export default function App() {
 
   const submitEdit = async (row: any) => {
     if (!activeFile || !activeSheet) return setToast("No active sheet");
+
+    // Check if sheet is read-only
+    const isReadOnly = await (window as any).api.config.isSheetReadOnly(
+      activeSheet
+    );
+    if (isReadOnly) {
+      setToast("Cannot edit rows in read-only sheet");
+      return;
+    }
+
     const pkName = (config && config.pkName) || "id";
     const pkValue = row[pkName];
     const expected = row["_version"];
     const updates = Object.assign({}, row);
     delete updates[pkName];
     delete updates["_version"];
-    const res = await (window as any).api.invoke(
-      "sheet:update",
+    const res = await (window as any).api.sheet.update(
       activeFile,
       activeSheet,
       pkValue,
@@ -221,12 +246,21 @@ export default function App() {
 
   const deleteRow = async (row: any) => {
     if (!activeFile || !activeSheet) return setToast("No active sheet");
+
+    // Check if sheet is read-only
+    const isReadOnly = await (window as any).api.config.isSheetReadOnly(
+      activeSheet
+    );
+    if (isReadOnly) {
+      setToast("Cannot delete rows from read-only sheet");
+      return;
+    }
+
     if (!confirm("Delete this row?")) return;
     const pkName = (config && config.pkName) || "id";
     const pkValue = row[pkName];
     const expected = row["_version"];
-    const res = await (window as any).api.invoke(
-      "sheet:delete",
+    const res = await (window as any).api.sheet.delete(
       activeFile,
       activeSheet,
       pkValue,
@@ -245,6 +279,21 @@ export default function App() {
     setToast("Row deleted");
   };
 
+  const exportWorkbook = async () => {
+    if (!activeFile) return setToast("No active workbook");
+    try {
+      const res = await (window as any).api.workbook.export(activeFile);
+      if (res && !res.error) {
+        setToast(`Workbook exported to: ${res.path}`);
+      } else {
+        setToast(res.message || "Export failed");
+      }
+    } catch (err) {
+      const e = err as any;
+      setToast("Export error: " + (e && e.message ? e.message : String(e)));
+    }
+  };
+
   useEffect(() => {
     if (activeSheet) loadSheet(activeSheet, sheetRows.page);
   }, [activeSheet, sheetRows.page, filterText]);
@@ -260,15 +309,23 @@ export default function App() {
               className="px-3 py-1 rounded bg-gray-200">
               Theme
             </button>
-            {!((config && config.readOnlySheets) || []).includes(
-              activeSheet || ""
-            ) && (
+            {activeFile && (
               <button
-                onClick={openAddModal}
-                className="px-3 py-1 rounded bg-blue-500 text-white">
-                Add Row
+                onClick={exportWorkbook}
+                className="px-3 py-1 rounded bg-green-500 text-white">
+                Export
               </button>
             )}
+            {activeSheet &&
+              !((config && config.readOnlySheets) || []).includes(
+                activeSheet || ""
+              ) && (
+                <button
+                  onClick={openAddModal}
+                  className="px-3 py-1 rounded bg-blue-500 text-white">
+                  Add Row
+                </button>
+              )}
             <button
               onClick={refreshFiles}
               className="px-3 py-1 rounded bg-gray-200">
@@ -280,6 +337,7 @@ export default function App() {
         <div className="flex flex-1 overflow-hidden">
           <Sidebar
             files={files}
+            recentWorkbooks={recentWorkbooks}
             activePath={activeFile}
             onOpen={(f: any) => openWorkbook(f)}
             onRefresh={refreshFiles}
@@ -290,6 +348,7 @@ export default function App() {
                 sheets={meta.sheets || []}
                 active={activeSheet}
                 onSelect={(s: string) => loadSheet(s, 1)}
+                readOnlySheets={config?.readOnlySheets || []}
               />
             )}
 
@@ -333,11 +392,7 @@ export default function App() {
                   }) => {
                     setSortState(s);
                     try {
-                      await (window as any).api.invoke(
-                        "sort:set",
-                        activeFile,
-                        s
-                      );
+                      await (window as any).api.sort.set(activeFile, s);
                     } catch (e) {
                       console.warn("Failed to persist sort state", e);
                     }
@@ -388,8 +443,7 @@ export default function App() {
                 delete updates[pkName];
                 delete updates["_version"];
                 const expected = modal.conflict && modal.conflict["_version"];
-                const res = await (window as any).api.invoke(
-                  "sheet:update",
+                const res = await (window as any).api.sheet.update(
                   activeFile,
                   activeSheet,
                   pkValue,

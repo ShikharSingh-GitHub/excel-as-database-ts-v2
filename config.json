@@ -5,6 +5,16 @@
   "pageSizeDefault": 25,
   "maxPageSize": 200,
   "readOnlySheets": [],
-  "ignoreSheets": [],
-  "autoRefreshSeconds": 0
+  "ignoreSheets": ["_metadata", "config", "temp"],
+  "autoRefreshSeconds": 0,
+  "recentWorkbooks": [],
+  "ui": {
+    "theme": "auto",
+    "defaultSort": "asc",
+    "showSystemColumns": false
+  },
+  "validation": {
+    "enableTypeHints": true,
+    "strictMode": false
+  }
 }

@@ -5,26 +5,107 @@ const lockfile = require("proper-lockfile");
 const { v4: uuidv4 } = require("uuid");
 
 const CONFIG_PATH = path.join(__dirname, "..", "..", "config.json");
+const LOG_DIR = path.join(__dirname, "..", "..", "logs");
+const LOG_FILE = path.join(LOG_DIR, "excel-db.log");
 
+// Ensure log directory exists
+function ensureLogDir() {
+  try {
+    if (!fs.existsSync(LOG_DIR)) {
+      fs.mkdirSync(LOG_DIR, { recursive: true });
+    }
+  } catch (e) {
+    // ignore
+  }
+}
+
+// Logging function
+function log(level, message, ctx) {
+  try {
+    ensureLogDir();
+    const ts = new Date().toISOString();
+    const line =
+      `${ts} [${level}] ${message}` +
+      (ctx ? " " + JSON.stringify(ctx) : "") +
+      "\n";
+    fs.appendFileSync(LOG_FILE, line);
+  } catch (e) {
+    // ignore logging errors
+  }
+}
+
+// Configuration functions
 function readConfig() {
   try {
-    const raw = fs.readFileSync(CONFIG_PATH, "utf8");
-    return JSON.parse(raw);
+    return JSON.parse(fs.readFileSync(CONFIG_PATH, "utf8"));
   } catch (e) {
-    return null;
+    // Return default config if file doesn't exist
+    return {
+      folderPath: null,
+      pkName: "id",
+      cacheTtlMs: 2000,
+      pageSizeDefault: 25,
+      maxPageSize: 200,
+      readOnlySheets: [],
+      ignoreSheets: ["_metadata", "config", "temp"],
+      autoRefreshSeconds: 0,
+      recentWorkbooks: [],
+      ui: {
+        theme: "auto",
+        defaultSort: "asc",
+        showSystemColumns: false,
+      },
+      validation: {
+        enableTypeHints: true,
+        strictMode: false,
+      },
+    };
   }
 }
 
 function writeConfig(partial) {
-  const cfg = Object.assign({}, readConfig() || {}, partial);
+  const cfg = Object.assign({}, readConfig(), partial);
   fs.writeFileSync(CONFIG_PATH, JSON.stringify(cfg, null, 2), "utf8");
   return cfg;
 }
 
+// Add recent workbook to config
+function addRecentWorkbook(filePath) {
+  const cfg = readConfig();
+  const recent = cfg.recentWorkbooks || [];
+  const index = recent.indexOf(filePath);
+  if (index > -1) {
+    recent.splice(index, 1);
+  }
+  recent.unshift(filePath);
+  // Keep only last 10
+  cfg.recentWorkbooks = recent.slice(0, 10);
+  writeConfig(cfg);
+  return cfg.recentWorkbooks;
+}
+
+// Get recent workbooks
+function getRecentWorkbooks() {
+  const cfg = readConfig();
+  return cfg.recentWorkbooks || [];
+}
+
+// Check if sheet is read-only
+function isSheetReadOnly(sheetName) {
+  const cfg = readConfig();
+  return (cfg.readOnlySheets || []).includes(sheetName);
+}
+
+// Get configuration values
+function getConfigValue(key, defaultValue = null) {
+  const cfg = readConfig();
+  return cfg[key] !== undefined ? cfg[key] : defaultValue;
+}
+
+// Sort state management
 function getSortState(filePath) {
   const cfg = readConfig() || {};
-  const sortState = cfg.sortState || {};
-  return sortState[filePath] || null;
+  return (cfg.sortState && cfg.sortState[filePath]) || null;
 }
 
 function setSortState(filePath, state) {
@@ -35,28 +116,25 @@ function setSortState(filePath, state) {
   return cfg.sortState[filePath];
 }
 
+// Excel file detection
 function isVisibleExcel(filename) {
-  const lower = filename.toLowerCase();
+  const lower = String(filename || "").toLowerCase();
   return (
     (lower.endsWith(".xlsx") || lower.endsWith(".xlsm")) &&
-    !filename.startsWith(".")
+    !String(filename).startsWith(".")
   );
 }
 
+// Folder scanning
 function scanFolder(folderPath) {
   const cfg = readConfig();
   const dir = folderPath || (cfg && cfg.folderPath) || null;
-  if (!dir) {
-    log("WARN", "No folder path provided for scanFolder");
-    return { error: "no-folder" };
-  }
-  if (!fs.existsSync(dir)) {
-    log("WARN", "Folder not found", { folderPath: dir });
-    return { error: "not-found" };
-  }
+  if (!dir) return { error: "no-folder" };
+  if (!fs.existsSync(dir)) return { error: "not-found" };
 
-  const files = fs.readdirSync(dir).filter((f) => isVisibleExcel(f));
-  const out = files
+  const files = fs
+    .readdirSync(dir)
+    .filter((f) => isVisibleExcel(f))
     .map((f) => {
       const stat = fs.statSync(path.join(dir, f));
       return {
@@ -68,98 +146,59 @@ function scanFolder(folderPath) {
     })
     .sort((a, b) => a.name.localeCompare(b.name));
 
-  log("INFO", "Folder scanned", { folderPath: dir, fileCount: out.length });
-  return { folder: dir, files: out };
+  return { folder: dir, files };
 }
 
-// Logging
-const LOG_DIR = path.join(__dirname, "..", "..", "logs");
-const LOG_FILE = path.join(LOG_DIR, "excel-db.log");
-function ensureLogDir() {
-  try {
-    if (!fs.existsSync(LOG_DIR)) fs.mkdirSync(LOG_DIR);
-  } catch (e) {}
-}
-function log(level, message, ctx) {
-  try {
-    ensureLogDir();
-    const ts = new Date().toISOString();
-    const line =
-      `${ts} [${level}] ${message}` +
-      (ctx ? " " + JSON.stringify(ctx) : "") +
-      "\n";
-    fs.appendFileSync(LOG_FILE, line);
-  } catch (e) {}
-}
-
+// Workbook metadata
 function getWorkbookMeta(filePath) {
-  if (!filePath || !fs.existsSync(filePath)) {
-    log("WARN", "Workbook not found for metadata", { filePath });
-    return { error: "not-found" };
-  }
+  if (!filePath || !fs.existsSync(filePath)) return { error: "not-found" };
 
   try {
     const cfg = readConfig() || {};
     const ignoreSheets = cfg.ignoreSheets || [];
-
-    // Add debugging for XLSX read
-    log("DEBUG", "Attempting to read Excel file", { filePath });
     const wb = XLSX.readFile(filePath);
 
     if (!wb || !wb.SheetNames || !Array.isArray(wb.SheetNames)) {
-      log("ERROR", "Invalid workbook structure", {
-        filePath,
-        hasWorkbook: !!wb,
-        hasSheetNames: !!wb?.SheetNames,
-        sheetNamesType: typeof wb?.SheetNames,
-      });
-      return { error: "parse-error", message: "Invalid workbook structure" };
+      return { error: "parse-error" };
     }
-
-    log("DEBUG", "Workbook loaded successfully", {
-      filePath,
-      sheetCount: wb.SheetNames.length,
-      sheetNames: wb.SheetNames,
-    });
 
     const sheets = wb.SheetNames.filter((n) => !ignoreSheets.includes(n)).map(
       (name) => {
         try {
           const ws = wb.Sheets[name];
-          if (!ws) {
-            log("WARN", `Sheet '${name}' is undefined`, {
-              filePath,
-              sheetName: name,
-            });
+          if (!ws || !ws["!ref"]) {
             return { name, columns: [], rows: 0, unavailable: true };
           }
 
           const range = XLSX.utils.decode_range(ws["!ref"] || "A1:A1");
           const headers = [];
-          const seenHeaders = new Set();
+          const seen = new Set();
+
           for (let C = range.s.c; C <= range.e.c; ++C) {
             const cell = ws[XLSX.utils.encode_cell({ c: C, r: 0 })];
-            let val = cell ? String(cell.v).trim() : "";
+            const val = cell ? String(cell.v).trim() : "";
             if (val) {
-              // Handle duplicate column names by appending a number
-              let originalVal = val;
-              let counter = 1;
-              while (seenHeaders.has(val)) {
-                val = `${originalVal} (${counter})`;
-                counter++;
+              let orig = val;
+              let i = 1;
+              while (seen.has(val)) {
+                val = `${orig} (${i})`;
+                i++;
               }
-              seenHeaders.add(val);
+              seen.add(val);
               headers.push(val);
             }
           }
+
           const rows = Math.max(0, range.e.r - range.s.r);
           const unavailable = headers.length === 0;
+
           if (unavailable) {
             log("WARN", `Sheet '${name}' has no headers and is unavailable`, {
               filePath,
               sheetName: name,
             });
           }
+
           return { name, columns: headers, rows, unavailable };
         } catch (sheetError) {
           log("ERROR", `Error processing sheet '${name}'`, {
@@ -182,6 +221,7 @@ function getWorkbookMeta(filePath) {
       filePath,
       sheetCount: sheets.length,
     });
+
     return { path: filePath, sheets, mtimeMs: fs.statSync(filePath).mtimeMs };
   } catch (e) {
     log("ERROR", "getWorkbookMeta parse error", {
@@ -193,48 +233,62 @@ function getWorkbookMeta(filePath) {
   }
 }
 
-function readSheetJson(filePath, sheetName) {
-  const wb = XLSX.readFile(filePath);
-  if (!wb.SheetNames.includes(sheetName)) return null;
-  const ws = wb.Sheets[sheetName];
-  const json = XLSX.utils.sheet_to_json(ws, { defval: null });
-  return { wb, ws, json };
-}
+// Cache management
+const cache = new Map();
 
-function ensurePkAndVersion(rows, pkName) {
-  for (const r of rows) {
-    if (!r.hasOwnProperty(pkName) || r[pkName] === null || r[pkName] === "")
-      r[pkName] = uuidv4();
-    if (!r.hasOwnProperty("_version") || r["_version"] == null)
-      r["_version"] = 1;
+function cacheGet(key, ttl) {
+  const entry = cache.get(key);
+  if (!entry) return null;
+
+  const now = Date.now();
+  if (now - entry.timestamp > ttl) {
+    log("INFO", "Cache expired", { key });
+    cache.delete(key);
+    return null;
   }
+
+  log("INFO", "Cache hit", { key });
+  return entry.value;
 }
 
-async function readSheet(filePath, sheetName, opts) {
-  const page = Math.max(1, opts.page || 1);
-  const pageSize = Math.max(1, Math.min(opts.pageSize || 25, 200));
-  const filter = (opts.filter || "").toLowerCase();
-  const columnFilters = opts.columnFilters || {}; // { columnName: filterText }
-  const sort = opts.sort || null; // { key, dir }
+function cacheSet(key, value, mtimeMs) {
+  cache.set(key, { value, timestamp: Date.now(), mtimeMs });
+  log("INFO", "Cache set", { key });
+}
+
+function invalidateCache(filePath) {
+  const keysToInvalidate = Array.from(cache.keys()).filter((key) =>
+    key.startsWith(filePath)
+  );
+  keysToInvalidate.forEach((key) => {
+    cache.delete(key);
+    log("INFO", "Cache invalidated", { key });
+  });
+}
+
+// Sheet reading with pagination, filtering, and sorting
+function readSheet(filePath, sheetName, opts = {}) {
+  const page = Math.max(1, (opts && opts.page) || 1);
+  const pageSize = Math.max(1, Math.min((opts && opts.pageSize) || 25, 200));
+  const filter = ((opts && opts.filter) || "").toLowerCase();
+  const columnFilters = (opts && opts.columnFilters) || {};
+  const sort = (opts && opts.sort) || null;
 
   if (!filePath || !fs.existsSync(filePath)) return { error: "not-found" };
+
   try {
     const cfg = readConfig() || {};
     const ttl = cfg.cacheTtlMs || 2000;
-    const cacheKey =
-      filePath +
-      "::" +
-      sheetName +
-      "::" +
-      page +
-      "::" +
-      pageSize +
-      "::" +
-      filter +
-      "::" +
-      JSON.stringify(columnFilters || {}) +
-      "::" +
-      JSON.stringify(sort || {});
+    const cacheKey = [
+      filePath,
+      sheetName,
+      String(page),
+      String(pageSize),
+      String(filter),
+      JSON.stringify(columnFilters || {}),
+      JSON.stringify(sort || {}),
+    ].join("::");
+
     const cached = cacheGet(cacheKey, ttl);
     if (cached) return cached;
 
@@ -249,15 +303,26 @@ async function readSheet(filePath, sheetName, opts) {
       });
       return { error: "sheet-not-found" };
     }
+
     const ws = wb.Sheets[sheetName];
     if (!ws) {
       log("ERROR", "Worksheet is undefined", { filePath, sheetName });
       return { error: "sheet-not-found" };
     }
 
+    // If the sheet has no range (!ref) it's effectively empty/ unavailable
+    if (!ws["!ref"]) {
+      log("WARN", "Worksheet has no range (!ref)", { filePath, sheetName });
+      return {
+        error: "sheet-unavailable",
+        message: "No headers (row 1 empty) - sheet unavailable for table view",
+      };
+    }
+
     const range = XLSX.utils.decode_range(ws["!ref"] || "A1:A1");
     const headers = [];
     const seenHeaders = new Set();
+
     for (let C = range.s.c; C <= range.e.c; ++C) {
       const cell = ws[XLSX.utils.encode_cell({ c: C, r: 0 })];
       let val = cell ? String(cell.v).trim() : "";
@@ -273,8 +338,12 @@ async function readSheet(filePath, sheetName, opts) {
         headers.push(val);
       }
     }
+
     if (headers.length === 0) {
-      console.warn(`Sheet '${sheetName}' has no headers and is unavailable.`);
+      log("WARN", `Sheet '${sheetName}' has no headers and is unavailable`, {
+        filePath,
+        sheetName,
+      });
       return {
         error: "sheet-unavailable",
         message: "No headers (row 1 empty) - sheet unavailable for table view",
@@ -282,6 +351,7 @@ async function readSheet(filePath, sheetName, opts) {
     }
 
     const json = XLSX.utils.sheet_to_json(ws, { defval: null });
+
     // apply global filter (contains across any column)
     let filtered = filter
       ? json.filter((row) =>
@@ -304,7 +374,9 @@ async function readSheet(filePath, sheetName, opts) {
         });
       });
     }
+
     const total = filtered.length;
+
     // apply server-side sort if requested
     if (sort && sort.key) {
       const key = sort.key;
@@ -324,15 +396,24 @@ async function readSheet(filePath, sheetName, opts) {
         return 0;
       });
     }
+
     const start = (page - 1) * pageSize;
     const rows = filtered.slice(start, start + pageSize);
     const result = { rows, total, page, pageSize, headers };
-    console.log("[DEBUG] Sheet data:", {
+
+    log("DEBUG", "Sheet data", {
       sheetName,
       rows: result.rows.length,
       headers,
-    }); // Debug log
-    cacheSet(cacheKey, result, fs.statSync(filePath).mtimeMs);
+    });
+
+    try {
+      const mtime = fs.statSync(filePath).mtimeMs;
+      cacheSet(cacheKey, result, mtime);
+    } catch (e) {
+      cacheSet(cacheKey, result, null);
+    }
+
     return result;
   } catch (e) {
     log("ERROR", "readSheet error", {
@@ -344,40 +425,42 @@ async function readSheet(filePath, sheetName, opts) {
   }
 }
 
-const cache = new Map();
-
-function cacheGet(key, ttl) {
-  const entry = cache.get(key);
-  if (!entry) return null;
-  const now = Date.now();
-  if (now - entry.timestamp > ttl) {
-    log("INFO", "Cache expired", { key });
-    cache.delete(key);
+// Helper function to read sheet as JSON
+function readSheetJson(filePath, sheetName) {
+  try {
+    const wb = XLSX.readFile(filePath);
+    if (!wb.SheetNames.includes(sheetName)) return null;
+    const ws = wb.Sheets[sheetName];
+    const json = XLSX.utils.sheet_to_json(ws, { defval: null });
+    return { wb, ws, json };
+  } catch (e) {
+    log("ERROR", "readSheetJson error", {
+      filePath,
+      sheetName,
+      message: e.message,
+    });
     return null;
   }
-  log("INFO", "Cache hit", { key });
-  return entry.value;
 }
 
-function cacheSet(key, value, mtimeMs) {
-  cache.set(key, { value, timestamp: Date.now(), mtimeMs });
-  log("INFO", "Cache set", { key });
+// Ensure primary key and version fields exist
+function ensurePkAndVersion(rows, pkName) {
+  for (const r of rows) {
+    if (!r.hasOwnProperty(pkName) || r[pkName] === null || r[pkName] === "") {
+      r[pkName] = uuidv4();
+    }
+    if (!r.hasOwnProperty("_version") || r["_version"] == null) {
+      r["_version"] = 1;
+    }
+  }
 }
 
-function invalidateCache(filePath) {
-  const keysToInvalidate = Array.from(cache.keys()).filter((key) =>
-    key.startsWith(filePath)
-  );
-  keysToInvalidate.forEach((key) => {
-    cache.delete(key);
-    log("INFO", "Cache invalidated", { key });
-  });
-}
-
+// Lock management
 async function acquireLock(filePath, opts = {}) {
   const timeout = opts.timeoutMs || 5000;
   const start = Date.now();
   const retryDelay = 200;
+
   while (true) {
     try {
       const release = await lockfile.lock(filePath, { realpath: false });
@@ -394,10 +477,12 @@ async function acquireLock(filePath, opts = {}) {
   }
 }
 
+// Atomic workbook writing
 function writeWorkbookAtomic(filePath, workbook, bookType) {
   const dir = path.dirname(filePath);
   const base = path.basename(filePath);
   const tmp = path.join(dir, `.${base}.tmp.${Date.now()}`);
+
   try {
     XLSX.writeFile(workbook, tmp, { bookType: bookType });
     fs.renameSync(tmp, filePath);
@@ -419,6 +504,7 @@ function writeWorkbookAtomic(filePath, workbook, bookType) {
   }
 }
 
+// CRUD operations
 async function createRow(filePath, sheetName, row, opts = {}) {
   try {
     const cfg = readConfig() || {};
@@ -432,29 +518,36 @@ async function createRow(filePath, sheetName, row, opts = {}) {
     }
 
     const pkName = cfg.pkName || "id";
-
     const release = await acquireLock(filePath, { timeoutMs: 5000 });
+
     try {
       const r = readSheetJson(filePath, sheetName) || {
         wb: XLSX.readFile(filePath),
         json: [],
       };
+
       const wb = r.wb;
       const json = r.json;
       ensurePkAndVersion(json, pkName);
+
       const newRow = Object.assign({}, row);
       if (!newRow[pkName]) newRow[pkName] = uuidv4();
       newRow["_version"] = 1;
       newRow["_created_at"] = new Date().toISOString();
       newRow["_created_by"] = opts.user || "system";
+
       json.push(newRow);
+
       const headers = Array.from(new Set([].concat(...json.map(Object.keys))));
       const newWs = XLSX.utils.json_to_sheet(json, { header: headers });
       wb.Sheets[sheetName] = newWs;
+
       const ext = path.extname(filePath).toLowerCase().replace(".", "");
       const bookType = ext === "xlsm" ? "xlsm" : "xlsx";
+
       writeWorkbookAtomic(filePath, wb, bookType);
       invalidateCache(filePath);
+
       log("INFO", "Row created", { filePath, sheetName, row: newRow });
       return { success: true, row: newRow };
     } finally {
@@ -499,16 +592,19 @@ async function updateRow(
       });
       return { error: "read-only" };
     }
-    const pkName = cfg.pkName || "id";
 
+    const pkName = cfg.pkName || "id";
     const release = await acquireLock(filePath, { timeoutMs: 5000 });
+
     try {
       const r = readSheetJson(filePath, sheetName) || {
         wb: XLSX.readFile(filePath),
         json: [],
       };
+
       const wb = r.wb;
       const json = r.json;
+
       const idx = json.findIndex((r) => String(r[pkName]) === String(pkValue));
       if (idx === -1) {
         log("WARN", "Row not found for update", {
@@ -518,8 +614,10 @@ async function updateRow(
         });
         return { error: "not-found" };
       }
+
       const current = json[idx];
       const curVer = current["_version"] || 0;
+
       if (
         expectedVersion != null &&
         Number(expectedVersion) !== Number(curVer)
@@ -533,18 +631,24 @@ async function updateRow(
         });
         return { error: "version-conflict", current };
       }
+
       const updated = Object.assign({}, current, updates);
       updated["_version"] = (curVer || 0) + 1;
       updated["_updated_at"] = new Date().toISOString();
       updated["_updated_by"] = opts.user || "system";
+
       json[idx] = updated;
+
       const headers = Array.from(new Set([].concat(...json.map(Object.keys))));
       const newWs = XLSX.utils.json_to_sheet(json, { header: headers });
       wb.Sheets[sheetName] = newWs;
+
       const ext = path.extname(filePath).toLowerCase().replace(".", "");
       const bookType = ext === "xlsm" ? "xlsm" : "xlsx";
+
       writeWorkbookAtomic(filePath, wb, bookType);
       invalidateCache(filePath);
+
       log("INFO", "Row updated", { filePath, sheetName, pkValue, updates });
       return { success: true, row: updated };
     } finally {
@@ -582,16 +686,19 @@ async function deleteRow(filePath, sheetName, pkValue, expectedVersion) {
       });
       return { error: "read-only" };
     }
-    const pkName = cfg.pkName || "id";
 
+    const pkName = cfg.pkName || "id";
     const release = await acquireLock(filePath, { timeoutMs: 5000 });
+
     try {
       const r = readSheetJson(filePath, sheetName) || {
         wb: XLSX.readFile(filePath),
         json: [],
       };
+
       const wb = r.wb;
       const json = r.json;
+
       const idx = json.findIndex((r) => String(r[pkName]) === String(pkValue));
       if (idx === -1) {
         log("WARN", "Row not found for deletion", {
@@ -601,8 +708,10 @@ async function deleteRow(filePath, sheetName, pkValue, expectedVersion) {
         });
         return { error: "not-found" };
       }
+
       const current = json[idx];
       const curVer = current["_version"] || 0;
+
       if (
         expectedVersion != null &&
         Number(expectedVersion) !== Number(curVer)
@@ -616,14 +725,19 @@ async function deleteRow(filePath, sheetName, pkValue, expectedVersion) {
         });
         return { error: "version-conflict", current };
       }
+
       json.splice(idx, 1);
+
       const headers = Array.from(new Set([].concat(...json.map(Object.keys))));
       const newWs = XLSX.utils.json_to_sheet(json, { header: headers });
       wb.Sheets[sheetName] = newWs;
+
       const ext = path.extname(filePath).toLowerCase().replace(".", "");
       const bookType = ext === "xlsm" ? "xlsm" : "xlsx";
+
       writeWorkbookAtomic(filePath, wb, bookType);
       invalidateCache(filePath);
+
       log("INFO", "Row deleted", { filePath, sheetName, pkValue });
       return { success: true };
     } finally {
@@ -650,15 +764,18 @@ async function deleteRow(filePath, sheetName, pkValue, expectedVersion) {
   }
 }
 
+// Export workbook
 function exportWorkbook(filePath) {
   try {
     if (!filePath || !fs.existsSync(filePath)) {
       log("WARN", "Export failed: file not found", { filePath });
       return { error: "not-found", message: "File not found" };
     }
+
     const dir = path.dirname(filePath);
     const base = path.basename(filePath);
     const out = path.join(dir, `${base}.copy.${Date.now()}`);
+
     fs.copyFileSync(filePath, out);
     log("INFO", "Workbook exported", { src: filePath, dst: out });
     return { path: out };
@@ -668,38 +785,11 @@ function exportWorkbook(filePath) {
   }
 }
 
+// Refresh folder
 async function refreshFolder() {
   const cfg = readConfig();
-  if (!cfg || !cfg.folderPath) return;
-  const res = scanFolder(cfg.folderPath);
-  if (res && !res.error) {
-    console.log("[DEBUG] Folder refreshed:", res); // Debug log
-    return res;
-  }
-  console.warn("[DEBUG] Folder refresh failed:", res.error); // Debug log
-  return null;
-}
-
-// Adding improved error handling to excelService.js
-async function loadWorkbook(filePath) {
-  try {
-    const workbook = await someAsyncLoadFunction(filePath);
-    return workbook;
-  } catch (error) {
-    console.error("Failed to load workbook:", error);
-    throw new Error(
-      "Could not load the workbook. Please check the file and try again."
-    );
-  }
-}
-
-async function saveWorkbook(filePath, data) {
-  try {
-    await someAsyncSaveFunction(filePath, data);
-  } catch (error) {
-    console.error("Failed to save workbook:", error);
-    throw new Error("Could not save the workbook. Please try again.");
-  }
+  if (!cfg || !cfg.folderPath) return null;
+  return scanFolder(cfg.folderPath);
 }
 
 module.exports = {
@@ -708,6 +798,7 @@ module.exports = {
   scanFolder,
   getWorkbookMeta,
   readSheet,
+  readSheetJson,
   createRow,
   updateRow,
   deleteRow,
@@ -718,4 +809,8 @@ module.exports = {
   invalidateCache,
   getSortState,
   setSortState,
+  addRecentWorkbook,
+  getRecentWorkbooks,
+  isSheetReadOnly,
+  getConfigValue,
 };

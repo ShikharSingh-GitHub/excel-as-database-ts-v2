@@ -17,35 +17,85 @@ function log(level, message, ctx) {
 
 let mainWindow;
 
+// Function to check if Vite dev server is ready
+async function waitForViteServer(url, maxAttempts = 30) {
+  const { default: fetch } = await import("node-fetch");
+
+  for (let i = 0; i < maxAttempts; i++) {
+    try {
+      const response = await fetch(url);
+      if (response.ok) {
+        log("INFO", "Vite dev server is ready", { url });
+        return true;
+      }
+    } catch (e) {
+      // Server not ready yet
+    }
+
+    // Wait 1 second before next attempt
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  }
+
+  log("WARN", "Vite dev server did not become ready in time", {
+    url,
+    maxAttempts,
+  });
+  return false;
+}
+
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 1000,
-    height: 700,
+    width: 1200,
+    height: 800,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
+      nodeIntegration: false,
+      contextIsolation: true,
     },
   });
 
   // In dev, we expect the Vite renderer dev server to run and provide RENDERER_DEV_URL
   const devUrl =
     process.env.RENDERER_DEV_URL || process.env.VITE_DEV_SERVER_URL || null;
+
   if (devUrl) {
-    console.log("[main] Loading renderer from dev server:", devUrl);
-    mainWindow.loadURL(devUrl);
+    log("INFO", "Waiting for Vite dev server to be ready...", { devUrl });
+
+    // Wait for Vite server to be ready before loading
+    waitForViteServer(devUrl).then((isReady) => {
+      if (isReady) {
+        log("INFO", "Loading renderer from dev server", { devUrl });
+        mainWindow.loadURL(devUrl);
+      } else {
+        log(
+          "ERROR",
+          "Failed to load from dev server, falling back to production build"
+        );
+        loadProductionRenderer();
+      }
+    });
   } else {
     // Production: load the built renderer from the packaged app
-    // prefer src/renderer-app/dist/index.html if present, otherwise fall back to legacy renderer/index.html
-    const builtIndex = path.join(
-      __dirname,
-      "renderer-app",
-      "dist",
-      "index.html"
-    );
-    if (fs.existsSync(builtIndex)) {
-      mainWindow.loadFile(builtIndex);
-    } else {
-      const indexHtml = path.join(__dirname, "renderer", "index.html");
+    loadProductionRenderer();
+  }
+}
+
+function loadProductionRenderer() {
+  // prefer src/renderer-app/dist/index.html if present, otherwise fall back to legacy renderer/index.html
+  const builtIndex = path.join(__dirname, "renderer-app", "dist", "index.html");
+  if (fs.existsSync(builtIndex)) {
+    log("INFO", "Loading production renderer from dist", { path: builtIndex });
+    mainWindow.loadFile(builtIndex);
+  } else {
+    const indexHtml = path.join(__dirname, "renderer", "index.html");
+    if (fs.existsSync(indexHtml)) {
+      log("INFO", "Loading legacy renderer", { path: indexHtml });
       mainWindow.loadFile(indexHtml);
+    } else {
+      log("ERROR", "No renderer found, showing error page");
+      mainWindow.loadURL(
+        "data:text/html,<h1>No renderer found</h1><p>Please build the renderer app first.</p>"
+      );
     }
   }
 }
@@ -69,6 +119,22 @@ ipcMain.handle("config:get", async () => {
 
 ipcMain.handle("config:set", async (event, partial) => {
   return excelService.writeConfig(partial);
+});
+
+ipcMain.handle("config:getValue", async (event, key, defaultValue) => {
+  return excelService.getConfigValue(key, defaultValue);
+});
+
+ipcMain.handle("config:addRecentWorkbook", async (event, filePath) => {
+  return excelService.addRecentWorkbook(filePath);
+});
+
+ipcMain.handle("config:getRecentWorkbooks", async () => {
+  return excelService.getRecentWorkbooks();
+});
+
+ipcMain.handle("config:isSheetReadOnly", async (event, sheetName) => {
+  return excelService.isSheetReadOnly(sheetName);
 });
 
 ipcMain.handle("folder:pick", async () => {

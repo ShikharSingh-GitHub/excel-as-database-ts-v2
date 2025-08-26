@@ -14,4 +14,64 @@ contextBridge.exposeInMainWorld("api", {
   on: (channel, listener) => ipcRenderer.on(channel, listener),
   // helper to let renderer forward console calls
   _forwardConsole: forwardConsole,
+
+  // Configuration helpers
+  config: {
+    get: () => ipcRenderer.invoke("config:get"),
+    set: (partial) => ipcRenderer.invoke("config:set", partial),
+    getValue: (key, defaultValue) =>
+      ipcRenderer.invoke("config:getValue", key, defaultValue),
+    addRecentWorkbook: (filePath) =>
+      ipcRenderer.invoke("config:addRecentWorkbook", filePath),
+    getRecentWorkbooks: () => ipcRenderer.invoke("config:getRecentWorkbooks"),
+    isSheetReadOnly: (sheetName) =>
+      ipcRenderer.invoke("config:isSheetReadOnly", sheetName),
+  },
+
+  // Folder and file operations
+  folder: {
+    pick: () => ipcRenderer.invoke("folder:pick"),
+    scan: (folderPath) => ipcRenderer.invoke("folder:scan", folderPath),
+    refresh: () => ipcRenderer.invoke("folder:refresh"),
+  },
+
+  // Workbook operations
+  workbook: {
+    meta: (filePath) => ipcRenderer.invoke("workbook:meta", filePath),
+    export: (filePath) => ipcRenderer.invoke("workbook:export", filePath),
+  },
+
+  // Sheet operations
+  sheet: {
+    read: (filePath, sheetName, opts) =>
+      ipcRenderer.invoke("sheet:read", filePath, sheetName, opts),
+    create: (filePath, sheetName, row) =>
+      ipcRenderer.invoke("sheet:create", filePath, sheetName, row),
+    update: (filePath, sheetName, pkValue, updates, expectedVersion) =>
+      ipcRenderer.invoke(
+        "sheet:update",
+        filePath,
+        sheetName,
+        pkValue,
+        updates,
+        expectedVersion
+      ),
+    delete: (filePath, sheetName, pkValue, expectedVersion) =>
+      ipcRenderer.invoke(
+        "sheet:delete",
+        filePath,
+        sheetName,
+        pkValue,
+        expectedVersion
+      ),
+  },
+
+  // Sort operations
+  sort: {
+    get: (filePath) => ipcRenderer.invoke("sort:get", filePath),
+    set: (filePath, state) => ipcRenderer.invoke("sort:set", filePath, state),
+  },
+
+  // Utility
+  ping: () => ipcRenderer.invoke("ping"),
 });

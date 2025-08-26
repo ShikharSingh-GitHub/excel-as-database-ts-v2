@@ -1,7 +1,7 @@
 // Shim file to preserve compatibility with existing test scripts
 // The real legacy implementation is archived in archived_components/legacy_renderer
 // Re-export it here so scripts that `require('../src/renderer/rowUtils')` continue to work.
-module.exports = require('../../archived_components/legacy_renderer/rowUtils');
+module.exports = require("../../archived_components/legacy_renderer/rowUtils");
 // Utility functions extracted from App.js for testing and reuse
 function typeHintForColumn(col) {
   const lc = String(col || "").toLowerCase();
