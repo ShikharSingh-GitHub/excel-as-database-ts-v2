@@ -63,7 +63,11 @@ export default function Sidebar({
           </h3>
           <div className="space-y-1">
             {validRecentWorkbooks.slice(0, 3).map((f) => (
-              <Tooltip key={f.path ?? f.name} content={`Open ${f.name} (${Math.round((f.size || 0) / 1024)} KB)`}>
+              <Tooltip
+                key={f.path ?? f.name}
+                content={`Open ${f.name} (${Math.round(
+                  (f.size || 0) / 1024
+                )} KB)`}>
                 <button
                   onClick={() => onOpen && onOpen(f)}
                   className={`flex w-full items-center gap-2 rounded-lg border border-transparent p-2 text-left text-xs transition hover:border-violet-400 focus:outline-none ${
@@ -74,7 +78,9 @@ export default function Sidebar({
                   <div className="flex-1 truncate">
                     <div className="font-medium truncate">{f.name}</div>
                     <div className="text-xs text-slate-500">
-                      {f.mtimeMs ? new Date(f.mtimeMs).toLocaleDateString() : ""}
+                      {f.mtimeMs
+                        ? new Date(f.mtimeMs).toLocaleDateString()
+                        : ""}
                     </div>
                   </div>
                   {f.macro && (
@@ -96,12 +102,18 @@ export default function Sidebar({
         </h3>
       </div>
 
-      <div className="space-y-2 overflow-y-auto h-[calc(100vh-200px)] pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 dark:scrollbar-thumb-gray-600 dark:scrollbar-track-gray-800 hover:scrollbar-thumb-gray-400 dark:hover:scrollbar-thumb-gray-500" style={{ scrollbarWidth: 'thin' }}>
+      <div
+        className="space-y-2 overflow-y-auto h-[calc(100vh-200px)] pr-2"
+        style={{ scrollbarWidth: "thin" }}>
         {files.length === 0 ? (
           <div className="p-4 text-sm text-slate-500">No files</div>
         ) : (
           files.map((f) => (
-            <Tooltip key={f.path ?? f.name} content={`Open ${f.name} - Last modified: ${f.mtimeMs ? new Date(f.mtimeMs).toLocaleString() : 'Unknown'}`}>
+            <Tooltip
+              key={f.path ?? f.name}
+              content={`Open ${f.name} - Last modified: ${
+                f.mtimeMs ? new Date(f.mtimeMs).toLocaleString() : "Unknown"
+              }`}>
               <button
                 onClick={() => onOpen && onOpen(f)}
                 className={`mb-2 flex w-full items-center gap-3 rounded-xl border border-transparent p-2 text-left text-sm transition hover:border-violet-400 focus:outline-none ${

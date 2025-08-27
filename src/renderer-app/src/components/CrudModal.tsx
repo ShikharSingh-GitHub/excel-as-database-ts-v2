@@ -69,16 +69,16 @@ export default function CrudModal({
 
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm z-[9999] p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-2xl border border-gray-200 dark:border-gray-700 w-full max-w-sm max-h-[70vh] overflow-hidden">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-2xl border border-gray-200 dark:border-gray-700 w-full max-w-md max-h-[60vh] overflow-hidden">
         {/* Header */}
         <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-700">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
             {title}
           </h2>
         </div>
-        
+
         {/* Content */}
-        <div className="px-4 py-3 max-h-[45vh] overflow-y-auto">
+        <div className="px-4 py-3 max-h-[35vh] overflow-y-auto">
           <div className="space-y-3">
             {headers.map((header: string) => (
               <div key={header} className="space-y-1">
@@ -92,26 +92,26 @@ export default function CrudModal({
                   placeholder={`Enter ${header}...`}
                 />
                 {errors[header] && (
-                  <p className="text-xs text-red-600 dark:text-red-400">{errors[header]}</p>
+                  <p className="text-xs text-red-600 dark:text-red-400">
+                    {errors[header]}
+                  </p>
                 )}
               </div>
             ))}
           </div>
         </div>
-        
+
         {/* Footer */}
         <div className="px-4 py-2 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex justify-end space-x-2">
-          <button 
-            onClick={onClose} 
-            className="px-3 py-2 text-sm text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
-          >
+          <button
+            onClick={onClose}
+            className="px-3 py-2 text-sm text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
             Cancel
           </button>
           <button
             onClick={onSubmit}
-            className="px-4 py-2 text-sm bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-md hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-sm hover:shadow-md"
-          >
-            {mode === 'add' ? 'Add Row' : 'Update Row'}
+            className="px-4 py-2 text-sm bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-md hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-sm hover:shadow-md">
+            {mode === "add" ? "Add Row" : "Update Row"}
           </button>
         </div>
       </div>

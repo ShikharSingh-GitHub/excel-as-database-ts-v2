@@ -9,7 +9,7 @@ export default function Toast({ message, type = "info", onClose }: any) {
       : "bg-sky-500";
   return (
     <div
-      className={`${bg} fixed bottom-4 right-4 p-4 rounded text-white`}
+      className={`${bg} fixed top-4 right-4 p-4 rounded-lg text-white shadow-lg z-[10000] max-w-sm`}
       role="alert">
       <div className="flex items-center justify-between">
         <span>{message}</span>

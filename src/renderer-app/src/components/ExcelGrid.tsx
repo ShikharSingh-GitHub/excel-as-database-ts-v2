@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 
 interface CellPosition {
   row: number;
@@ -14,7 +14,7 @@ interface ExcelGridProps {
   readOnly?: boolean;
   selectedCell?: CellPosition | null;
   onCellSelect?: (position: CellPosition | null) => void;
-  sortState?: { column: string; direction: 'asc' | 'desc' };
+  sortState?: { column: string; direction: "asc" | "desc" };
   onSort?: (column: string) => void;
 }
 
@@ -37,47 +37,62 @@ export default function ExcelGrid({
   const [resizingColumn, setResizingColumn] = useState<number | null>(null);
   const [resizeStartX, setResizeStartX] = useState(0);
   const [resizeStartWidth, setResizeStartWidth] = useState(0);
-  
+
   const editInputRef = useRef<HTMLInputElement>(null);
 
   // Handle cell click
-  const handleCellClick = useCallback((row: number, col: number) => {
-    onCellSelect?.({ row, col });
-  }, [onCellSelect]);
+  const handleCellClick = useCallback(
+    (row: number, col: number) => {
+      onCellSelect?.({ row, col });
+    },
+    [onCellSelect]
+  );
 
   // Handle cell double click to start editing
-  const handleCellDoubleClick = useCallback((row: number, col: number) => {
-    if (!readOnly) {
-      setEditingCell({ row, col });
-      const cellValue = rows[row]?.[headers[col]] || "";
-      setEditValue(String(cellValue));
-    }
-  }, [readOnly, rows, headers]);
+  const handleCellDoubleClick = useCallback(
+    (row: number, col: number) => {
+      if (!readOnly) {
+        setEditingCell({ row, col });
+        const cellValue = rows[row]?.[headers[col]] || "";
+        setEditValue(String(cellValue));
+      }
+    },
+    [readOnly, rows, headers]
+  );
 
   // Handle sort
-  const handleSort = useCallback((column: string) => {
-    onSort?.(column);
-  }, [onSort]);
+  const handleSort = useCallback(
+    (column: string) => {
+      onSort?.(column);
+    },
+    [onSort]
+  );
 
   // Column resize handlers
-  const handleMouseDown = useCallback((e: React.MouseEvent, colIndex: number) => {
-    e.preventDefault();
-    setResizingColumn(colIndex);
-    setResizeStartX(e.clientX);
-    setResizeStartWidth(columnWidths[colIndex] || DEFAULT_COLUMN_WIDTH);
-  }, [columnWidths]);
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent, colIndex: number) => {
+      e.preventDefault();
+      setResizingColumn(colIndex);
+      setResizeStartX(e.clientX);
+      setResizeStartWidth(columnWidths[colIndex] || DEFAULT_COLUMN_WIDTH);
+    },
+    [columnWidths]
+  );
 
-  const handleMouseMove = useCallback((e: MouseEvent) => {
-    if (resizingColumn === null) return;
-    
-    const deltaX = e.clientX - resizeStartX;
-    const newWidth = Math.max(MIN_COLUMN_WIDTH, resizeStartWidth + deltaX);
-    
-    setColumnWidths(prev => ({
-      ...prev,
-      [resizingColumn]: newWidth
-    }));
-  }, [resizingColumn, resizeStartX, resizeStartWidth]);
+  const handleMouseMove = useCallback(
+    (e: MouseEvent) => {
+      if (resizingColumn === null) return;
+
+      const deltaX = e.clientX - resizeStartX;
+      const newWidth = Math.max(MIN_COLUMN_WIDTH, resizeStartWidth + deltaX);
+
+      setColumnWidths((prev) => ({
+        ...prev,
+        [resizingColumn]: newWidth,
+      }));
+    },
+    [resizingColumn, resizeStartX, resizeStartWidth]
+  );
 
   const handleMouseUp = useCallback(() => {
     setResizingColumn(null);
@@ -86,12 +101,12 @@ export default function ExcelGrid({
   // Add global mouse event listeners for column resizing
   useEffect(() => {
     if (resizingColumn !== null) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-      
+      document.addEventListener("mousemove", handleMouseMove);
+      document.addEventListener("mouseup", handleMouseUp);
+
       return () => {
-        document.removeEventListener('mousemove', handleMouseMove);
-        document.removeEventListener('mouseup', handleMouseUp);
+        document.removeEventListener("mousemove", handleMouseMove);
+        document.removeEventListener("mouseup", handleMouseUp);
       };
     }
   }, [resizingColumn, handleMouseMove, handleMouseUp]);
@@ -105,20 +120,26 @@ export default function ExcelGrid({
   }, [editingCell]);
 
   // Check if cell is selected
-  const isCellSelected = useCallback((row: number, col: number) => {
-    return selectedCell?.row === row && selectedCell?.col === col;
-  }, [selectedCell]);
+  const isCellSelected = useCallback(
+    (row: number, col: number) => {
+      return selectedCell?.row === row && selectedCell?.col === col;
+    },
+    [selectedCell]
+  );
 
   // Check if cell is being edited
-  const isCellEditing = useCallback((row: number, col: number) => {
-    return editingCell?.row === row && editingCell?.col === col;
-  }, [editingCell]);
+  const isCellEditing = useCallback(
+    (row: number, col: number) => {
+      return editingCell?.row === row && editingCell?.col === col;
+    },
+    [editingCell]
+  );
 
   return (
     <div className="excel-grid flex-1 overflow-hidden bg-gradient-to-br from-white to-gray-50">
-      <div className="h-full overflow-auto">
+      <div className="h-full overflow-auto" style={{ scrollbarWidth: "thin" }}>
         <table className="w-full border-collapse">
-          <thead className="sticky top-0 z-10">
+          <thead className="sticky top-0 z-20">
             <tr className="bg-gradient-to-r from-gray-100 to-gray-200 border-b border-gray-300 shadow-sm">
               <th className="w-12 px-2 py-2 text-center text-xs font-semibold text-gray-700 bg-gradient-to-b from-gray-100 to-gray-200 border-r border-gray-300">
                 #
@@ -127,20 +148,21 @@ export default function ExcelGrid({
                 <th
                   key={header}
                   className={`relative px-3 py-2 text-left text-xs font-semibold text-gray-700 bg-gradient-to-b from-gray-100 to-gray-200 border-r border-gray-300 select-none cursor-pointer hover:bg-gradient-to-b hover:from-blue-50 hover:to-blue-100 transition-all duration-200 ${
-                    sortState?.column === header ? 'bg-gradient-to-b from-blue-100 to-blue-200 text-blue-800' : ''
+                    sortState?.column === header
+                      ? "bg-gradient-to-b from-blue-100 to-blue-200 text-blue-800"
+                      : ""
                   }`}
                   style={{ width: columnWidths[index] || DEFAULT_COLUMN_WIDTH }}
-                  onClick={() => handleSort(header)}
-                >
+                  onClick={() => handleSort(header)}>
                   <div className="flex items-center justify-between">
                     <span className="truncate font-medium">{header}</span>
                     {sortState?.column === header && (
                       <span className="ml-1 text-blue-700 font-bold">
-                        {sortState.direction === 'asc' ? '↑' : '↓'}
+                        {sortState.direction === "asc" ? "↑" : "↓"}
                       </span>
                     )}
                   </div>
-                  
+
                   {/* Resize handle */}
                   <div
                     className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-500 opacity-0 hover:opacity-100 transition-opacity duration-200"
@@ -153,7 +175,9 @@ export default function ExcelGrid({
           </thead>
           <tbody>
             {rows.map((row, rowIndex) => (
-              <tr key={rowIndex} className="hover:bg-blue-50/30 transition-colors">
+              <tr
+                key={rowIndex}
+                className="hover:bg-blue-50/30 transition-colors">
                 <td className="w-12 px-2 py-2 text-center text-xs font-medium text-gray-700 bg-gray-50 border-r border-gray-300">
                   {rowIndex + 1}
                 </td>
@@ -161,17 +185,22 @@ export default function ExcelGrid({
                   const isSelected = isCellSelected(rowIndex, colIndex);
                   const isEditing = isCellEditing(rowIndex, colIndex);
                   const cellValue = row[header] || "";
-                  
+
                   return (
                     <td
                       key={header}
                       className={`relative px-3 py-2 text-sm border-r border-gray-200 border-b border-gray-200 cursor-cell transition-all ${
-                        isSelected ? 'bg-blue-100 ring-2 ring-blue-500 ring-inset' : 'hover:bg-gray-50'
-                      } ${isEditing ? 'bg-white' : ''}`}
-                      style={{ width: columnWidths[colIndex] || DEFAULT_COLUMN_WIDTH }}
+                        isSelected
+                          ? "bg-blue-100 ring-2 ring-blue-500 ring-inset"
+                          : "hover:bg-gray-50"
+                      } ${isEditing ? "bg-white" : ""}`}
+                      style={{
+                        width: columnWidths[colIndex] || DEFAULT_COLUMN_WIDTH,
+                      }}
                       onClick={() => handleCellClick(rowIndex, colIndex)}
-                      onDoubleClick={() => handleCellDoubleClick(rowIndex, colIndex)}
-                    >
+                      onDoubleClick={() =>
+                        handleCellDoubleClick(rowIndex, colIndex)
+                      }>
                       {isEditing ? (
                         <input
                           ref={editInputRef}
@@ -183,23 +212,23 @@ export default function ExcelGrid({
                               const colKey = headers[colIndex];
                               onCellEdit?.(rowIndex, colKey, editValue);
                             } catch (error) {
-                              console.error('Error saving cell edit:', error);
+                              console.error("Error saving cell edit:", error);
                             } finally {
                               setEditingCell(null);
                             }
                           }}
                           onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
+                            if (e.key === "Enter") {
                               e.preventDefault();
                               try {
                                 const colKey = headers[colIndex];
                                 onCellEdit?.(rowIndex, colKey, editValue);
                               } catch (error) {
-                                console.error('Error saving cell edit:', error);
+                                console.error("Error saving cell edit:", error);
                               } finally {
                                 setEditingCell(null);
                               }
-                            } else if (e.key === 'Escape') {
+                            } else if (e.key === "Escape") {
                               setEditingCell(null);
                             }
                           }}

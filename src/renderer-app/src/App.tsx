@@ -45,10 +45,16 @@ export default function App() {
     conflict: null,
   });
   const [toast, setToast] = useState<string | null>(null);
-  
+
   // Excel-like UI state
-  const [selectedCell, setSelectedCell] = useState<{row: number; col: number} | null>(null);
-  const [contextMenu, setContextMenu] = useState<{x: number; y: number} | null>(null);
+  const [selectedCell, setSelectedCell] = useState<{
+    row: number;
+    col: number;
+  } | null>(null);
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
 
   // Load config and initial folder scan
   useEffect(() => {
@@ -65,7 +71,7 @@ export default function App() {
             const res = await (window as any).api.invoke("folder:scan", p);
             if (!res.error) setFiles(res.files || []);
           } else {
-            setToast("No folder selected");
+            setToast("❌ No folder selected");
           }
         } else {
           const res = await (window as any).api.invoke("folder:scan", folder);
@@ -99,11 +105,11 @@ export default function App() {
         const res = await (window as any).api.invoke("folder:scan", p);
         if (!res.error) setFiles(res.files || []);
       } else {
-        setToast("No folder selected");
+        setToast("❌ No folder selected");
       }
     } catch (e) {
       console.error(e);
-      setToast("Failed to pick folder");
+      setToast("❌ Failed to pick folder");
     }
   }, []);
 
@@ -135,13 +141,14 @@ export default function App() {
             setTimeout(() => {}, 0);
           } catch (e) {}
         } else {
-          setToast(m.message || "Failed to load workbook metadata");
+          setToast("❌ " + (m.message || "Failed to load workbook metadata"));
           setActiveFile(null);
         }
       } catch (err) {
         const e = err as any;
         setToast(
-          "Error opening workbook: " + (e && e.message ? e.message : String(e))
+          "❌ Error opening workbook: " +
+            (e && e.message ? e.message : String(e))
         );
         setActiveFile(null);
       }
@@ -170,12 +177,12 @@ export default function App() {
           setSheetRows(res);
           setActiveSheet(sheetName);
         } else {
-          setToast(res.message || "Failed to load sheet");
+          setToast("❌ " + (res.message || "Failed to load sheet"));
         }
       } catch (err) {
         const e = err as any;
         setToast(
-          "Error loading sheet: " + (e && e.message ? e.message : String(e))
+          "❌ Error loading sheet: " + (e && e.message ? e.message : String(e))
         );
       }
     },
@@ -200,7 +207,7 @@ export default function App() {
     }
     setModal({ open: false, mode: null, data: null });
     await loadSheet(activeSheet, 1);
-    setToast("Row added");
+    setToast("✅ Row added");
   };
 
   const openEditModal = (row: any) =>
@@ -242,7 +249,7 @@ export default function App() {
     }
     setModal({ open: false, mode: null, data: null });
     await loadSheet(activeSheet, sheetRows.page);
-    setToast("Row updated");
+    setToast("✅ Row updated");
   };
 
   const deleteRow = async (row: any) => {
@@ -268,11 +275,15 @@ export default function App() {
       return;
     }
     await loadSheet(activeSheet, sheetRows.page);
-    setToast("Row deleted");
+    setToast("✅ Row deleted");
   };
 
   // Excel-like handlers
-  const handleCellEdit = async (rowIndex: number, colKey: string, value: any) => {
+  const handleCellEdit = async (
+    rowIndex: number,
+    colKey: string,
+    value: any
+  ) => {
     try {
       if (!activeFile || !activeSheet) {
         setToast("No active sheet");
@@ -283,12 +294,12 @@ export default function App() {
         setToast("Row not found");
         return;
       }
-      
+
       const pkName = (config && config.pkName) || "id";
       const pkValue = row[pkName];
       const expected = row["_version"];
       const updates = { [colKey]: value };
-      
+
       const res = await (window as any).api.invoke(
         "sheet:update",
         activeFile,
@@ -297,7 +308,7 @@ export default function App() {
         updates,
         expected
       );
-      
+
       if (res && res.error) {
         if (res.error === "version-conflict") {
           setToast("Version conflict, please reload");
@@ -307,12 +318,12 @@ export default function App() {
         setToast(res.message || "Update failed");
         return;
       }
-      
+
       // Refresh the current page
       await loadSheet(activeSheet, sheetRows.page);
-      setToast("Cell updated successfully");
+      setToast("✅ Cell updated successfully");
     } catch (error) {
-      console.error('Error updating cell:', error);
+      console.error("Error updating cell:", error);
       setToast("Failed to update cell");
     }
   };
@@ -349,27 +360,35 @@ export default function App() {
               <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold text-sm">📊</span>
               </div>
-              <div className="flex-1 font-semibold text-gray-800 text-lg">Excel Database</div>
+              <div className="flex-1 font-semibold text-gray-800 text-lg">
+                Excel Database
+              </div>
             </div>
             <div className="flex items-center gap-2">
               <Tooltip content="Choose a different folder">
                 <button
                   onClick={async () => {
                     try {
-                      const result = await (window as any).api.invoke('folder:pick');
+                      const result = await (window as any).api.invoke(
+                        "folder:pick"
+                      );
                       if (result) {
-                        setConfig((prev: any) => ({ ...prev, folderPath: result }));
+                        setConfig((prev: any) => ({
+                          ...prev,
+                          folderPath: result,
+                        }));
                         refreshFiles();
                       }
                     } catch (error) {
-                      setToast('Failed to pick folder');
+                      setToast("❌ Failed to pick folder");
                     }
                   }}
                   className="p-2 rounded-lg text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                   📁
                 </button>
               </Tooltip>
-              <Tooltip content={dark ? "Switch to light mode" : "Switch to dark mode"}>
+              <Tooltip
+                content={dark ? "Switch to light mode" : "Switch to dark mode"}>
                 <button
                   onClick={() => setDark(!dark)}
                   className="p-2 rounded-lg text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
@@ -385,31 +404,37 @@ export default function App() {
               </Tooltip>
             </div>
           </div>
-          
+
           {/* Excel Toolbar */}
           <div className="z-0">
             <ExcelToolbar
               onSave={async () => {
                 try {
                   if (activeFile && activeSheet) {
-                    await (window as any).api.invoke('workbook:save', activeFile);
-                    setToast("Saved successfully");
+                    await (window as any).api.invoke(
+                      "workbook:save",
+                      activeFile
+                    );
+                    setToast("✅ Saved successfully");
                   } else {
-                    setToast("No file to save");
+                    setToast("❌ No file to save");
                   }
                 } catch (error) {
-                  setToast("Save failed");
+                  setToast("❌ Save failed");
                 }
               }}
-              onUndo={() => setToast("Undo not implemented yet")}
-              onRedo={() => setToast("Redo not implemented yet")}
+              onUndo={() => setToast("❌ Undo not implemented yet")}
+              onRedo={() => setToast("❌ Redo not implemented yet")}
               onCopy={() => {
                 if (selectedCell) {
-                  const cellValue = sheetRows.rows[selectedCell.row]?.[sheetRows.headers[selectedCell.col]] || "";
+                  const cellValue =
+                    sheetRows.rows[selectedCell.row]?.[
+                      sheetRows.headers[selectedCell.col]
+                    ] || "";
                   navigator.clipboard.writeText(String(cellValue));
-                  setToast("Copied to clipboard");
+                  setToast("✅ Copied to clipboard");
                 } else {
-                  setToast("No cell selected");
+                  setToast("❌ No cell selected");
                 }
               }}
               onPaste={async () => {
@@ -418,50 +443,62 @@ export default function App() {
                     const text = await navigator.clipboard.readText();
                     const header = sheetRows.headers[selectedCell.col];
                     await handleCellEdit(selectedCell.row, header, text);
-                    setToast("Pasted from clipboard");
+                    setToast("✅ Pasted from clipboard");
                   } catch (error) {
-                    setToast("Paste failed");
+                    setToast("❌ Paste failed");
                   }
                 } else {
-                  setToast("No cell selected");
+                  setToast("❌ No cell selected");
                 }
               }}
               onCut={() => {
                 if (selectedCell) {
-                  const cellValue = sheetRows.rows[selectedCell.row]?.[sheetRows.headers[selectedCell.col]] || "";
+                  const cellValue =
+                    sheetRows.rows[selectedCell.row]?.[
+                      sheetRows.headers[selectedCell.col]
+                    ] || "";
                   navigator.clipboard.writeText(String(cellValue));
                   const header = sheetRows.headers[selectedCell.col];
                   handleCellEdit(selectedCell.row, header, "");
-                  setToast("Cut to clipboard");
+                  setToast("✅ Cut to clipboard");
                 } else {
-                  setToast("No cell selected");
+                  setToast("❌ No cell selected");
                 }
               }}
-              onAddRow={() => setModal({ open: true, mode: "add", data: {}, errors: {}, conflict: null })}
+              onAddRow={() =>
+                setModal({
+                  open: true,
+                  mode: "add",
+                  data: {},
+                  errors: {},
+                  conflict: null,
+                })
+              }
               onDeleteRow={() => {
                 if (selectedCell && selectedCell.row >= 0) {
-                  const confirmDelete = window.confirm("Are you sure you want to delete this row?");
+                  const confirmDelete = window.confirm(
+                    "Are you sure you want to delete this row?"
+                  );
                   if (confirmDelete) {
                     deleteRow(sheetRows.rows[selectedCell.row]);
                   }
                 } else {
-                  setToast("No row selected");
+                  setToast("❌ No row selected");
                 }
               }}
               onSort={(column) => {
-                if (selectedCell) {
-                  const newDir = sortState?.key === column && sortState.dir === 'asc' ? 'desc' : 'asc';
-                  setSortState({ key: column, dir: newDir });
-                  setToast(`Sorted by ${column} ${newDir}ending`);
-                } else {
-                  setToast("Select a column to sort");
-                }
+                const newDir =
+                  sortState?.key === column && sortState.dir === "asc"
+                    ? "desc"
+                    : "asc";
+                setSortState({ key: column, dir: newDir });
+                setToast(`✅ Sorted by ${column} ${newDir}ending`);
               }}
               onFilter={() => {
                 const filterValue = prompt("Enter filter value:");
                 if (filterValue) {
                   setFilterText(filterValue);
-                  setToast(`Filtered by: ${filterValue}`);
+                  setToast(`✅ Filtered by: ${filterValue}`);
                 }
               }}
               readOnly={false}
@@ -472,7 +509,13 @@ export default function App() {
           <div className="z-0">
             <FormulaBar
               selectedCell={selectedCell}
-              cellValue={selectedCell ? sheetRows.rows[selectedCell.row]?.[sheetRows.headers[selectedCell.col]] || "" : ""}
+              cellValue={
+                selectedCell
+                  ? sheetRows.rows[selectedCell.row]?.[
+                      sheetRows.headers[selectedCell.col]
+                    ] || ""
+                  : ""
+              }
               onCellValueChange={handleFormulaBarChange}
               headers={sheetRows.headers}
             />
@@ -508,16 +551,15 @@ export default function App() {
                   </Tooltip>
                 </div>
                 <div className="ml-auto text-xs text-gray-500 truncate bg-gray-100 px-2 py-1 rounded">
-                  {meta ? meta.path.split('/').pop() : "No file selected"}
+                  {meta ? meta.path.split("/").pop() : "No file selected"}
                 </div>
               </div>
 
               {/* Excel Grid */}
               {activeSheet && (
-                <div 
+                <div
                   className="flex-1 overflow-hidden"
-                  onContextMenu={handleContextMenu}
-                >
+                  onContextMenu={handleContextMenu}>
                   <ExcelGrid
                     headers={sheetRows.headers || []}
                     rows={sheetRows.rows || []}
@@ -528,15 +570,30 @@ export default function App() {
                         deleteRow(sheetRows.rows[rowIndex]);
                       }
                     }}
-                    readOnly={((config && config.readOnlySheets) || []).includes(
-                      activeSheet || ""
-                    )}
+                    readOnly={(
+                      (config && config.readOnlySheets) ||
+                      []
+                    ).includes(activeSheet || "")}
                     selectedCell={selectedCell}
                     onCellSelect={setSelectedCell}
-                    sortState={sortState ? { column: sortState.key || '', direction: sortState.dir } : undefined}
+                    sortState={
+                      sortState
+                        ? {
+                            column: sortState.key || "",
+                            direction: sortState.dir,
+                          }
+                        : undefined
+                    }
                     onSort={(column) => {
-                      const newDir = sortState?.key === column && sortState.dir === 'asc' ? 'desc' : 'asc';
+                      const newDir =
+                        sortState?.key === column && sortState.dir === "asc"
+                          ? "desc"
+                          : "asc";
                       setSortState({ key: column, dir: newDir });
+                      // Reload sheet with new sort state
+                      if (activeSheet) {
+                        loadSheet(activeSheet, 1);
+                      }
                     }}
                   />
                 </div>
@@ -595,12 +652,12 @@ export default function App() {
                 if (res && res.error) {
                   setToast(res.message || "Overwrite failed");
                 } else {
-                  setToast("Overwrite succeeded");
+                  setToast("✅ Overwrite succeeded");
                 }
               } catch (err) {
                 const e = err as any;
                 setToast(
-                  "Error overwriting: " +
+                  "❌ Error overwriting: " +
                     (e && e.message ? e.message : String(e))
                 );
               }
@@ -627,8 +684,8 @@ export default function App() {
             x={contextMenu.x}
             y={contextMenu.y}
             onClose={() => setContextMenu(null)}
-            onCopy={() => setToast("Copied to clipboard")}
-            onPaste={() => setToast("Pasted from clipboard")}
+            onCopy={() => setToast("✅ Copied to clipboard")}
+            onPaste={() => setToast("✅ Pasted from clipboard")}
             onInsertRow={openAddModal}
             onDeleteRow={() => {
               if (selectedCell && sheetRows.rows[selectedCell.row]) {
@@ -639,14 +696,28 @@ export default function App() {
               if (selectedCell) {
                 const header = sheetRows.headers[selectedCell.col];
                 setSortState({ key: header, dir: direction });
-                loadSheet(activeSheet!, 1);
+                if (activeSheet) {
+                  loadSheet(activeSheet, 1);
+                }
               }
             }}
-            readOnly={((config && config.readOnlySheets) || []).includes(activeSheet || "")}
+            readOnly={((config && config.readOnlySheets) || []).includes(
+              activeSheet || ""
+            )}
           />
         )}
 
-        {toast && <Toast message={toast} onClose={() => setToast(null)} />}
+        {toast && (
+          <Toast
+            message={toast}
+            type={
+              toast.includes("error") || toast.includes("failed")
+                ? "error"
+                : "success"
+            }
+            onClose={() => setToast(null)}
+          />
+        )}
       </div>
     </div>
   );
