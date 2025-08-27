@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import 'tippy.js/dist/tippy.css';
 import ContextMenu from "./components/ContextMenu";
 import CrudModal from "./components/CrudModal";
 import ExcelGrid from "./components/ExcelGrid";

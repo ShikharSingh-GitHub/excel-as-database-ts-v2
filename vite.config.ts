@@ -6,7 +6,7 @@ const rootDir = path.resolve(__dirname);
 
 export default defineConfig({
   plugins: [react()],
-  root: rootDir,
+  root: path.resolve(rootDir, "src/renderer-app"),
   server: { port: 5173 },
   base: "./",
   build: {
