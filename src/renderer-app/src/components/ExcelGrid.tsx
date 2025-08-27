@@ -184,9 +184,9 @@ export default function ExcelGrid({
   );
 
   return (
-    <div className="excel-grid flex-1 overflow-hidden bg-gradient-to-br from-white to-gray-50">
+    <div className="excel-grid flex-1 min-h-0 flex flex-col overflow-hidden bg-gradient-to-br from-white to-gray-50">
       <div
-        className="h-full overflow-auto custom-scrollbar"
+        className="flex-1 min-h-0 overflow-auto custom-scrollbar"
         style={{
           scrollbarWidth: "thin",
           scrollbarColor: "#cbd5e1 #f1f5f9",

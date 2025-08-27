@@ -31,7 +31,7 @@ export default function Sidebar({
     .filter(Boolean) as Workbook[];
 
   return (
-    <aside className="w-72 border-r border-slate-200 bg-white/60 p-4 backdrop-blur-md dark:border-slate-800 dark:bg-white/5">
+    <aside className="w-72 border-r border-slate-200 bg-white/60 p-4 backdrop-blur-md dark:border-slate-800 dark:bg-white/5 flex flex-col min-h-0">
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-sm font-medium">Workbooks</h2>
         <div className="flex items-center gap-2">
@@ -103,7 +103,7 @@ export default function Sidebar({
       </div>
 
       <div
-        className="space-y-2 overflow-y-auto h-[calc(100vh-200px)] pr-2 custom-scrollbar"
+        className="space-y-2 overflow-y-auto flex-1 min-h-0 pr-2 custom-scrollbar"
         style={{ scrollbarWidth: "thin" }}>
         {files.length === 0 ? (
           <div className="p-4 text-sm text-slate-500">No files</div>

@@ -577,6 +577,7 @@ export default function App() {
             files={files}
             onOpen={(f: any) => openWorkbook(f)}
             onRefresh={refreshFiles}
+            onPickFolder={pickFolder}
           />
           <div className="flex flex-1 flex-col overflow-hidden min-h-0">
             {meta && (

@@ -31,15 +31,17 @@ export default function StatusBar({
         {/* Sheet Info */}
         <div className="flex items-center gap-2">
           <span className="font-medium text-gray-700">Sheet:</span>
-          <span className="text-gray-900 font-semibold bg-blue-50 px-2 py-1 rounded">{activeSheet || "None"}</span>
+          <span className="text-gray-900 font-semibold bg-blue-50 px-2 py-1 rounded">
+            {activeSheet || "None"}
+          </span>
         </div>
-        
+
         {readOnly && (
           <span className="px-2 py-0.5 bg-yellow-100 text-yellow-800 rounded text-xs">
             READ ONLY
           </span>
         )}
-        
+
         <span>
           {totalRows} rows × {totalCols} columns
         </span>
@@ -47,28 +49,24 @@ export default function StatusBar({
 
       {/* Center - Selection info */}
       <div className="flex items-center gap-4">
-        {selectedRange && (
-          <span>
-            Selected: {selectedRange}
-          </span>
-        )}
-        
+        {selectedRange && <span>Selected: {selectedRange}</span>}
+
         {count !== undefined && count > 1 && (
           <div className="flex items-center gap-3">
             <span>Count: {count}</span>
-            {sum !== undefined && (
-              <span>Sum: {sum.toLocaleString()}</span>
-            )}
+            {sum !== undefined && <span>Sum: {sum.toLocaleString()}</span>}
             {average !== undefined && (
               <span>Average: {average.toFixed(2)}</span>
             )}
           </div>
         )}
-        
+
         {totalRows !== undefined && (
           <div className="flex items-center gap-2">
             <span className="font-medium text-gray-700">Rows:</span>
-            <span className="text-gray-900 font-semibold">{totalRows.toLocaleString()}</span>
+            <span className="text-gray-900 font-semibold">
+              {totalRows.toLocaleString()}
+            </span>
           </div>
         )}
       </div>
