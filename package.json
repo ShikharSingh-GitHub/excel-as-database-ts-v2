@@ -9,6 +9,7 @@
     "renderer:dev": "cd src/renderer-app && vite",
     "renderer:build": "cd src/renderer-app && vite build",
     "start:dev": "RENDERER_DEV_URL=http://localhost:5173 concurrently \"npm:renderer:dev\" \"electron .\"",
+    "start:prod": "electron .",
     "build": "electron-builder",
     "cleanup": "rm -rf node_modules src/renderer-app/node_modules src/renderer-app/dist archived_components/legacy_renderer/ui || true"
   },
