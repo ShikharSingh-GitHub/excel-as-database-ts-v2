@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./index.css";
 
+// These imports are for global window exposure only
 import CrudModal from "./components/CrudModal";
 import DataGrid from "./components/DataGrid";
 import SheetTabs from "./components/SheetTabs";

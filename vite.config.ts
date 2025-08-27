@@ -9,6 +9,9 @@ export default defineConfig({
   root: path.resolve(rootDir, "src/renderer-app"),
   server: { port: 5173 },
   base: "./",
+  css: {
+    postcss: path.resolve(rootDir, "postcss.config.cjs"),
+  },
   build: {
     outDir: path.resolve(rootDir, "dist"),
     emptyOutDir: true,
