@@ -5,7 +5,11 @@
   "pageSizeDefault": 25,
   "maxPageSize": 200,
   "readOnlySheets": [],
-  "ignoreSheets": ["_metadata", "config", "temp"],
+  "ignoreSheets": [
+    "_metadata",
+    "config",
+    "temp"
+  ],
   "autoRefreshSeconds": 0,
   "recentWorkbooks": [],
   "headerRowConfig": {

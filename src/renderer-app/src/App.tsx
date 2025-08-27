@@ -1,8 +1,13 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import Sidebar, { Workbook } from "./components/Sidebar";
+import ExcelGrid from "./components/ExcelGrid";
+import ExcelToolbar from "./components/ExcelToolbar";
+import FormulaBar from "./components/FormulaBar";
+import StatusBar from "./components/StatusBar";
 import CrudModal from "./components/CrudModal";
-import DataGrid from "./components/DataGrid";
 import SheetTabs from "./components/SheetTabs";
-import Sidebar from "./components/Sidebar";
+import ContextMenu from "./components/ContextMenu";
+import Tooltip from "./components/Tooltip";
 import Toast from "./components/Toast";
 import "./index.css";
 
@@ -15,7 +20,6 @@ export default function App() {
   const [activeFile, setActiveFile] = useState<string | null>(null);
   const [meta, setMeta] = useState<any>(null);
   const [activeSheet, setActiveSheet] = useState<string | null>(null);
-  const [recentWorkbooks, setRecentWorkbooks] = useState<string[]>([]);
 
   const [sheetRows, setSheetRows] = useState<any>({
     rows: [],
@@ -41,31 +45,30 @@ export default function App() {
     conflict: null,
   });
   const [toast, setToast] = useState<string | null>(null);
+  
+  // Excel-like UI state
+  const [selectedCell, setSelectedCell] = useState<{row: number; col: number} | null>(null);
+  const [contextMenu, setContextMenu] = useState<{x: number; y: number} | null>(null);
 
   // Load config and initial folder scan
   useEffect(() => {
     (async () => {
       try {
-        const cfg = await (window as any).api.config.get();
+        const cfg = await (window as any).api.invoke("config:get");
         setConfig(cfg || {});
-
-        // Load recent workbooks
-        const recent = await (window as any).api.config.getRecentWorkbooks();
-        setRecentWorkbooks(recent || []);
-
         const folder = cfg && cfg.folderPath;
         if (!folder) {
-          const p = await (window as any).api.folder.pick();
+          const p = await (window as any).api.invoke("folder:pick");
           if (p) {
-            await (window as any).api.config.set({ folderPath: p });
+            await (window as any).api.invoke("config:set", { folderPath: p });
             setConfig((prev: any) => ({ ...(prev || {}), folderPath: p }));
-            const res = await (window as any).api.folder.scan(p);
+            const res = await (window as any).api.invoke("folder:scan", p);
             if (!res.error) setFiles(res.files || []);
           } else {
             setToast("No folder selected");
           }
         } else {
-          const res = await (window as any).api.folder.scan(folder);
+          const res = await (window as any).api.invoke("folder:scan", folder);
           if (!res.error) setFiles(res.files || []);
         }
       } catch (err) {
@@ -80,24 +83,35 @@ export default function App() {
     try {
       const folder = (config && config.folderPath) || null;
       if (!folder) return;
-      const res = await (window as any).api.folder.scan(folder);
+      const res = await (window as any).api.invoke("folder:scan", folder);
       if (!res.error) setFiles(res.files || []);
     } catch (e) {
       console.error(e);
     }
   }, [config]);
 
+  const pickFolder = useCallback(async () => {
+    try {
+      const p = await (window as any).api.invoke("folder:pick");
+      if (p) {
+        await (window as any).api.invoke("config:set", { folderPath: p });
+        setConfig((prev: any) => ({ ...(prev || {}), folderPath: p }));
+        const res = await (window as any).api.invoke("folder:scan", p);
+        if (!res.error) setFiles(res.files || []);
+      } else {
+        setToast("No folder selected");
+      }
+    } catch (e) {
+      console.error(e);
+      setToast("Failed to pick folder");
+    }
+  }, []);
+
   const openWorkbook = useCallback(
     async (file: FileEntry) => {
       try {
         setActiveFile(file.path);
-
-        // Add to recent workbooks
-        await (window as any).api.config.addRecentWorkbook(file.path);
-        const recent = await (window as any).api.config.getRecentWorkbooks();
-        setRecentWorkbooks(recent || []);
-
-        const m = await (window as any).api.workbook.meta(file.path);
+        const m = await (window as any).api.invoke("workbook:meta", file.path);
         if (m && !m.error) {
           setMeta(m);
           setActiveSheet(null);
@@ -108,12 +122,16 @@ export default function App() {
             pageSize: config?.pageSizeDefault || 25,
             headers: [],
           });
-
           // load persisted sort state for this workbook
           try {
-            const sort = await (window as any).api.sort.get(file.path);
+            const sort = await (window as any).api.invoke(
+              "sort:get",
+              file.path
+            );
             // store into state if needed; for now we just set columnFilters to empty
             // DataGrid will reflect sort via server-side ordering when implemented
+            // Optionally trigger load of first sheet later when selected
+            // We can store in config state if needed
             setTimeout(() => {}, 0);
           } catch (e) {}
         } else {
@@ -135,7 +153,8 @@ export default function App() {
     async (sheetName: string, page = 1) => {
       if (!activeFile || !sheetName) return;
       try {
-        const res = await (window as any).api.sheet.read(
+        const res = await (window as any).api.invoke(
+          "sheet:read",
           activeFile,
           sheetName,
           {
@@ -169,17 +188,8 @@ export default function App() {
 
   const submitAdd = async (data: any) => {
     if (!activeFile || !activeSheet) return setToast("No active sheet");
-
-    // Check if sheet is read-only
-    const isReadOnly = await (window as any).api.config.isSheetReadOnly(
-      activeSheet
-    );
-    if (isReadOnly) {
-      setToast("Cannot add rows to read-only sheet");
-      return;
-    }
-
-    const res = await (window as any).api.sheet.create(
+    const res = await (window as any).api.invoke(
+      "sheet:create",
       activeFile,
       activeSheet,
       data
@@ -203,23 +213,14 @@ export default function App() {
 
   const submitEdit = async (row: any) => {
     if (!activeFile || !activeSheet) return setToast("No active sheet");
-
-    // Check if sheet is read-only
-    const isReadOnly = await (window as any).api.config.isSheetReadOnly(
-      activeSheet
-    );
-    if (isReadOnly) {
-      setToast("Cannot edit rows in read-only sheet");
-      return;
-    }
-
     const pkName = (config && config.pkName) || "id";
     const pkValue = row[pkName];
     const expected = row["_version"];
     const updates = Object.assign({}, row);
     delete updates[pkName];
     delete updates["_version"];
-    const res = await (window as any).api.sheet.update(
+    const res = await (window as any).api.invoke(
+      "sheet:update",
       activeFile,
       activeSheet,
       pkValue,
@@ -246,21 +247,12 @@ export default function App() {
 
   const deleteRow = async (row: any) => {
     if (!activeFile || !activeSheet) return setToast("No active sheet");
-
-    // Check if sheet is read-only
-    const isReadOnly = await (window as any).api.config.isSheetReadOnly(
-      activeSheet
-    );
-    if (isReadOnly) {
-      setToast("Cannot delete rows from read-only sheet");
-      return;
-    }
-
     if (!confirm("Delete this row?")) return;
     const pkName = (config && config.pkName) || "id";
     const pkValue = row[pkName];
     const expected = row["_version"];
-    const res = await (window as any).api.sheet.delete(
+    const res = await (window as any).api.invoke(
+      "sheet:delete",
       activeFile,
       activeSheet,
       pkValue,
@@ -279,73 +271,217 @@ export default function App() {
     setToast("Row deleted");
   };
 
-  const exportWorkbook = async () => {
-    if (!activeFile) return setToast("No active workbook");
+  // Excel-like handlers
+  const handleCellEdit = async (rowIndex: number, colKey: string, value: any) => {
     try {
-      const res = await (window as any).api.workbook.export(activeFile);
-      if (res && !res.error) {
-        setToast(`Workbook exported to: ${res.path}`);
-      } else {
-        setToast(res.message || "Export failed");
+      if (!activeFile || !activeSheet) {
+        setToast("No active sheet");
+        return;
       }
-    } catch (err) {
-      const e = err as any;
-      setToast("Export error: " + (e && e.message ? e.message : String(e)));
+      const row = sheetRows.rows[rowIndex];
+      if (!row) {
+        setToast("Row not found");
+        return;
+      }
+      
+      const pkName = (config && config.pkName) || "id";
+      const pkValue = row[pkName];
+      const expected = row["_version"];
+      const updates = { [colKey]: value };
+      
+      const res = await (window as any).api.invoke(
+        "sheet:update",
+        activeFile,
+        activeSheet,
+        pkValue,
+        updates,
+        expected
+      );
+      
+      if (res && res.error) {
+        if (res.error === "version-conflict") {
+          setToast("Version conflict, please reload");
+          await loadSheet(activeSheet, sheetRows.page);
+          return;
+        }
+        setToast(res.message || "Update failed");
+        return;
+      }
+      
+      // Refresh the current page
+      await loadSheet(activeSheet, sheetRows.page);
+      setToast("Cell updated successfully");
+    } catch (error) {
+      console.error('Error updating cell:', error);
+      setToast("Failed to update cell");
     }
+  };
+
+  const handleContextMenu = (event: React.MouseEvent) => {
+    event.preventDefault();
+    setContextMenu({ x: event.clientX, y: event.clientY });
+  };
+
+  const getCurrentCellValue = () => {
+    if (!selectedCell || !sheetRows.rows[selectedCell.row]) return "";
+    const row = sheetRows.rows[selectedCell.row];
+    const header = sheetRows.headers[selectedCell.col];
+    return row[header] || "";
+  };
+
+  const handleFormulaBarChange = (value: string) => {
+    if (!selectedCell) return;
+    const header = sheetRows.headers[selectedCell.col];
+    handleCellEdit(selectedCell.row, header, value);
   };
 
   useEffect(() => {
     if (activeSheet) loadSheet(activeSheet, sheetRows.page);
-  }, [activeSheet, sheetRows.page, filterText]);
+  }, [activeSheet, sheetRows.page, filterText, columnFilters, sortState]);
 
   return (
     <div className={dark ? "dark" : ""}>
-      <div className="flex h-screen flex-col bg-slate-50 text-slate-900 dark:bg-slate-900 dark:text-slate-100">
-        <header className="p-2 border-b flex items-center gap-2">
-          <div className="flex-1 font-semibold">Excel DB</div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setDark((d) => !d)}
-              className="px-3 py-1 rounded bg-gray-200">
-              Theme
-            </button>
-            {activeFile && (
-              <button
-                onClick={exportWorkbook}
-                className="px-3 py-1 rounded bg-green-500 text-white">
-                Export
-              </button>
-            )}
-            {activeFile && (
-              <button
-                onClick={openConfigModal}
-                className="px-3 py-1 rounded bg-purple-500 text-white">
-                Config
-              </button>
-            )}
-            {activeSheet &&
-              !((config && config.readOnlySheets) || []).includes(
-                activeSheet || ""
-              ) && (
+      <div className="flex h-screen flex-col bg-gradient-to-br from-gray-50 to-blue-50 text-gray-900 dark:from-gray-900 dark:to-gray-800 dark:text-gray-100 relative">
+        <header className="flex flex-col">
+          {/* Title Bar */}
+          <div className="h-12 px-4 border-b border-gray-200/50 flex items-center gap-3 bg-white/80 backdrop-blur-sm shadow-sm z-0">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
+                <span className="text-white font-bold text-sm">📊</span>
+              </div>
+              <div className="flex-1 font-semibold text-gray-800 text-lg">Excel Database</div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Tooltip content="Choose a different folder">
                 <button
-                  onClick={openAddModal}
-                  className="px-3 py-1 rounded bg-blue-500 text-white">
-                  Add Row
+                  onClick={async () => {
+                    try {
+                      const result = await (window as any).api.invoke('folder:pick');
+                      if (result) {
+                        setConfig((prev: any) => ({ ...prev, folderPath: result }));
+                        refreshFiles();
+                      }
+                    } catch (error) {
+                      setToast('Failed to pick folder');
+                    }
+                  }}
+                  className="p-2 rounded-lg text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                  📁
                 </button>
-              )}
-            <button
-              onClick={refreshFiles}
-              className="px-3 py-1 rounded bg-gray-200">
-              Refresh
-            </button>
+              </Tooltip>
+              <Tooltip content={dark ? "Switch to light mode" : "Switch to dark mode"}>
+                <button
+                  onClick={() => setDark(!dark)}
+                  className="p-2 rounded-lg text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                  {dark ? "☀️" : "🌙"}
+                </button>
+              </Tooltip>
+              <Tooltip content="Refresh all files">
+                <button
+                  onClick={refreshFiles}
+                  className="p-2 rounded-lg text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                  🔄
+                </button>
+              </Tooltip>
+            </div>
+          </div>
+          
+          {/* Excel Toolbar */}
+          <div className="z-0">
+            <ExcelToolbar
+              onSave={async () => {
+                try {
+                  if (activeFile && activeSheet) {
+                    await (window as any).api.invoke('workbook:save', activeFile);
+                    setToast("Saved successfully");
+                  } else {
+                    setToast("No file to save");
+                  }
+                } catch (error) {
+                  setToast("Save failed");
+                }
+              }}
+              onUndo={() => setToast("Undo not implemented yet")}
+              onRedo={() => setToast("Redo not implemented yet")}
+              onCopy={() => {
+                if (selectedCell) {
+                  const cellValue = sheetRows.rows[selectedCell.row]?.[sheetRows.headers[selectedCell.col]] || "";
+                  navigator.clipboard.writeText(String(cellValue));
+                  setToast("Copied to clipboard");
+                } else {
+                  setToast("No cell selected");
+                }
+              }}
+              onPaste={async () => {
+                if (selectedCell) {
+                  try {
+                    const text = await navigator.clipboard.readText();
+                    const header = sheetRows.headers[selectedCell.col];
+                    await handleCellEdit(selectedCell.row, header, text);
+                    setToast("Pasted from clipboard");
+                  } catch (error) {
+                    setToast("Paste failed");
+                  }
+                } else {
+                  setToast("No cell selected");
+                }
+              }}
+              onCut={() => {
+                if (selectedCell) {
+                  const cellValue = sheetRows.rows[selectedCell.row]?.[sheetRows.headers[selectedCell.col]] || "";
+                  navigator.clipboard.writeText(String(cellValue));
+                  const header = sheetRows.headers[selectedCell.col];
+                  handleCellEdit(selectedCell.row, header, "");
+                  setToast("Cut to clipboard");
+                } else {
+                  setToast("No cell selected");
+                }
+              }}
+              onAddRow={() => setModal({ open: true, mode: "add", data: {}, errors: {}, conflict: null })}
+              onDeleteRow={() => {
+                if (selectedCell && selectedCell.row >= 0) {
+                  const confirmDelete = window.confirm("Are you sure you want to delete this row?");
+                  if (confirmDelete) {
+                    deleteRow(sheetRows.rows[selectedCell.row]);
+                  }
+                } else {
+                  setToast("No row selected");
+                }
+              }}
+              onSort={(column) => {
+                if (selectedCell) {
+                  const newDir = sortState?.key === column && sortState.dir === 'asc' ? 'desc' : 'asc';
+                  setSortState({ key: column, dir: newDir });
+                  setToast(`Sorted by ${column} ${newDir}ending`);
+                } else {
+                  setToast("Select a column to sort");
+                }
+              }}
+              onFilter={() => {
+                const filterValue = prompt("Enter filter value:");
+                if (filterValue) {
+                  setFilterText(filterValue);
+                  setToast(`Filtered by: ${filterValue}`);
+                }
+              }}
+              readOnly={false}
+            />
+          </div>
+
+          {/* Formula Bar */}
+          <div className="z-0">
+            <FormulaBar
+              selectedCell={selectedCell}
+              cellValue={selectedCell ? sheetRows.rows[selectedCell.row]?.[sheetRows.headers[selectedCell.col]] || "" : ""}
+              onCellValueChange={handleFormulaBarChange}
+              headers={sheetRows.headers}
+            />
           </div>
         </header>
 
         <div className="flex flex-1 overflow-hidden">
           <Sidebar
             files={files}
-            recentWorkbooks={recentWorkbooks}
-            activePath={activeFile}
             onOpen={(f: any) => openWorkbook(f)}
             onRefresh={refreshFiles}
           />
@@ -355,57 +491,55 @@ export default function App() {
                 sheets={meta.sheets || []}
                 active={activeSheet}
                 onSelect={(s: string) => loadSheet(s, 1)}
-                readOnlySheets={config?.readOnlySheets || []}
               />
             )}
 
-            <main className="flex-1 p-4 overflow-auto">
-              <div className="mb-3 flex items-center gap-2">
-                <input
-                  value={filterText}
-                  onChange={(e) => setFilterText(e.target.value)}
-                  placeholder="Filter"
-                  className="border px-2 py-1 rounded w-64"
-                />
-                <div className="ml-auto">{meta ? meta.path : ""}</div>
+            <main className="flex-1 flex flex-col overflow-hidden">
+              {/* Quick Filter Bar */}
+              <div className="h-10 px-4 border-b border-gray-200/50 flex items-center gap-3 bg-white/60 backdrop-blur-sm">
+                <div className="relative">
+                  <Tooltip content="Search and filter data across all columns">
+                    <input
+                      value={filterText}
+                      onChange={(e) => setFilterText(e.target.value)}
+                      placeholder="🔍 Search data..."
+                      className="pl-3 pr-10 py-2 border border-gray-300 rounded-lg text-sm w-64 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/80 backdrop-blur-sm transition-all"
+                    />
+                  </Tooltip>
+                </div>
+                <div className="ml-auto text-xs text-gray-500 truncate bg-gray-100 px-2 py-1 rounded">
+                  {meta ? meta.path.split('/').pop() : "No file selected"}
+                </div>
               </div>
 
+              {/* Excel Grid */}
               {activeSheet && (
-                <DataGrid
-                  headers={sheetRows.headers || []}
-                  rows={sheetRows.rows || []}
-                  onEdit={(r: any) => openEditModal(r)}
-                  onDelete={(r: any) => deleteRow(r)}
-                  readOnly={((config && config.readOnlySheets) || []).includes(
-                    activeSheet || ""
-                  )}
-                  page={sheetRows.page}
-                  pageSize={sheetRows.pageSize}
-                  total={sheetRows.total}
-                  onPageChange={(p: number) => loadSheet(activeSheet, p)}
-                  filter={filterText}
-                  onSearch={(q: string) => {
-                    setFilterText(q);
-                    // reset to page 1
-                    if (activeSheet) loadSheet(activeSheet, 1);
-                  }}
-                  onColumnFilters={(filters: Record<string, string>) => {
-                    setColumnFilters(filters || {});
-                    if (activeSheet) loadSheet(activeSheet, 1);
-                  }}
-                  onSortChange={async (s: {
-                    key: string | null;
-                    dir: "asc" | "desc";
-                  }) => {
-                    setSortState(s);
-                    try {
-                      await (window as any).api.sort.set(activeFile, s);
-                    } catch (e) {
-                      console.warn("Failed to persist sort state", e);
-                    }
-                    if (activeSheet) loadSheet(activeSheet, 1);
-                  }}
-                />
+                <div 
+                  className="flex-1 overflow-hidden"
+                  onContextMenu={handleContextMenu}
+                >
+                  <ExcelGrid
+                    headers={sheetRows.headers || []}
+                    rows={sheetRows.rows || []}
+                    onCellEdit={handleCellEdit}
+                    onRowAdd={openAddModal}
+                    onRowDelete={(rowIndex) => {
+                      if (sheetRows.rows[rowIndex]) {
+                        deleteRow(sheetRows.rows[rowIndex]);
+                      }
+                    }}
+                    readOnly={((config && config.readOnlySheets) || []).includes(
+                      activeSheet || ""
+                    )}
+                    selectedCell={selectedCell}
+                    onCellSelect={setSelectedCell}
+                    sortState={sortState ? { column: sortState.key || '', direction: sortState.dir } : undefined}
+                    onSort={(column) => {
+                      const newDir = sortState?.key === column && sortState.dir === 'asc' ? 'desc' : 'asc';
+                      setSortState({ key: column, dir: newDir });
+                    }}
+                  />
+                </div>
               )}
             </main>
           </div>
@@ -450,7 +584,8 @@ export default function App() {
                 delete updates[pkName];
                 delete updates["_version"];
                 const expected = modal.conflict && modal.conflict["_version"];
-                const res = await (window as any).api.sheet.update(
+                const res = await (window as any).api.invoke(
+                  "sheet:update",
                   activeFile,
                   activeSheet,
                   pkValue,
@@ -474,6 +609,42 @@ export default function App() {
             }
           }}
         />
+
+        {/* Status Bar */}
+        <div className="z-0">
+          <StatusBar
+            selectedCell={selectedCell}
+            totalRows={sheetRows.total}
+            totalCols={sheetRows.headers.length}
+            readOnly={false}
+            activeSheet={activeSheet || undefined}
+          />
+        </div>
+
+        {/* Context Menu */}
+        {contextMenu && (
+          <ContextMenu
+            x={contextMenu.x}
+            y={contextMenu.y}
+            onClose={() => setContextMenu(null)}
+            onCopy={() => setToast("Copied to clipboard")}
+            onPaste={() => setToast("Pasted from clipboard")}
+            onInsertRow={openAddModal}
+            onDeleteRow={() => {
+              if (selectedCell && sheetRows.rows[selectedCell.row]) {
+                deleteRow(sheetRows.rows[selectedCell.row]);
+              }
+            }}
+            onSort={(direction) => {
+              if (selectedCell) {
+                const header = sheetRows.headers[selectedCell.col];
+                setSortState({ key: header, dir: direction });
+                loadSheet(activeSheet!, 1);
+              }
+            }}
+            readOnly={((config && config.readOnlySheets) || []).includes(activeSheet || "")}
+          />
+        )}
 
         {toast && <Toast message={toast} onClose={() => setToast(null)} />}
       </div>

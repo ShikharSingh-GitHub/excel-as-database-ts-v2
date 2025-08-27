@@ -8,6 +8,7 @@ export default defineConfig({
   plugins: [react()],
   root: rootDir,
   server: { port: 5173 },
+  base: "./",
   build: {
     outDir: path.resolve(rootDir, "dist"),
     emptyOutDir: true,

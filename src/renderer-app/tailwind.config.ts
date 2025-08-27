@@ -1,13 +1,12 @@
-import { fontFamily } from "tailwindcss/defaultTheme";
-
+/** @type {import('tailwindcss').Config} */
 export default {
   darkMode: ["class"],
   content: ["./index.html", "./src/**/*.{ts,tsx,js,jsx}"],
   theme: {
     extend: {
       fontFamily: {
-        sans: ["Inter", ...fontFamily.sans],
-        mono: ["IBM Plex Mono", ...fontFamily.mono],
+        sans: ["Inter", "ui-sans-serif", "system-ui"],
+        mono: ["IBM Plex Mono", "ui-monospace", "SFMono-Regular"],
       },
       borderRadius: {
         xl: "1rem",

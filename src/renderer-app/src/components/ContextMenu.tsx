@@ -1,0 +1,162 @@
+import React, { useEffect, useRef } from "react";
+
+interface ContextMenuProps {
+  x: number;
+  y: number;
+  onClose: () => void;
+  onCut?: () => void;
+  onCopy?: () => void;
+  onPaste?: () => void;
+  onInsertRow?: () => void;
+  onDeleteRow?: () => void;
+  onInsertColumn?: () => void;
+  onDeleteColumn?: () => void;
+  onSort?: (direction: 'asc' | 'desc') => void;
+  onFilter?: () => void;
+  readOnly?: boolean;
+}
+
+export default function ContextMenu({
+  x,
+  y,
+  onClose,
+  onCut,
+  onCopy,
+  onPaste,
+  onInsertRow,
+  onDeleteRow,
+  onInsertColumn,
+  onDeleteColumn,
+  onSort,
+  onFilter,
+  readOnly = false,
+}: ContextMenuProps) {
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        onClose();
+      }
+    };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEscape);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [onClose]);
+
+  const menuItems = [
+    {
+      label: "Cut",
+      shortcut: "Ctrl+X",
+      onClick: onCut,
+      disabled: readOnly,
+      separator: false,
+    },
+    {
+      label: "Copy",
+      shortcut: "Ctrl+C",
+      onClick: onCopy,
+      disabled: false,
+      separator: false,
+    },
+    {
+      label: "Paste",
+      shortcut: "Ctrl+V",
+      onClick: onPaste,
+      disabled: readOnly,
+      separator: true,
+    },
+    {
+      label: "Insert Row Above",
+      shortcut: "",
+      onClick: onInsertRow,
+      disabled: readOnly,
+      separator: false,
+    },
+    {
+      label: "Delete Row",
+      shortcut: "",
+      onClick: onDeleteRow,
+      disabled: readOnly,
+      separator: false,
+    },
+    {
+      label: "Insert Column",
+      shortcut: "",
+      onClick: onInsertColumn,
+      disabled: readOnly,
+      separator: false,
+    },
+    {
+      label: "Delete Column",
+      shortcut: "",
+      onClick: onDeleteColumn,
+      disabled: readOnly,
+      separator: true,
+    },
+    {
+      label: "Sort Ascending",
+      shortcut: "",
+      onClick: () => onSort?.('asc'),
+      disabled: false,
+      separator: false,
+    },
+    {
+      label: "Sort Descending",
+      shortcut: "",
+      onClick: () => onSort?.('desc'),
+      disabled: false,
+      separator: false,
+    },
+    {
+      label: "Filter",
+      shortcut: "",
+      onClick: onFilter,
+      disabled: false,
+      separator: false,
+    },
+  ];
+
+  return (
+    <div
+      ref={menuRef}
+      className="fixed bg-white border border-gray-300 rounded-md shadow-lg py-1 z-50 min-w-48"
+      style={{ left: x, top: y }}
+    >
+      {menuItems.map((item, index) => (
+        <React.Fragment key={index}>
+          <button
+            onClick={() => {
+              if (!item.disabled && item.onClick) {
+                item.onClick();
+                onClose();
+              }
+            }}
+            disabled={item.disabled}
+            className={`
+              w-full px-3 py-2 text-left text-sm hover:bg-blue-50 flex items-center justify-between
+              ${item.disabled ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700 cursor-pointer'}
+            `}
+          >
+            <span>{item.label}</span>
+            {item.shortcut && (
+              <span className="text-xs text-gray-400 ml-4">{item.shortcut}</span>
+            )}
+          </button>
+          {item.separator && <hr className="my-1 border-gray-200" />}
+        </React.Fragment>
+      ))}
+    </div>
+  );
+}
