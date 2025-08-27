@@ -5,7 +5,6 @@ import "./index.css";
 
 // These imports are for global window exposure only
 import CrudModal from "./components/CrudModal";
-import DataGrid from "./components/DataGrid";
 import SheetTabs from "./components/SheetTabs";
 import Sidebar from "./components/Sidebar";
 import Toast from "./components/Toast";
@@ -14,7 +13,6 @@ import Toast from "./components/Toast";
 if (typeof window !== "undefined") {
   (window as any).Sidebar = Sidebar;
   (window as any).SheetTabs = SheetTabs;
-  (window as any).DataGrid = DataGrid;
   (window as any).CrudModal = CrudModal;
   (window as any).Toast = Toast;
 
