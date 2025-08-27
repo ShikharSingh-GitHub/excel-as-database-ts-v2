@@ -9,7 +9,7 @@ interface ExcelGridProps {
   headers: string[];
   rows: any[];
   onCellEdit?: (rowIndex: number, colKey: string, value: any) => void;
-  onRowAdd?: () => void;
+  onRowAdd?: (position?: number) => void;
   onRowDelete?: (rowIndex: number) => void;
   readOnly?: boolean;
   selectedCell?: CellPosition | null;
@@ -25,6 +25,8 @@ export default function ExcelGrid({
   headers = [],
   rows = [],
   onCellEdit,
+  onRowAdd,
+  onRowDelete,
   readOnly = false,
   selectedCell,
   onCellSelect,
@@ -37,6 +39,11 @@ export default function ExcelGrid({
   const [resizingColumn, setResizingColumn] = useState<number | null>(null);
   const [resizeStartX, setResizeStartX] = useState(0);
   const [resizeStartWidth, setResizeStartWidth] = useState(0);
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    rowIndex?: number;
+  } | null>(null);
 
   const editInputRef = useRef<HTMLInputElement>(null);
 
@@ -111,6 +118,13 @@ export default function ExcelGrid({
     }
   }, [resizingColumn, handleMouseMove, handleMouseUp]);
 
+  // Close context menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = () => setContextMenu(null);
+    document.addEventListener("click", handleClickOutside);
+    return () => document.removeEventListener("click", handleClickOutside);
+  }, []);
+
   // Focus management
   useEffect(() => {
     if (editingCell && editInputRef.current) {
@@ -135,9 +149,48 @@ export default function ExcelGrid({
     [editingCell]
   );
 
+  // Handle context menu
+  const handleContextMenu = useCallback(
+    (e: React.MouseEvent, rowIndex?: number) => {
+      e.preventDefault();
+      setContextMenu({ x: e.clientX, y: e.clientY, rowIndex });
+    },
+    []
+  );
+
+  // Handle row operations
+  const handleAddRowAbove = useCallback(
+    (position: number) => {
+      onRowAdd?.(position);
+      setContextMenu(null);
+    },
+    [onRowAdd]
+  );
+
+  const handleAddRowBelow = useCallback(
+    (position: number) => {
+      onRowAdd?.(position + 1);
+      setContextMenu(null);
+    },
+    [onRowAdd]
+  );
+
+  const handleDeleteRow = useCallback(
+    (rowIndex: number) => {
+      onRowDelete?.(rowIndex);
+      setContextMenu(null);
+    },
+    [onRowDelete]
+  );
+
   return (
     <div className="excel-grid flex-1 overflow-hidden bg-gradient-to-br from-white to-gray-50">
-      <div className="h-full overflow-auto" style={{ scrollbarWidth: "thin" }}>
+      <div
+        className="h-full overflow-auto custom-scrollbar"
+        style={{
+          scrollbarWidth: "thin",
+          scrollbarColor: "#cbd5e1 #f1f5f9",
+        }}>
         <table className="w-full border-collapse">
           <thead className="sticky top-0 z-20">
             <tr className="bg-gradient-to-r from-gray-100 to-gray-200 border-b border-gray-300 shadow-sm">
@@ -177,7 +230,8 @@ export default function ExcelGrid({
             {rows.map((row, rowIndex) => (
               <tr
                 key={rowIndex}
-                className="hover:bg-blue-50/30 transition-colors">
+                className="hover:bg-blue-50/30 transition-colors"
+                onContextMenu={(e) => handleContextMenu(e, rowIndex)}>
                 <td className="w-12 px-2 py-2 text-center text-xs font-medium text-gray-700 bg-gray-50 border-r border-gray-300">
                   {rowIndex + 1}
                 </td>
@@ -247,6 +301,42 @@ export default function ExcelGrid({
           </tbody>
         </table>
       </div>
+
+      {/* Context Menu */}
+      {contextMenu && (
+        <div
+          className="fixed bg-white border border-gray-200 rounded-lg shadow-lg py-2 z-50"
+          style={{
+            left: contextMenu.x,
+            top: contextMenu.y,
+          }}>
+          <button
+            onClick={() =>
+              contextMenu.rowIndex !== undefined
+                ? handleAddRowAbove(contextMenu.rowIndex)
+                : onRowAdd?.()
+            }
+            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2">
+            ➕ Add Row Above
+          </button>
+          <button
+            onClick={() =>
+              contextMenu.rowIndex !== undefined
+                ? handleAddRowBelow(contextMenu.rowIndex)
+                : onRowAdd?.()
+            }
+            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2">
+            ➕ Add Row Below
+          </button>
+          {contextMenu.rowIndex !== undefined && (
+            <button
+              onClick={() => handleDeleteRow(contextMenu.rowIndex!)}
+              className="w-full px-4 py-2 text-left text-sm hover:bg-red-50 hover:text-red-700 flex items-center gap-2">
+              🗑️ Delete Row
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

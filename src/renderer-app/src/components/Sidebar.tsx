@@ -103,7 +103,7 @@ export default function Sidebar({
       </div>
 
       <div
-        className="space-y-2 overflow-y-auto h-[calc(100vh-200px)] pr-2"
+        className="space-y-2 overflow-y-auto h-[calc(100vh-200px)] pr-2 custom-scrollbar"
         style={{ scrollbarWidth: "thin" }}>
         {files.length === 0 ? (
           <div className="p-4 text-sm text-slate-500">No files</div>

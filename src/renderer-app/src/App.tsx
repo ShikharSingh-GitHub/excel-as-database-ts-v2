@@ -190,11 +190,51 @@ export default function App() {
   );
 
   // CRUD operations
-  const openAddModal = () =>
-    setModal({ open: true, mode: "add", data: {}, errors: {} });
+  const openAddModal = (position?: number) => {
+    const pkName = (config && config.pkName) || "id";
+
+    // Generate auto-incrementing ID based on position
+    let newId = 1;
+    if (position !== undefined && sheetRows.rows.length > 0) {
+      if (position < sheetRows.rows.length) {
+        // Insert between rows
+        const prevRow = sheetRows.rows[position - 1];
+        const nextRow = sheetRows.rows[position];
+        if (prevRow && nextRow) {
+          newId = Math.max(
+            (prevRow[pkName] || 0) + 1,
+            (nextRow[pkName] || 0) - 1
+          );
+        } else if (prevRow) {
+          newId = (prevRow[pkName] || 0) + 1;
+        } else if (nextRow) {
+          newId = (nextRow[pkName] || 0) - 1;
+        }
+      } else {
+        // Add at the end
+        const lastRow = sheetRows.rows[sheetRows.rows.length - 1];
+        newId = lastRow ? (lastRow[pkName] || 0) + 1 : 1;
+      }
+    } else {
+      // Add at the end
+      const lastRow = sheetRows.rows[sheetRows.rows.length - 1];
+      newId = lastRow ? (lastRow[pkName] || 0) + 1 : 1;
+    }
+
+    const initialData = { [pkName]: newId };
+
+    setModal({
+      open: true,
+      mode: "add",
+      data: initialData,
+      errors: {},
+      insertPosition: position,
+    });
+  };
 
   const submitAdd = async (data: any) => {
-    if (!activeFile || !activeSheet) return setToast("No active sheet");
+    if (!activeFile || !activeSheet) return setToast("❌ No active sheet");
+
     const res = await (window as any).api.invoke(
       "sheet:create",
       activeFile,
@@ -202,7 +242,7 @@ export default function App() {
       data
     );
     if (res && res.error) {
-      setToast(res.message || "Add failed");
+      setToast("❌ " + (res.message || "Add failed"));
       return;
     }
     setModal({ open: false, mode: null, data: null });
@@ -253,29 +293,39 @@ export default function App() {
   };
 
   const deleteRow = async (row: any) => {
-    if (!activeFile || !activeSheet) return setToast("No active sheet");
+    if (!activeFile || !activeSheet) return setToast("❌ No active sheet");
     if (!confirm("Delete this row?")) return;
+
     const pkName = (config && config.pkName) || "id";
     const pkValue = row[pkName];
     const expected = row["_version"];
-    const res = await (window as any).api.invoke(
-      "sheet:delete",
-      activeFile,
-      activeSheet,
-      pkValue,
-      expected
-    );
-    if (res && res.error) {
-      if (res.error === "version-conflict") {
-        setToast("Version conflict, reload sheet");
-        await loadSheet(activeSheet, 1);
+
+    try {
+      const res = await (window as any).api.invoke(
+        "sheet:delete",
+        activeFile,
+        activeSheet,
+        pkValue,
+        expected
+      );
+
+      if (res && res.error) {
+        if (res.error === "version-conflict") {
+          setToast("❌ Version conflict, reload sheet");
+          await loadSheet(activeSheet, 1);
+          return;
+        }
+        setToast("❌ " + (res.message || "Delete failed"));
         return;
       }
-      setToast(res.message || "Delete failed");
-      return;
+
+      // Refresh the sheet data immediately
+      await loadSheet(activeSheet, sheetRows.page);
+      setToast("✅ Row deleted");
+    } catch (error) {
+      console.error("Delete error:", error);
+      setToast("❌ Delete failed");
     }
-    await loadSheet(activeSheet, sheetRows.page);
-    setToast("✅ Row deleted");
   };
 
   // Excel-like handlers
@@ -522,13 +572,13 @@ export default function App() {
           </div>
         </header>
 
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-1 overflow-hidden min-h-0">
           <Sidebar
             files={files}
             onOpen={(f: any) => openWorkbook(f)}
             onRefresh={refreshFiles}
           />
-          <div className="flex flex-1 flex-col overflow-hidden">
+          <div className="flex flex-1 flex-col overflow-hidden min-h-0">
             {meta && (
               <SheetTabs
                 sheets={meta.sheets || []}
@@ -537,9 +587,9 @@ export default function App() {
               />
             )}
 
-            <main className="flex-1 flex flex-col overflow-hidden">
+            <main className="flex-1 flex flex-col overflow-hidden min-h-0">
               {/* Quick Filter Bar */}
-              <div className="h-10 px-4 border-b border-gray-200/50 flex items-center gap-3 bg-white/60 backdrop-blur-sm">
+              <div className="h-10 px-4 border-b border-gray-200/50 flex items-center gap-3 bg-white/60 backdrop-blur-sm flex-shrink-0">
                 <div className="relative">
                   <Tooltip content="Search and filter data across all columns">
                     <input
@@ -558,7 +608,7 @@ export default function App() {
               {/* Excel Grid */}
               {activeSheet && (
                 <div
-                  className="flex-1 overflow-hidden"
+                  className="flex-1 overflow-hidden min-h-0"
                   onContextMenu={handleContextMenu}>
                   <ExcelGrid
                     headers={sheetRows.headers || []}
@@ -668,7 +718,7 @@ export default function App() {
         />
 
         {/* Status Bar */}
-        <div className="z-0">
+        <div className="z-0 flex-shrink-0">
           <StatusBar
             selectedCell={selectedCell}
             totalRows={sheetRows.total}
