@@ -41,5 +41,10 @@
   "validation": {
     "enableTypeHints": true,
     "strictMode": false
+  },
+  "sortState": {
+    "/Users/shikhar/Desktop/workbook/sample_large.xlsx": {
+      "columnFilters": {}
+    }
   }
 }

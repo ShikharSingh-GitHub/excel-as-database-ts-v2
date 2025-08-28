@@ -10,7 +10,7 @@ interface ExcelToolbarProps {
   onCut?: () => void;
   onAddRow?: () => void;
   onDeleteRow?: () => void;
-  onSort?: (direction: 'asc' | 'desc') => void;
+  onSort?: (direction: "asc" | "desc" | "reset") => void;
   onFilter?: () => void;
   canUndo?: boolean;
   canRedo?: boolean;
@@ -41,8 +41,7 @@ export default function ExcelToolbar({
             <button
               onClick={onSave}
               disabled={readOnly}
-              className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium shadow-sm transition-all duration-200"
-            >
+              className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium shadow-sm transition-all duration-200">
               💾 Save
             </button>
           </Tooltip>
@@ -50,8 +49,7 @@ export default function ExcelToolbar({
             <button
               onClick={onUndo}
               disabled={!canUndo}
-              className="p-2 hover:bg-gray-100 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
+              className="p-2 hover:bg-gray-100 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
               <span className="text-lg">↶</span>
             </button>
           </Tooltip>
@@ -59,8 +57,7 @@ export default function ExcelToolbar({
             <button
               onClick={onRedo}
               disabled={!canRedo}
-              className="p-2 hover:bg-gray-100 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
+              className="p-2 hover:bg-gray-100 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
               <span className="text-lg">↷</span>
             </button>
           </Tooltip>
@@ -72,16 +69,14 @@ export default function ExcelToolbar({
             <button
               onClick={onCut}
               disabled={readOnly}
-              className="p-2 hover:bg-gray-100 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
+              className="p-2 hover:bg-gray-100 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
               <span className="text-base">✂️</span>
             </button>
           </Tooltip>
           <Tooltip content="Copy selected cell (Ctrl+C)">
             <button
               onClick={onCopy}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-            >
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
               <span className="text-base">📋</span>
             </button>
           </Tooltip>
@@ -89,8 +84,7 @@ export default function ExcelToolbar({
             <button
               onClick={onPaste}
               disabled={readOnly}
-              className="p-2 hover:bg-gray-100 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
+              className="p-2 hover:bg-gray-100 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
               <span className="text-base">📄</span>
             </button>
           </Tooltip>
@@ -102,8 +96,7 @@ export default function ExcelToolbar({
             <Tooltip content="Add a new row to the sheet">
               <button
                 onClick={onAddRow}
-                className="px-3 py-2 hover:bg-green-50 hover:text-green-700 rounded-lg text-sm font-medium text-gray-700 flex items-center gap-2 transition-colors border border-transparent hover:border-green-200"
-              >
+                className="px-3 py-2 hover:bg-green-50 hover:text-green-700 rounded-lg text-sm font-medium text-gray-700 flex items-center gap-2 transition-colors border border-transparent hover:border-green-200">
                 <span className="text-base">➕</span>
                 Add Row
               </button>
@@ -111,8 +104,7 @@ export default function ExcelToolbar({
             <Tooltip content="Delete the selected row">
               <button
                 onClick={onDeleteRow}
-                className="px-3 py-2 hover:bg-red-50 hover:text-red-700 rounded-lg text-sm font-medium text-gray-700 flex items-center gap-2 transition-colors border border-transparent hover:border-red-200"
-              >
+                className="px-3 py-2 hover:bg-red-50 hover:text-red-700 rounded-lg text-sm font-medium text-gray-700 flex items-center gap-2 transition-colors border border-transparent hover:border-red-200">
                 <span className="text-base">➖</span>
                 Delete Row
               </button>
@@ -124,25 +116,29 @@ export default function ExcelToolbar({
         <div className="flex items-center gap-1 pr-3 border-r border-gray-200">
           <Tooltip content="Sort column ascending (A-Z, 1-9)">
             <button
-              onClick={() => onSort && onSort('asc')}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-            >
+              onClick={() => onSort && onSort("asc")}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
               <span className="text-base">🔼</span>
             </button>
           </Tooltip>
           <Tooltip content="Sort column descending (Z-A, 9-1)">
             <button
-              onClick={() => onSort && onSort('desc')}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-            >
+              onClick={() => onSort && onSort("desc")}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
               <span className="text-base">🔽</span>
+            </button>
+          </Tooltip>
+          <Tooltip content="Reset sort on the selected column">
+            <button
+              onClick={() => onSort && onSort("reset")}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+              <span className="text-base">⟲</span>
             </button>
           </Tooltip>
           <Tooltip content="Filter data by value">
             <button
               onClick={onFilter}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-            >
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
               <span className="text-base">🔍</span>
             </button>
           </Tooltip>
@@ -162,26 +158,38 @@ export default function ExcelToolbar({
             <option>16</option>
           </select>
           <div className="flex items-center gap-1 ml-2">
-            <button className="p-2 hover:bg-gray-200 rounded" title="Bold">
-              <span className="font-bold">B</span>
-            </button>
-            <button className="p-2 hover:bg-gray-200 rounded" title="Italic">
-              <span className="italic">I</span>
-            </button>
-            <button className="p-2 hover:bg-gray-200 rounded" title="Underline">
-              <span className="underline">U</span>
-            </button>
+            <Tooltip content="Bold (Ctrl+B)">
+              <button className="p-2 hover:bg-gray-200 rounded" title="Bold">
+                <span className="font-bold">B</span>
+              </button>
+            </Tooltip>
+            <Tooltip content="Italic (Ctrl+I)">
+              <button className="p-2 hover:bg-gray-200 rounded" title="Italic">
+                <span className="italic">I</span>
+              </button>
+            </Tooltip>
+            <Tooltip content="Underline (Ctrl+U)">
+              <button
+                className="p-2 hover:bg-gray-200 rounded"
+                title="Underline">
+                <span className="underline">U</span>
+              </button>
+            </Tooltip>
           </div>
         </div>
         {/* View Options */}
         <div className="flex items-center gap-2">
           <span className="text-sm text-gray-600 font-medium">View:</span>
-          <button className="px-3 py-1 bg-blue-100 text-blue-800 rounded-lg text-sm font-medium">
-            Grid
-          </button>
-          <button className="px-3 py-1 hover:bg-gray-100 rounded-lg text-sm text-gray-600 transition-colors">
-            Chart
-          </button>
+          <Tooltip content="View as grid">
+            <button className="px-3 py-1 bg-blue-100 text-blue-800 rounded-lg text-sm font-medium">
+              Grid
+            </button>
+          </Tooltip>
+          <Tooltip content="View as chart">
+            <button className="px-3 py-1 hover:bg-gray-100 rounded-lg text-sm text-gray-600 transition-colors">
+              Chart
+            </button>
+          </Tooltip>
         </div>
       </div>
     </div>

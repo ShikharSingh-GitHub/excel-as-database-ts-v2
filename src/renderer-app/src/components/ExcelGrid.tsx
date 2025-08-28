@@ -8,6 +8,8 @@ interface CellPosition {
 interface ExcelGridProps {
   headers: string[];
   rows: any[];
+  hiddenColumns?: Record<string, boolean>;
+  startIndex?: number;
   onCellEdit?: (rowIndex: number, colKey: string, value: any) => void;
   onRowAdd?: (position?: number) => void;
   onRowDelete?: (rowIndex: number) => void;
@@ -16,6 +18,11 @@ interface ExcelGridProps {
   onCellSelect?: (position: CellPosition | null) => void;
   sortState?: { column: string; direction: "asc" | "desc" };
   onSort?: (column: string) => void;
+  onRequestContextMenu?: (
+    x: number,
+    y: number,
+    opts?: { rowIndex?: number; colIndex?: number; header?: string }
+  ) => void;
 }
 
 const DEFAULT_COLUMN_WIDTH = 120;
@@ -24,14 +31,17 @@ const MIN_COLUMN_WIDTH = 60;
 export default function ExcelGrid({
   headers = [],
   rows = [],
+  hiddenColumns = {},
   onCellEdit,
   onRowAdd,
   onRowDelete,
   readOnly = false,
+  startIndex = 0,
   selectedCell,
   onCellSelect,
   sortState,
   onSort,
+  onRequestContextMenu,
 }: ExcelGridProps) {
   const [editingCell, setEditingCell] = useState<CellPosition | null>(null);
   const [editValue, setEditValue] = useState<string>("");
@@ -151,11 +161,19 @@ export default function ExcelGrid({
 
   // Handle context menu
   const handleContextMenu = useCallback(
-    (e: React.MouseEvent, rowIndex?: number) => {
+    (e: React.MouseEvent, rowIndex?: number, colIndex?: number) => {
       e.preventDefault();
+      if (typeof onRequestContextMenu === "function") {
+        onRequestContextMenu(e.clientX, e.clientY, {
+          rowIndex,
+          colIndex,
+          header: typeof colIndex === "number" ? headers[colIndex] : undefined,
+        });
+        return;
+      }
       setContextMenu({ x: e.clientX, y: e.clientY, rowIndex });
     },
-    []
+    [onRequestContextMenu, headers]
   );
 
   // Handle row operations
@@ -184,46 +202,60 @@ export default function ExcelGrid({
   );
 
   return (
-    <div className="excel-grid flex-1 min-h-0 flex flex-col overflow-hidden bg-gradient-to-br from-white to-gray-50">
+    <div className="excel-grid h-full flex-1 min-h-0 flex flex-col overflow-hidden bg-gradient-to-br from-white to-gray-50">
       <div
-        className="flex-1 min-h-0 overflow-auto custom-scrollbar"
+        className="flex-1 min-h-0 overflow-y-auto pb-16 custom-scrollbar h-full"
         style={{
+          height: "100%",
           scrollbarWidth: "thin",
           scrollbarColor: "#cbd5e1 #f1f5f9",
         }}>
-        <table className="w-full border-collapse">
+        <table className="w-full table-fixed border-collapse">
           <thead className="sticky top-0 z-20">
             <tr className="bg-gradient-to-r from-gray-100 to-gray-200 border-b border-gray-300 shadow-sm">
               <th className="w-12 px-2 py-2 text-center text-xs font-semibold text-gray-700 bg-gradient-to-b from-gray-100 to-gray-200 border-r border-gray-300">
-                #
+                <span title="Row number">#</span>
               </th>
-              {headers.map((header, index) => (
-                <th
-                  key={header}
-                  className={`relative px-3 py-2 text-left text-xs font-semibold text-gray-700 bg-gradient-to-b from-gray-100 to-gray-200 border-r border-gray-300 select-none cursor-pointer hover:bg-gradient-to-b hover:from-blue-50 hover:to-blue-100 transition-all duration-200 ${
-                    sortState?.column === header
-                      ? "bg-gradient-to-b from-blue-100 to-blue-200 text-blue-800"
-                      : ""
-                  }`}
-                  style={{ width: columnWidths[index] || DEFAULT_COLUMN_WIDTH }}
-                  onClick={() => handleSort(header)}>
-                  <div className="flex items-center justify-between">
-                    <span className="truncate font-medium">{header}</span>
-                    {sortState?.column === header && (
-                      <span className="ml-1 text-blue-700 font-bold">
-                        {sortState.direction === "asc" ? "↑" : "↓"}
-                      </span>
-                    )}
-                  </div>
+              {headers
+                .filter((h) => !hiddenColumns[h])
+                .map((header, index) => (
+                  <th
+                    key={header}
+                    className={`relative px-3 py-2 text-left text-xs font-semibold text-gray-700 bg-gradient-to-b from-gray-100 to-gray-200 border-r border-gray-300 select-none cursor-pointer hover:bg-gradient-to-b hover:from-blue-50 hover:to-blue-100 transition-all duration-200 ${
+                      sortState?.column === header
+                        ? "bg-gradient-to-b from-blue-100 to-blue-200 text-blue-800"
+                        : ""
+                    }`}
+                    style={{
+                      width: columnWidths[index] || DEFAULT_COLUMN_WIDTH,
+                    }}
+                    onClick={() => handleSort(header)}
+                    onContextMenu={(e) =>
+                      handleContextMenu(e, undefined, index)
+                    }>
+                    <div className="flex items-center justify-between">
+                      <span className="truncate font-medium">{header}</span>
+                      {sortState?.column === header && (
+                        <span
+                          className="ml-1 text-blue-700 font-bold"
+                          title={
+                            sortState.direction === "asc"
+                              ? "Sorted ascending"
+                              : "Sorted descending"
+                          }>
+                          {sortState.direction === "asc" ? "↑" : "↓"}
+                        </span>
+                      )}
+                    </div>
 
-                  {/* Resize handle */}
-                  <div
-                    className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-500 opacity-0 hover:opacity-100 transition-opacity duration-200"
-                    onMouseDown={(e) => handleMouseDown(e, index)}
-                    style={{ zIndex: 1000 }}
-                  />
-                </th>
-              ))}
+                    {/* Resize handle */}
+                    <div
+                      className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-500 opacity-0 hover:opacity-100 transition-opacity duration-200"
+                      onMouseDown={(e) => handleMouseDown(e, index)}
+                      style={{ zIndex: 1000 }}
+                    />
+                  </th>
+                ))}
             </tr>
           </thead>
           <tbody>
@@ -233,47 +265,37 @@ export default function ExcelGrid({
                 className="hover:bg-blue-50/30 transition-colors"
                 onContextMenu={(e) => handleContextMenu(e, rowIndex)}>
                 <td className="w-12 px-2 py-2 text-center text-xs font-medium text-gray-700 bg-gray-50 border-r border-gray-300">
-                  {rowIndex + 1}
+                  {startIndex + rowIndex + 1}
                 </td>
-                {headers.map((header, colIndex) => {
-                  const isSelected = isCellSelected(rowIndex, colIndex);
-                  const isEditing = isCellEditing(rowIndex, colIndex);
-                  const cellValue = row[header] || "";
+                {headers
+                  .filter((h) => !hiddenColumns[h])
+                  .map((header, colIndex) => {
+                    const isSelected = isCellSelected(rowIndex, colIndex);
+                    const isEditing = isCellEditing(rowIndex, colIndex);
+                    const cellValue = row[header] || "";
 
-                  return (
-                    <td
-                      key={header}
-                      className={`relative px-3 py-2 text-sm border-r border-gray-200 border-b border-gray-200 cursor-cell transition-all ${
-                        isSelected
-                          ? "bg-blue-100 ring-2 ring-blue-500 ring-inset"
-                          : "hover:bg-gray-50"
-                      } ${isEditing ? "bg-white" : ""}`}
-                      style={{
-                        width: columnWidths[colIndex] || DEFAULT_COLUMN_WIDTH,
-                      }}
-                      onClick={() => handleCellClick(rowIndex, colIndex)}
-                      onDoubleClick={() =>
-                        handleCellDoubleClick(rowIndex, colIndex)
-                      }>
-                      {isEditing ? (
-                        <input
-                          ref={editInputRef}
-                          type="text"
-                          value={editValue}
-                          onChange={(e) => setEditValue(e.target.value)}
-                          onBlur={() => {
-                            try {
-                              const colKey = headers[colIndex];
-                              onCellEdit?.(rowIndex, colKey, editValue);
-                            } catch (error) {
-                              console.error("Error saving cell edit:", error);
-                            } finally {
-                              setEditingCell(null);
-                            }
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              e.preventDefault();
+                    return (
+                      <td
+                        key={header}
+                        className={`relative px-3 py-2 text-sm border-r border-gray-200 border-b border-gray-200 cursor-cell transition-all ${
+                          isSelected
+                            ? "bg-blue-100 ring-2 ring-blue-500 ring-inset"
+                            : "hover:bg-gray-50"
+                        } ${isEditing ? "bg-white" : ""}`}
+                        style={{
+                          width: columnWidths[colIndex] || DEFAULT_COLUMN_WIDTH,
+                        }}
+                        onClick={() => handleCellClick(rowIndex, colIndex)}
+                        onDoubleClick={() =>
+                          handleCellDoubleClick(rowIndex, colIndex)
+                        }>
+                        {isEditing ? (
+                          <input
+                            ref={editInputRef}
+                            type="text"
+                            value={editValue}
+                            onChange={(e) => setEditValue(e.target.value)}
+                            onBlur={() => {
                               try {
                                 const colKey = headers[colIndex];
                                 onCellEdit?.(rowIndex, colKey, editValue);
@@ -282,20 +304,35 @@ export default function ExcelGrid({
                               } finally {
                                 setEditingCell(null);
                               }
-                            } else if (e.key === "Escape") {
-                              setEditingCell(null);
-                            }
-                          }}
-                          className="w-full h-full border-none outline-none bg-transparent text-sm"
-                        />
-                      ) : (
-                        <span className="truncate block w-full text-gray-900">
-                          {String(cellValue)}
-                        </span>
-                      )}
-                    </td>
-                  );
-                })}
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                try {
+                                  const colKey = headers[colIndex];
+                                  onCellEdit?.(rowIndex, colKey, editValue);
+                                } catch (error) {
+                                  console.error(
+                                    "Error saving cell edit:",
+                                    error
+                                  );
+                                } finally {
+                                  setEditingCell(null);
+                                }
+                              } else if (e.key === "Escape") {
+                                setEditingCell(null);
+                              }
+                            }}
+                            className="w-full h-full border-none outline-none bg-transparent text-sm"
+                          />
+                        ) : (
+                          <span className="truncate block w-full text-gray-900">
+                            {String(cellValue)}
+                          </span>
+                        )}
+                      </td>
+                    );
+                  })}
               </tr>
             ))}
           </tbody>

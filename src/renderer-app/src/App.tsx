@@ -3,6 +3,7 @@ import ContextMenu from "./components/ContextMenu";
 import CrudModal from "./components/CrudModal";
 import ExcelGrid from "./components/ExcelGrid";
 import ExcelToolbar from "./components/ExcelToolbar";
+import FilterModal from "./components/FilterModal";
 import FormulaBar from "./components/FormulaBar";
 import SheetTabs from "./components/SheetTabs";
 import Sidebar, { Workbook } from "./components/Sidebar";
@@ -32,6 +33,11 @@ export default function App() {
   const [columnFilters, setColumnFilters] = useState<Record<string, string>>(
     {}
   );
+  const [filterModalOpen, setFilterModalOpen] = useState(false);
+  const [filterModalHeader, setFilterModalHeader] = useState<string | null>(
+    null
+  );
+  const [filterModalInitial, setFilterModalInitial] = useState<string>("");
   const [sortState, setSortState] = useState<{
     key: string | null;
     dir: "asc" | "desc";
@@ -54,7 +60,12 @@ export default function App() {
   const [contextMenu, setContextMenu] = useState<{
     x: number;
     y: number;
+    rowIndex?: number;
+    header?: string;
   } | null>(null);
+  const [hiddenColumns, setHiddenColumns] = useState<Record<string, boolean>>(
+    {}
+  );
 
   // Load config and initial folder scan
   useEffect(() => {
@@ -157,7 +168,7 @@ export default function App() {
   );
 
   const loadSheet = useCallback(
-    async (sheetName: string, page = 1) => {
+    async (sheetName: string, page = 1, sortArg?: any) => {
       if (!activeFile || !sheetName) return;
       try {
         const res = await (window as any).api.invoke(
@@ -170,7 +181,7 @@ export default function App() {
               sheetRows.pageSize || (config && config.pageSizeDefault) || 25,
             filter: filterText,
             columnFilters: columnFilters,
-            sort: sortState || null,
+            sort: sortArg ?? sortState ?? null,
           }
         );
         if (res && !res.error) {
@@ -186,7 +197,32 @@ export default function App() {
         );
       }
     },
-    [activeFile, filterText, sheetRows.pageSize, config]
+    [
+      activeFile,
+      filterText,
+      sheetRows.pageSize,
+      config,
+      columnFilters,
+      sortState,
+    ]
+  );
+
+  // Handle request from grid to open context menu for a specific column
+  const handleGridContextRequest = useCallback(
+    (
+      x: number,
+      y: number,
+      opts?: { rowIndex?: number; colIndex?: number; header?: string }
+    ) => {
+      // If a column header was right-clicked, show the contextual header menu
+      if (opts && opts.header) {
+        setContextMenu({ x, y, header: opts.header });
+      } else if (opts && typeof opts.rowIndex === "number") {
+        // fallback to show the existing context menu for row operations
+        setContextMenu({ x, y, rowIndex: opts.rowIndex });
+      }
+    },
+    []
   );
 
   // CRUD operations
@@ -195,8 +231,8 @@ export default function App() {
 
     // Generate auto-incrementing ID based on position
     let newId = 1;
-    if (position !== undefined && sheetRows.rows.length > 0) {
-      if (position < sheetRows.rows.length) {
+    if (sheetRows && sheetRows.rows && sheetRows.rows.length > 0) {
+      if (position !== undefined && position < sheetRows.rows.length) {
         // Insert between rows
         const prevRow = sheetRows.rows[position - 1];
         const nextRow = sheetRows.rows[position];
@@ -216,8 +252,11 @@ export default function App() {
         newId = lastRow ? (lastRow[pkName] || 0) + 1 : 1;
       }
     } else {
-      // Add at the end
-      const lastRow = sheetRows.rows[sheetRows.rows.length - 1];
+      // Add at the end when no rows
+      const lastRow =
+        sheetRows &&
+        sheetRows.rows &&
+        sheetRows.rows[sheetRows.rows.length - 1];
       newId = lastRow ? (lastRow[pkName] || 0) + 1 : 1;
     }
 
@@ -228,35 +267,9 @@ export default function App() {
       mode: "add",
       data: initialData,
       errors: {},
-      insertPosition: position,
+      conflict: null,
     });
   };
-
-  const submitAdd = async (data: any) => {
-    if (!activeFile || !activeSheet) return setToast("❌ No active sheet");
-
-    const res = await (window as any).api.invoke(
-      "sheet:create",
-      activeFile,
-      activeSheet,
-      data
-    );
-    if (res && res.error) {
-      setToast("❌ " + (res.message || "Add failed"));
-      return;
-    }
-    setModal({ open: false, mode: null, data: null });
-    await loadSheet(activeSheet, 1);
-    setToast("✅ Row added");
-  };
-
-  const openEditModal = (row: any) =>
-    setModal({
-      open: true,
-      mode: "edit",
-      data: JSON.parse(JSON.stringify(row)),
-      errors: {},
-    });
 
   const submitEdit = async (row: any) => {
     if (!activeFile || !activeSheet) return setToast("No active sheet");
@@ -290,6 +303,30 @@ export default function App() {
     setModal({ open: false, mode: null, data: null });
     await loadSheet(activeSheet, sheetRows.page);
     setToast("✅ Row updated");
+  };
+
+  const submitAdd = async (row: any) => {
+    if (!activeFile || !activeSheet) return setToast("No active sheet");
+    try {
+      const res = await (window as any).api.invoke(
+        "sheet:create",
+        activeFile,
+        activeSheet,
+        row
+      );
+      if (res && res.error) {
+        setToast(res.message || "Add failed");
+        return;
+      }
+      setModal({ open: false, mode: null, data: null });
+      await loadSheet(activeSheet, sheetRows.page);
+      setToast("✅ Row added");
+    } catch (err) {
+      const e = err as any;
+      setToast(
+        "❌ Error adding row: " + (e && e.message ? e.message : String(e))
+      );
+    }
   };
 
   const deleteRow = async (row: any) => {
@@ -399,6 +436,15 @@ export default function App() {
   useEffect(() => {
     if (activeSheet) loadSheet(activeSheet, sheetRows.page);
   }, [activeSheet, sheetRows.page, filterText, columnFilters, sortState]);
+
+  // Pagination calculation
+  const totalPages = Math.max(
+    1,
+    Math.ceil(
+      (sheetRows && sheetRows.total ? sheetRows.total : 0) /
+        (sheetRows.pageSize || (config && config.pageSizeDefault) || 25)
+    )
+  );
 
   return (
     <div className={dark ? "dark" : ""}>
@@ -536,20 +582,30 @@ export default function App() {
                   setToast("❌ No row selected");
                 }
               }}
-              onSort={(column) => {
-                const newDir =
-                  sortState?.key === column && sortState.dir === "asc"
-                    ? "desc"
-                    : "asc";
-                setSortState({ key: column, dir: newDir });
-                setToast(`✅ Sorted by ${column} ${newDir}ending`);
+              onSort={(direction) => {
+                // toolbar sorts act on the currently selected column
+                if (!selectedCell)
+                  return setToast("❌ Select a column header first to sort");
+                const header = sheetRows.headers[selectedCell.col];
+                if (!header) return setToast("❌ No column selected");
+
+                if (direction === "reset") {
+                  setSortState(null);
+                  if (activeSheet) loadSheet(activeSheet, 1, undefined);
+                  setToast(`✅ Reset sort on ${header}`);
+                  return;
+                }
+
+                const newSort = { key: header, dir: direction } as any;
+                setSortState(newSort);
+                if (activeSheet) loadSheet(activeSheet, 1, newSort);
+                setToast(`✅ Sorted ${header} ${direction}`);
               }}
               onFilter={() => {
-                const filterValue = prompt("Enter filter value:");
-                if (filterValue) {
-                  setFilterText(filterValue);
-                  setToast(`✅ Filtered by: ${filterValue}`);
-                }
+                // open filter modal for global filter
+                setFilterModalHeader(null);
+                setFilterModalInitial(filterText || "");
+                setFilterModalOpen(true);
               }}
               readOnly={false}
             />
@@ -614,6 +670,7 @@ export default function App() {
                   <ExcelGrid
                     headers={sheetRows.headers || []}
                     rows={sheetRows.rows || []}
+                    hiddenColumns={hiddenColumns}
                     onCellEdit={handleCellEdit}
                     onRowAdd={openAddModal}
                     onRowDelete={(rowIndex) => {
@@ -627,6 +684,12 @@ export default function App() {
                     ).includes(activeSheet || "")}
                     selectedCell={selectedCell}
                     onCellSelect={setSelectedCell}
+                    startIndex={
+                      ((sheetRows.page || 1) - 1) *
+                      (sheetRows.pageSize ||
+                        (config && config.pageSizeDefault) ||
+                        25)
+                    }
                     sortState={
                       sortState
                         ? {
@@ -635,20 +698,30 @@ export default function App() {
                           }
                         : undefined
                     }
+                    onRequestContextMenu={handleGridContextRequest}
                     onSort={(column) => {
-                      const newDir =
-                        sortState?.key === column && sortState.dir === "asc"
-                          ? "desc"
-                          : "asc";
-                      setSortState({ key: column, dir: newDir });
-                      // Reload sheet with new sort state
-                      if (activeSheet) {
-                        loadSheet(activeSheet, 1);
+                      // cycle: none -> asc -> desc -> reset (none)
+                      if (!sortState || sortState.key !== column) {
+                        const newSort = { key: column, dir: "asc" } as any;
+                        setSortState(newSort);
+                        if (activeSheet) loadSheet(activeSheet, 1, newSort);
+                        return;
                       }
+                      if (sortState.key === column && sortState.dir === "asc") {
+                        const newSort = { key: column, dir: "desc" } as any;
+                        setSortState(newSort);
+                        if (activeSheet) loadSheet(activeSheet, 1, newSort);
+                        return;
+                      }
+                      // currently desc, so reset
+                      setSortState(null);
+                      if (activeSheet) loadSheet(activeSheet, 1, undefined);
                     }}
                   />
                 </div>
               )}
+
+              {/* pagination is rendered in StatusBar */}
             </main>
           </div>
         </div>
@@ -718,6 +791,44 @@ export default function App() {
           }}
         />
 
+        <FilterModal
+          open={filterModalOpen}
+          headerOptions={sheetRows.headers || []}
+          initialHeader={filterModalHeader}
+          initialValue={filterModalInitial}
+          onClose={() => setFilterModalOpen(false)}
+          onApply={async (header: string | null, value: string) => {
+            // compute next columnFilters synchronously and persist
+            const next = (() => {
+              const prev = columnFilters || {};
+              const clone: Record<string, string> = { ...(prev || {}) };
+              if (header) {
+                if (value) clone[header] = value;
+                else delete clone[header];
+              } else {
+                // apply across all columns by setting a global filterText
+                setFilterText(value);
+              }
+              return clone;
+            })();
+
+            setColumnFilters(next);
+
+            // persist columnFilters per workbook using the freshly computed object
+            try {
+              if (activeFile) {
+                await (window as any).api.sort.set(activeFile, {
+                  columnFilters: next,
+                });
+              }
+            } catch (err) {}
+
+            // reload sheet
+            if (activeSheet) await loadSheet(activeSheet, 1);
+            setFilterModalOpen(false);
+          }}
+        />
+
         {/* Status Bar */}
         <div className="z-0 flex-shrink-0">
           <StatusBar
@@ -726,6 +837,21 @@ export default function App() {
             totalCols={sheetRows.headers.length}
             readOnly={false}
             activeSheet={activeSheet || undefined}
+            page={sheetRows.page}
+            totalPages={totalPages}
+            onPrevPage={() => {
+              if (sheetRows.page > 1 && activeSheet)
+                loadSheet(activeSheet, sheetRows.page - 1);
+            }}
+            onNextPage={() => {
+              if (sheetRows.page < totalPages && activeSheet)
+                loadSheet(activeSheet, sheetRows.page + 1);
+            }}
+            onJumpPage={(n: number) => {
+              if (!activeSheet) return;
+              const target = Math.max(1, Math.min(n, totalPages));
+              if (target !== sheetRows.page) loadSheet(activeSheet, target);
+            }}
           />
         </div>
 
@@ -735,6 +861,7 @@ export default function App() {
             x={contextMenu.x}
             y={contextMenu.y}
             onClose={() => setContextMenu(null)}
+            header={contextMenu.header}
             onCopy={() => setToast("✅ Copied to clipboard")}
             onPaste={() => setToast("✅ Pasted from clipboard")}
             onInsertRow={openAddModal}
@@ -743,13 +870,54 @@ export default function App() {
                 deleteRow(sheetRows.rows[selectedCell.row]);
               }
             }}
+            onHideColumn={async () => {
+              if (!contextMenu || !contextMenu.header) return;
+              const hdr = contextMenu.header;
+              setHiddenColumns((prev) => {
+                const next = { ...(prev || {}) };
+                next[hdr] = true;
+                return next;
+              });
+              // persist
+              try {
+                if (activeFile)
+                  await (window as any).api.sort.set(activeFile, {
+                    hiddenColumns: { ...(hiddenColumns || {}), [hdr]: true },
+                  });
+              } catch (err) {}
+              setContextMenu(null);
+            }}
             onSort={(direction) => {
-              if (selectedCell) {
-                const header = sheetRows.headers[selectedCell.col];
-                setSortState({ key: header, dir: direction });
-                if (activeSheet) {
-                  loadSheet(activeSheet, 1);
-                }
+              // If contextMenu.header exists, apply to that column; otherwise use selectedCell
+              const hdr =
+                contextMenu?.header ||
+                (selectedCell ? sheetRows.headers[selectedCell.col] : null);
+              if (!hdr) return;
+              if (direction === "reset") {
+                setSortState(null);
+                if (activeSheet) loadSheet(activeSheet, 1, undefined);
+                return;
+              }
+              const newSort = { key: hdr, dir: direction } as any;
+              setSortState(newSort);
+              if (activeSheet) {
+                loadSheet(activeSheet, 1, newSort);
+              }
+            }}
+            onFilter={() => {
+              if (contextMenu && contextMenu.header) {
+                // open column filter modal for header
+                setFilterModalHeader(contextMenu.header);
+                setFilterModalInitial(columnFilters[contextMenu.header] || "");
+                setFilterModalOpen(true);
+                setContextMenu(null);
+                return;
+              }
+              const filterValue = prompt("Enter filter value:");
+              if (filterValue !== null) {
+                setFilterText(filterValue);
+                setToast(`✅ Filtered by: ${filterValue}`);
+                if (activeSheet) loadSheet(activeSheet, 1);
               }
             }}
             readOnly={((config && config.readOnlySheets) || []).includes(
