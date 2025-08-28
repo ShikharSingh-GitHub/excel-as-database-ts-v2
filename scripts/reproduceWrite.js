@@ -31,13 +31,20 @@ async function run() {
     console.error("read before error", e);
   }
 
-  console.log("\nCreating a test row (this will modify the workbook)...");
+  console.log(
+    "Creating a test row (this will modify the workbook) - insert at top of data region..."
+  );
   try {
-    const res = await svc.createRow(file, sheet, {
-      "Test Set ID": "99999",
-      "Test Set Name": "tmp-insert",
-      status: "Active",
-    });
+    const res = await svc.createRow(
+      file,
+      sheet,
+      {
+        "Test Set ID": "99999",
+        "Test Set Name": "tmp-insert",
+        status: "Active",
+      },
+      { insertIndex: 0 }
+    );
     console.log("createRow result:", res);
   } catch (e) {
     console.error("createRow error", e);

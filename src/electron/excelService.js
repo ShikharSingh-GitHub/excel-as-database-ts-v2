@@ -810,22 +810,127 @@ function readSheet(filePath, sheetName, opts = {}) {
       }
     } catch (e) {}
 
-    const headers = [];
-    const seenHeaders = new Set();
-
+    // Build a raw header array aligned to worksheet columns (null for empty header cells)
+    const rawHeaders = [];
     for (let C = range.s.c; C <= range.e.c; ++C) {
       const cell = ws[XLSX.utils.encode_cell({ c: C, r: headerRow })];
-      let val = cell ? String(cell.v).trim() : "";
-      if (val) {
-        // Handle duplicate column names by appending a number
-        let originalVal = val;
-        let counter = 1;
-        while (seenHeaders.has(val)) {
-          val = `${originalVal} (${counter})`;
-          counter++;
+      const val = cell && cell.v != null ? String(cell.v).trim() : "";
+      rawHeaders.push(val === "" ? null : val);
+    }
+
+    // Find the minimal contiguous span that contains any non-empty header values
+    let firstNonEmpty = -1;
+    let lastNonEmpty = -1;
+    for (let i = 0; i < rawHeaders.length; i++) {
+      if (rawHeaders[i] != null) {
+        if (firstNonEmpty === -1) firstNonEmpty = i;
+        lastNonEmpty = i;
+      }
+    }
+
+    // Respect config option for header trimming/sliding window
+    const uiCfg = (cfg && cfg.ui) || {};
+    const headerTrimOpts = uiCfg.headerTrim || {
+      enableTrim: true,
+      useSlidingWindow: true,
+    };
+
+    const headerUtils = require(path.join(__dirname, "headerUtils.js"));
+    const compact = headerUtils.compactHeaders(rawHeaders, headerTrimOpts);
+    const headers = compact.headers || [];
+    const seenHeaders = new Set();
+
+    // If we found too few headers (for example a single stray header far to the right),
+    // attempt a fallback detection: run detectHeaderRow and a simple downward scan
+    // to find the first row with multiple non-empty cells. This handles malformed
+    // sheets where persisted headerRow is incorrect.
+    if (headers.length <= 1) {
+      try {
+        const detected = detectHeaderRow(ws, range);
+        if (detected != null && detected !== headerRow) {
+          headerRow = detected;
+          // rebuild headers
+          headers.length = 0;
+          seenHeaders.clear();
+          for (let C = range.s.c; C <= range.e.c; ++C) {
+            const cell = ws[XLSX.utils.encode_cell({ c: C, r: headerRow })];
+            let val = cell ? String(cell.v).trim() : "";
+            if (val) {
+              let originalVal = val;
+              let counter = 1;
+              while (seenHeaders.has(val)) {
+                val = `${originalVal} (${counter})`;
+                counter++;
+              }
+              seenHeaders.add(val);
+              headers.push(val);
+            }
+          }
         }
-        seenHeaders.add(val);
-        headers.push(val);
+
+        // If still too few headers, do a simple downward scan to find a row
+        // with at least two non-empty cells and use that as header.
+        if (headers.length <= 1) {
+          for (
+            let r = Math.max(range.s.r, headerRow);
+            r <= Math.min(range.e.r, headerRow + 50);
+            r++
+          ) {
+            let nonEmpty = 0;
+            for (let C = range.s.c; C <= range.e.c; ++C) {
+              const cell = ws[XLSX.utils.encode_cell({ c: C, r })];
+              const raw = cell && cell.v != null ? String(cell.v).trim() : null;
+              if (raw && raw !== "") nonEmpty++;
+            }
+            if (nonEmpty >= 2) {
+              headerRow = r;
+              headers.length = 0;
+              seenHeaders.clear();
+              for (let C = range.s.c; C <= range.e.c; ++C) {
+                const cell = ws[XLSX.utils.encode_cell({ c: C, r: headerRow })];
+                let val = cell ? String(cell.v).trim() : "";
+                if (val) {
+                  let originalVal = val;
+                  let counter = 1;
+                  while (seenHeaders.has(val)) {
+                    val = `${originalVal} (${counter})`;
+                    counter++;
+                  }
+                  seenHeaders.add(val);
+                  headers.push(val);
+                }
+              }
+              // Persist fallback detection
+              try {
+                const cfg = readConfig() || {};
+                cfg.headerRowConfig = cfg.headerRowConfig || {};
+                cfg.headerRowConfig[fileName] =
+                  cfg.headerRowConfig[fileName] || {};
+                cfg.headerRowConfig[fileName][sheetName] = headerRow;
+                fs.writeFileSync(
+                  CONFIG_PATH,
+                  JSON.stringify(cfg, null, 2),
+                  "utf8"
+                );
+                try {
+                  invalidateCache(filePath);
+                } catch (e) {}
+                log(
+                  "INFO",
+                  "Persisted fallback headerRow from readSheet scan",
+                  {
+                    filePath,
+                    sheetName,
+                    detected: headerRow,
+                  }
+                );
+              } catch (e) {}
+              break;
+            }
+          }
+        }
+      } catch (e) {
+        // ignore detection errors and continue
       }
     }
 
@@ -1084,7 +1189,38 @@ async function createRow(filePath, sheetName, row, opts = {}) {
       newRow["_created_at"] = new Date().toISOString();
       newRow["_created_by"] = opts.user || "system";
 
-      existingData.push(newRow);
+      // Prevent duplicate insertion: if a row with same PK exists, replace it.
+      const existingIdx = existingData.findIndex(
+        (r) => String(r[pkName]) === String(newRow[pkName])
+      );
+      if (existingIdx !== -1) {
+        existingData[existingIdx] = newRow;
+        log("WARN", "Row with same PK already existed - replaced", {
+          filePath,
+          sheetName,
+          pk: newRow[pkName],
+          index: existingIdx,
+        });
+      } else {
+        // If caller provided an insertIndex, insert at that position within the data
+        // (0-based relative to the first data row). Otherwise append as before.
+        const insertIndex =
+          typeof (opts && opts.insertIndex) === "number"
+            ? Number(opts.insertIndex)
+            : null;
+        if (insertIndex !== null && !Number.isNaN(insertIndex)) {
+          const idx = Math.max(0, Math.min(existingData.length, insertIndex));
+          existingData.splice(idx, 0, newRow);
+          log("INFO", "Row created and inserted at index", {
+            filePath,
+            sheetName,
+            insertIndex: idx,
+            pk: newRow[pkName],
+          });
+        } else {
+          existingData.push(newRow);
+        }
+      }
 
       // create a worksheet for the data rows only
       const dataWs = XLSX.utils.json_to_sheet(existingData, {
