@@ -15,14 +15,14 @@
   "headerRowConfig": {
     "Sample.xlsm": {
       "Application": 4,
-      "Test Set": 4,
+      "Test Set": 3,
       "Test Case": 4,
       "Test Case Step": 4,
       "Playwright Configuration": 4,
       "Tags": 4,
       "Step_Template": 4,
       "backlog": 4,
-      "Release": 4,
+      "Release": 1,
       "masters": 4,
       "API": 4,
       "API Attribute": 4,
@@ -31,6 +31,64 @@
       "Function": 4,
       "Function Step": 4,
       "Test Case Function Step": 4
+    },
+    "End_To_End_Globalsqa1 (1).xlsm": {
+      "Application": 4,
+      "Test Set": 4,
+      "Test Case": 4,
+      "Test Case Step": 4,
+      "Playwright Configuration": 4,
+      "Tags": 4,
+      "Step_Template": 3,
+      "backlog": 0,
+      "Release": 1,
+      "masters": 0,
+      "API": 4,
+      "API Attribute": 4,
+      "Page": 4,
+      "UI Element": 4,
+      "Function": 4,
+      "Function Step": 4,
+      "Test Case Function Step": 4
+    },
+    "/Users/shikhar/Desktop/workbook/End_To_End_Globalsqa1 (1).xlsm": {
+      "Application": 4,
+      "Test Set": 4,
+      "Test Case": 4,
+      "Test Case Step": 4,
+      "Playwright Configuration": 4,
+      "Tags": 4,
+      "Step_Template": 3,
+      "backlog": 0,
+      "Release": 1,
+      "masters": 0,
+      "API": 4,
+      "API Attribute": 4,
+      "Page": 4,
+      "UI Element": 4,
+      "Function": 4,
+      "Function Step": 4,
+      "Test Case Function Step": 4
+    },
+    "Eve Echoes Skills Planner v5.0 copy.xlsx": {
+      "Skill Planner": 0
+    },
+    "/Users/shikhar/Desktop/workbook/Eve Echoes Skills Planner v5.0 copy.xlsx": {
+      "Skill Planner": 0
+    },
+    "sample_inventory.xlsx": {
+      "Inventory": 0
+    },
+    "/Users/shikhar/Desktop/workbook/sample_inventory.xlsx": {
+      "Inventory": 0
+    },
+    "sample_hidden_sheets.xlsm": {
+      "VisibleData": 0,
+      "HiddenAdmin": 0
+    },
+    "/Users/shikhar/Desktop/workbook/sample_hidden_sheets.xlsm": {
+      "VisibleData": 0,
+      "HiddenAdmin": 0
     }
   },
   "ui": {

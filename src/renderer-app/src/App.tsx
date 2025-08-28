@@ -188,6 +188,49 @@ export default function App() {
           setSheetRows(res);
           setActiveSheet(sheetName);
         } else {
+          // If sheet is unavailable (no headers), refresh workbook metadata and retry once
+          const lowerMessage =
+            (res && res.message && String(res.message).toLowerCase()) || "";
+          if (
+            (res && res.error === "sheet-unavailable") ||
+            lowerMessage.includes("no headers")
+          ) {
+            try {
+              if (activeFile) {
+                const refreshed = await (window as any).api.invoke(
+                  "workbook:meta",
+                  activeFile
+                );
+                if (refreshed && !refreshed.error) {
+                  setMeta(refreshed);
+                }
+
+                // retry reading sheet once
+                const retry = await (window as any).api.invoke(
+                  "sheet:read",
+                  activeFile,
+                  sheetName,
+                  {
+                    page,
+                    pageSize:
+                      sheetRows.pageSize ||
+                      (config && config.pageSizeDefault) ||
+                      25,
+                    filter: filterText,
+                    columnFilters: columnFilters,
+                    sort: sortArg ?? sortState ?? null,
+                  }
+                );
+                if (retry && !retry.error) {
+                  setSheetRows(retry);
+                  setActiveSheet(sheetName);
+                  return;
+                }
+              }
+            } catch (e) {
+              // ignore and fall through to toast
+            }
+          }
           setToast("❌ " + (res.message || "Failed to load sheet"));
         }
       } catch (err) {

@@ -148,7 +148,31 @@ ipcMain.handle("folder:scan", async (event, folderPath) => {
 });
 
 ipcMain.handle("workbook:meta", async (event, filePath) => {
-  return excelService.getWorkbookMeta(filePath);
+  // Ensure fresh metadata: invalidate any caches and validate configured header rows
+  try {
+    if (excelService.invalidateCache) {
+      try {
+        excelService.invalidateCache(filePath);
+      } catch (e) {}
+    }
+    const meta = excelService.getWorkbookMeta(filePath);
+    if (meta && meta.sheets && Array.isArray(meta.sheets)) {
+      // Trigger a validation for any configured header rows (this will persist corrections)
+      for (const s of meta.sheets) {
+        try {
+          // call exported helper to validate/persist
+          if (excelService.getHeaderRowPosition) {
+            excelService.getHeaderRowPosition(filePath, s.name);
+          }
+        } catch (e) {}
+      }
+      // re-read metadata to reflect any persisted corrections
+      return excelService.getWorkbookMeta(filePath);
+    }
+    return meta;
+  } catch (e) {
+    return excelService.getWorkbookMeta(filePath);
+  }
 });
 
 ipcMain.handle("sort:get", async (event, filePath) => {
