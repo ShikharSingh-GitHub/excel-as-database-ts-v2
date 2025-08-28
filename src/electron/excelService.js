@@ -176,7 +176,7 @@ function getHeaderRowPosition(filePath, sheetName) {
     // attempt automatic detection and persist a correction.
     try {
       let configured = configuredCandidate;
-      const wb = XLSX.readFile(filePath);
+      const wb = XLSX.readFile(filePath, { bookVBA: true, cellStyles: true });
       const ws = wb.Sheets[sheetName];
       if (!ws || !ws["!ref"]) return configured;
       const range = XLSX.utils.decode_range(ws["!ref"] || "A1:A1");
@@ -288,7 +288,7 @@ function getHeaderRowPosition(filePath, sheetName) {
 
   // No explicit configuration found — attempt automatic detection
   try {
-    const wb = XLSX.readFile(filePath);
+    const wb = XLSX.readFile(filePath, { bookVBA: true, cellStyles: true });
     const ws = wb.Sheets[sheetName];
     if (!ws || !ws["!ref"]) return 0;
     const range = XLSX.utils.decode_range(ws["!ref"] || "A1:A1");
@@ -444,7 +444,7 @@ function getWorkbookMeta(filePath) {
   try {
     const cfg = readConfig() || {};
     const ignoreSheets = cfg.ignoreSheets || [];
-    const wb = XLSX.readFile(filePath);
+    const wb = XLSX.readFile(filePath, { bookVBA: true, cellStyles: true });
 
     if (!wb || !wb.SheetNames || !Array.isArray(wb.SheetNames)) {
       return { error: "parse-error" };
@@ -1065,6 +1065,24 @@ function ensurePkAndVersion(rows, pkName) {
   }
 }
 
+// Prepare rows for writing to a sheet: strip internal fields (those starting with `_`)
+// but keep the primary key column (pkName) so it can be visible if the sheet has that header.
+function sanitizeRowsForSheet(rows, pkName, headers) {
+  if (!Array.isArray(rows)) return rows;
+  const hasPkHeader = Array.isArray(headers) && headers.includes(pkName);
+  return rows.map((r) => {
+    const out = {};
+    for (const k of Object.keys(r || {})) {
+      // skip internal underscore-prefixed fields always
+      if (k && k[0] === "_") continue;
+      // only include pk if the sheet headers include it; otherwise skip to avoid __EMPTY columns
+      if (k === pkName && !hasPkHeader) continue;
+      out[k] = r[k];
+    }
+    return out;
+  });
+}
+
 // Lock management
 async function acquireLock(filePath, opts = {}) {
   const timeout = opts.timeoutMs || 5000;
@@ -1222,37 +1240,46 @@ async function createRow(filePath, sheetName, row, opts = {}) {
         }
       }
 
+      // sanitize rows before writing to sheet to avoid creating __EMPTY* columns for internal fields
+      const sanitizedData = sanitizeRowsForSheet(existingData, pkName, headers);
       // create a worksheet for the data rows only
-      const dataWs = XLSX.utils.json_to_sheet(existingData, {
+      const dataWs = XLSX.utils.json_to_sheet(sanitizedData, {
         header: headers.length > 0 ? headers : undefined,
       });
 
       // build a full worksheet by preserving top rows through headerRowPos and appending data
       let fullWs;
       try {
-        // copy top rows
-        const topAoa = [];
+        // copy top rows by cloning cell objects to preserve formulas/styles/comments
+        const newWs = {};
+        const cols = range.e.c - range.s.c + 1;
+        const rowsCount = headerRowPos - range.s.r + 1;
         for (let rIdx = range.s.r; rIdx <= headerRowPos; rIdx++) {
-          const rowArr = [];
           for (let c = range.s.c; c <= range.e.c; c++) {
-            const cell = ws[XLSX.utils.encode_cell({ c, r: rIdx })];
-            rowArr.push(cell && cell.v != null ? cell.v : null);
+            const addr = XLSX.utils.encode_cell({ c, r: rIdx });
+            const cell = ws[addr];
+            if (cell) {
+              // shallow clone the cell object to new worksheet
+              newWs[addr] = Object.assign({}, cell);
+            }
           }
-          topAoa.push(rowArr);
         }
-        fullWs = XLSX.utils.aoa_to_sheet(topAoa);
 
+        // attach merges if present
+        if (ws && ws["!merges"]) newWs["!merges"] = ws["!merges"];
+
+        // now append data rows starting at dataStart
         if (headers.length > 0) {
-          XLSX.utils.sheet_add_json(fullWs, existingData, {
+          XLSX.utils.sheet_add_json(newWs, sanitizedData, {
             origin: dataStart,
             skipHeader: true,
             header: headers,
           });
         } else {
-          XLSX.utils.sheet_add_json(fullWs, existingData, { origin: 0 });
+          XLSX.utils.sheet_add_json(newWs, sanitizedData, { origin: 0 });
         }
 
-        if (ws && ws["!merges"]) fullWs["!merges"] = ws["!merges"];
+        fullWs = newWs;
       } catch (e) {
         // fallback: full replacement
         const headersFallback = Array.from(
@@ -1398,37 +1425,47 @@ async function updateRow(
 
       json[idx] = updated;
 
-      // rebuild full worksheet preserving top rows and header row
+      // sanitize rows to avoid writing internal underscore-prefixed fields
+      const sanitized = sanitizeRowsForSheet(json, pkName, headers);
+
+      // rebuild full worksheet preserving top rows and header row (clone full cell objects)
       let fullWs;
       try {
-        const topAoa = [];
+        const newWs = {};
+        const dataStart = headerRowPos + 1;
         for (let rIdx = range.s.r; rIdx <= headerRowPos; rIdx++) {
-          const rowArr = [];
           for (let c = range.s.c; c <= range.e.c; c++) {
-            const cell = ws[XLSX.utils.encode_cell({ c, r: rIdx })];
-            rowArr.push(cell && cell.v != null ? cell.v : null);
+            const addr = XLSX.utils.encode_cell({ c, r: rIdx });
+            const cell = ws[addr];
+            if (cell) {
+              // shallow clone the cell object to preserve formulas/styles/comments
+              newWs[addr] = Object.assign({}, cell);
+            }
           }
-          topAoa.push(rowArr);
         }
-        fullWs = XLSX.utils.aoa_to_sheet(topAoa);
+
+        // attach merges if present
+        if (ws && ws["!merges"]) newWs["!merges"] = ws["!merges"];
+
+        // now append data rows starting at dataStart (use sanitized rows)
         if (headers.length > 0) {
-          XLSX.utils.sheet_add_json(fullWs, json, {
-            origin: headerRowPos + 1,
+          XLSX.utils.sheet_add_json(newWs, sanitized, {
+            origin: dataStart,
             skipHeader: true,
             header: headers,
           });
         } else {
-          const headersFallback = Array.from(
-            new Set([].concat(...json.map(Object.keys)))
-          );
-          fullWs = XLSX.utils.json_to_sheet(json, { header: headersFallback });
+          XLSX.utils.sheet_add_json(newWs, sanitized, { origin: 0 });
         }
-        if (ws && ws["!merges"]) fullWs["!merges"] = ws["!merges"];
+
+        fullWs = newWs;
       } catch (e) {
         const headersFallback = Array.from(
-          new Set([].concat(...json.map(Object.keys)))
+          new Set([].concat(...sanitized.map(Object.keys)))
         );
-        fullWs = XLSX.utils.json_to_sheet(json, { header: headersFallback });
+        fullWs = XLSX.utils.json_to_sheet(sanitized, {
+          header: headersFallback,
+        });
       }
 
       wb.Sheets[sheetName] = fullWs;
@@ -1553,37 +1590,47 @@ async function deleteRow(filePath, sheetName, pkValue, expectedVersion) {
 
       json.splice(idx, 1);
 
-      // rebuild full worksheet preserving header/top rows
+      // sanitize rows to avoid writing internal underscore-prefixed fields
+      const sanitized = sanitizeRowsForSheet(json, pkName, headers);
+
+      // rebuild full worksheet preserving header/top rows (clone full cell objects)
       let fullWs;
       try {
-        const topAoa = [];
+        const newWs = {};
+        const dataStart = headerRowPos + 1;
         for (let rIdx = range.s.r; rIdx <= headerRowPos; rIdx++) {
-          const rowArr = [];
           for (let c = range.s.c; c <= range.e.c; c++) {
-            const cell = ws[XLSX.utils.encode_cell({ c, r: rIdx })];
-            rowArr.push(cell && cell.v != null ? cell.v : null);
+            const addr = XLSX.utils.encode_cell({ c, r: rIdx });
+            const cell = ws[addr];
+            if (cell) {
+              // shallow clone the cell object to preserve formulas/styles/comments
+              newWs[addr] = Object.assign({}, cell);
+            }
           }
-          topAoa.push(rowArr);
         }
-        fullWs = XLSX.utils.aoa_to_sheet(topAoa);
+
+        // attach merges if present
+        if (ws && ws["!merges"]) newWs["!merges"] = ws["!merges"];
+
+        // now append data rows starting at dataStart (use sanitized rows)
         if (headers.length > 0) {
-          XLSX.utils.sheet_add_json(fullWs, json, {
-            origin: headerRowPos + 1,
+          XLSX.utils.sheet_add_json(newWs, sanitized, {
+            origin: dataStart,
             skipHeader: true,
             header: headers,
           });
         } else {
-          const headersFallback = Array.from(
-            new Set([].concat(...json.map(Object.keys)))
-          );
-          fullWs = XLSX.utils.json_to_sheet(json, { header: headersFallback });
+          XLSX.utils.sheet_add_json(newWs, sanitized, { origin: 0 });
         }
-        if (ws && ws["!merges"]) fullWs["!merges"] = ws["!merges"];
+
+        fullWs = newWs;
       } catch (e) {
         const headersFallback = Array.from(
-          new Set([].concat(...json.map(Object.keys)))
+          new Set([].concat(...sanitized.map(Object.keys)))
         );
-        fullWs = XLSX.utils.json_to_sheet(json, { header: headersFallback });
+        fullWs = XLSX.utils.json_to_sheet(sanitized, {
+          header: headersFallback,
+        });
       }
 
       wb.Sheets[sheetName] = fullWs;

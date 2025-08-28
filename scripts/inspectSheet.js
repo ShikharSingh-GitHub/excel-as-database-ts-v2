@@ -9,7 +9,7 @@ const svc = require(path.join(
   "excelService.js"
 ));
 
-const file = "/Users/shikhar/Desktop/workbook/Sample.xlsm";
+const file = path.join(__dirname, "..", "End_To_End_Globalsqa1 (1).xlsm");
 const sheet = "Test Set";
 
 function dump() {

@@ -5,7 +5,11 @@
   "pageSizeDefault": 25,
   "maxPageSize": 200,
   "readOnlySheets": [],
-  "ignoreSheets": ["_metadata", "config", "temp"],
+  "ignoreSheets": [
+    "_metadata",
+    "config",
+    "temp"
+  ],
   "autoRefreshSeconds": 0,
   "recentWorkbooks": [],
   "headerRowConfig": {
@@ -95,6 +99,30 @@
       "Test Set": 4
     },
     "/Users/shikhar/Developer/My Projects/ExcelDatabaseElectron/tmp-reg-1756386107924.xlsm": {
+      "Test Set": 4
+    },
+    "tmp-reg-1756387817984.xlsm": {
+      "Test Set": 4
+    },
+    "/Users/shikhar/Developer/My Projects/ExcelDatabaseElectron/tmp-reg-1756387817984.xlsm": {
+      "Test Set": 4
+    },
+    "tmp-fresh-1756388139628.xlsm": {
+      "Test Set": 4
+    },
+    "/Users/shikhar/Developer/My Projects/ExcelDatabaseElectron/tmp-fresh-1756388139628.xlsm": {
+      "Test Set": 4
+    },
+    "tmp-fresh-1756388648364.xlsm": {
+      "Test Set": 4
+    },
+    "/Users/shikhar/Developer/My Projects/ExcelDatabaseElectron/tmp-fresh-1756388648364.xlsm": {
+      "Test Set": 4
+    },
+    "tmp-fresh-1756388774487.xlsm": {
+      "Test Set": 4
+    },
+    "/Users/shikhar/Developer/My Projects/ExcelDatabaseElectron/tmp-fresh-1756388774487.xlsm": {
       "Test Set": 4
     }
   },
