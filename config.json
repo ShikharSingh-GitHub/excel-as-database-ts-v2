@@ -5,11 +5,7 @@
   "pageSizeDefault": 25,
   "maxPageSize": 200,
   "readOnlySheets": [],
-  "ignoreSheets": [
-    "_metadata",
-    "config",
-    "temp"
-  ],
+  "ignoreSheets": ["_metadata", "config", "temp"],
   "autoRefreshSeconds": 0,
   "recentWorkbooks": [],
   "headerRowConfig": {
@@ -123,6 +119,12 @@
       "Test Set": 4
     },
     "/Users/shikhar/Developer/My Projects/ExcelDatabaseElectron/tmp-fresh-1756388774487.xlsm": {
+      "Test Set": 4
+    },
+    "tmp-reg-1756435875455.xlsm": {
+      "Test Set": 4
+    },
+    "/Users/shikhar/Developer/My Projects/ExcelDatabaseElectron/tmp-reg-1756435875455.xlsm": {
       "Test Set": 4
     }
   },
