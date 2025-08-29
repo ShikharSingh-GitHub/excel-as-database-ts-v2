@@ -3,8 +3,6 @@ import Tooltip from "./Tooltip";
 
 interface ExcelToolbarProps {
   onSave?: () => void;
-  onUndo?: () => void;
-  onRedo?: () => void;
   onCopy?: () => void;
   onPaste?: () => void;
   onCut?: () => void;
@@ -12,15 +10,11 @@ interface ExcelToolbarProps {
   onDeleteRow?: () => void;
   onSort?: (direction: "asc" | "desc" | "reset") => void;
   onFilter?: () => void;
-  canUndo?: boolean;
-  canRedo?: boolean;
   readOnly?: boolean;
 }
 
 export default function ExcelToolbar({
   onSave,
-  onUndo,
-  onRedo,
   onCopy,
   onPaste,
   onCut,
@@ -28,8 +22,6 @@ export default function ExcelToolbar({
   onDeleteRow,
   onSort,
   onFilter,
-  canUndo = false,
-  canRedo = false,
   readOnly = false,
 }: ExcelToolbarProps) {
   return (
@@ -43,22 +35,6 @@ export default function ExcelToolbar({
               disabled={readOnly}
               className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium shadow-sm transition-all duration-200">
               💾 Save
-            </button>
-          </Tooltip>
-          <Tooltip content="Undo last action (Ctrl+Z)">
-            <button
-              onClick={onUndo}
-              disabled={!canUndo}
-              className="p-2 hover:bg-gray-100 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-              <span className="text-lg">↶</span>
-            </button>
-          </Tooltip>
-          <Tooltip content="Redo last action (Ctrl+Y)">
-            <button
-              onClick={onRedo}
-              disabled={!canRedo}
-              className="p-2 hover:bg-gray-100 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-              <span className="text-lg">↷</span>
             </button>
           </Tooltip>
         </div>
@@ -144,53 +120,6 @@ export default function ExcelToolbar({
           </Tooltip>
         </div>
 
-        {/* Formatting Tools */}
-        <div className="flex items-center gap-1">
-          <select className="px-2 py-1 border border-gray-300 rounded text-sm">
-            <option>Arial</option>
-            <option>Calibri</option>
-            <option>Times New Roman</option>
-          </select>
-          <select className="px-2 py-1 border border-gray-300 rounded text-sm ml-1">
-            <option>11</option>
-            <option>12</option>
-            <option>14</option>
-            <option>16</option>
-          </select>
-          <div className="flex items-center gap-1 ml-2">
-            <Tooltip content="Bold (Ctrl+B)">
-              <button className="p-2 hover:bg-gray-200 rounded" title="Bold">
-                <span className="font-bold">B</span>
-              </button>
-            </Tooltip>
-            <Tooltip content="Italic (Ctrl+I)">
-              <button className="p-2 hover:bg-gray-200 rounded" title="Italic">
-                <span className="italic">I</span>
-              </button>
-            </Tooltip>
-            <Tooltip content="Underline (Ctrl+U)">
-              <button
-                className="p-2 hover:bg-gray-200 rounded"
-                title="Underline">
-                <span className="underline">U</span>
-              </button>
-            </Tooltip>
-          </div>
-        </div>
-        {/* View Options */}
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-600 font-medium">View:</span>
-          <Tooltip content="View as grid">
-            <button className="px-3 py-1 bg-blue-100 text-blue-800 rounded-lg text-sm font-medium">
-              Grid
-            </button>
-          </Tooltip>
-          <Tooltip content="View as chart">
-            <button className="px-3 py-1 hover:bg-gray-100 rounded-lg text-sm text-gray-600 transition-colors">
-              Chart
-            </button>
-          </Tooltip>
-        </div>
       </div>
     </div>
   );

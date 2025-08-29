@@ -562,8 +562,6 @@ export default function App() {
                   setToast("❌ Save failed");
                 }
               }}
-              onUndo={() => setToast("❌ Undo not implemented yet")}
-              onRedo={() => setToast("❌ Redo not implemented yet")}
               onCopy={() => {
                 if (selectedCell) {
                   const cellValue =

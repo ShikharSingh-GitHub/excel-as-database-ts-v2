@@ -4,8 +4,17 @@
   "cacheTtlMs": 2000,
   "pageSizeDefault": 25,
   "maxPageSize": 200,
-  "readOnlySheets": [],
-  "ignoreSheets": ["_metadata", "config", "temp"],
+  "readOnlySheets": [
+    "sample_bad_headers",
+    "sample_conflict_stress",
+    "sample_customers_conflict"
+  ],
+  "ignoreSheets": [
+    "sample_hidden_sheets",
+    "_metadata",
+    "config",
+    "temp"
+  ],
   "autoRefreshSeconds": 0,
   "recentWorkbooks": [],
   "headerRowConfig": {
@@ -126,6 +135,48 @@
     },
     "/Users/shikhar/Developer/My Projects/ExcelDatabaseElectron/tmp-reg-1756435875455.xlsm": {
       "Test Set": 4
+    },
+    "sample_bad_headers.xlsx": {
+      "NoHeaders": 1
+    },
+    "/Users/shikhar/Desktop/workbook/sample_bad_headers.xlsx": {
+      "NoHeaders": 1
+    },
+    "sample_conflict_stress.xlsx": {
+      "Conflicts": 0
+    },
+    "/Users/shikhar/Desktop/workbook/sample_conflict_stress.xlsx": {
+      "Conflicts": 0
+    },
+    "sample_customers_conflict.xlsx": {
+      "Customers": 0
+    },
+    "/Users/shikhar/Desktop/workbook/sample_customers_conflict.xlsx": {
+      "Customers": 0
+    },
+    "sample_orders.xlsx": {
+      "Orders": 0
+    },
+    "/Users/shikhar/Desktop/workbook/sample_orders.xlsx": {
+      "Orders": 0
+    },
+    "sample_policies.xlsx": {
+      "Policies": 0
+    },
+    "/Users/shikhar/Desktop/workbook/sample_policies.xlsx": {
+      "Policies": 0
+    },
+    "sample_large.xlsx": {
+      "Data": 0
+    },
+    "/Users/shikhar/Desktop/workbook/sample_large.xlsx": {
+      "Data": 0
+    },
+    "sample_large_perf.xlsx": {
+      "Data": 0
+    },
+    "/Users/shikhar/Desktop/workbook/sample_large_perf.xlsx": {
+      "Data": 0
     }
   },
   "ui": {
@@ -140,6 +191,11 @@
   "sortState": {
     "/Users/shikhar/Desktop/workbook/sample_large.xlsx": {
       "columnFilters": {}
+    },
+    "/Users/shikhar/Desktop/workbook/sample_inventory.xlsx": {
+      "columnFilters": {
+        "id": "2"
+      }
     }
   }
 }
