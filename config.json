@@ -1,6 +1,20 @@
 {
   "folderPath": "/Users/shikhar/Desktop/workbook",
   "pkName": "id",
+  "hiddenSheets": [
+    "backlog",
+    "Tags",
+    "Step_Template",
+    "Release",
+    "masters",
+    "API",
+    "API Attribute",
+    "Page",
+    "UI Element",
+    "Function",
+    "Function Step",
+    "Test Case Function Step"
+  ],
   "cacheTtlMs": 2000,
   "pageSizeDefault": 25,
   "maxPageSize": 200,
@@ -9,12 +23,7 @@
     "sample_conflict_stress",
     "sample_customers_conflict"
   ],
-  "ignoreSheets": [
-    "sample_hidden_sheets",
-    "_metadata",
-    "config",
-    "temp"
-  ],
+  "ignoreSheets": ["sample_hidden_sheets", "_metadata", "config", "temp"],
   "autoRefreshSeconds": 0,
   "recentWorkbooks": [],
   "headerRowConfig": {
@@ -75,66 +84,6 @@
     "/Users/shikhar/Desktop/workbook/sample_hidden_sheets.xlsm": {
       "VisibleData": 0,
       "HiddenAdmin": 0
-    },
-    "tmp-fresh-1756385431308.xlsm": {
-      "Test Set": 4
-    },
-    "/Users/shikhar/Developer/My Projects/ExcelDatabaseElectron/tmp-fresh-1756385431308.xlsm": {
-      "Test Set": 4
-    },
-    "tmp-fresh-1756385637836.xlsm": {
-      "Test Set": 4
-    },
-    "/Users/shikhar/Developer/My Projects/ExcelDatabaseElectron/tmp-fresh-1756385637836.xlsm": {
-      "Test Set": 4
-    },
-    "tmp-reg-1756385787815.xlsm": {
-      "Test Set": 4
-    },
-    "/Users/shikhar/Developer/My Projects/ExcelDatabaseElectron/tmp-reg-1756385787815.xlsm": {
-      "Test Set": 4
-    },
-    "tmp-reg-1756385928435.xlsm": {
-      "Test Set": 4
-    },
-    "/Users/shikhar/Developer/My Projects/ExcelDatabaseElectron/tmp-reg-1756385928435.xlsm": {
-      "Test Set": 4
-    },
-    "tmp-reg-1756386107924.xlsm": {
-      "Test Set": 4
-    },
-    "/Users/shikhar/Developer/My Projects/ExcelDatabaseElectron/tmp-reg-1756386107924.xlsm": {
-      "Test Set": 4
-    },
-    "tmp-reg-1756387817984.xlsm": {
-      "Test Set": 4
-    },
-    "/Users/shikhar/Developer/My Projects/ExcelDatabaseElectron/tmp-reg-1756387817984.xlsm": {
-      "Test Set": 4
-    },
-    "tmp-fresh-1756388139628.xlsm": {
-      "Test Set": 4
-    },
-    "/Users/shikhar/Developer/My Projects/ExcelDatabaseElectron/tmp-fresh-1756388139628.xlsm": {
-      "Test Set": 4
-    },
-    "tmp-fresh-1756388648364.xlsm": {
-      "Test Set": 4
-    },
-    "/Users/shikhar/Developer/My Projects/ExcelDatabaseElectron/tmp-fresh-1756388648364.xlsm": {
-      "Test Set": 4
-    },
-    "tmp-fresh-1756388774487.xlsm": {
-      "Test Set": 4
-    },
-    "/Users/shikhar/Developer/My Projects/ExcelDatabaseElectron/tmp-fresh-1756388774487.xlsm": {
-      "Test Set": 4
-    },
-    "tmp-reg-1756435875455.xlsm": {
-      "Test Set": 4
-    },
-    "/Users/shikhar/Developer/My Projects/ExcelDatabaseElectron/tmp-reg-1756435875455.xlsm": {
-      "Test Set": 4
     },
     "sample_bad_headers.xlsx": {
       "NoHeaders": 1

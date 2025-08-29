@@ -193,14 +193,23 @@ ipcMain.handle("sheet:create", async (event, filePath, sheetName, row) => {
 
 ipcMain.handle(
   "sheet:update",
-  async (event, filePath, sheetName, pkValue, updates, expectedVersion) => {
+  async (
+    event,
+    filePath,
+    sheetName,
+    pkValue,
+    updates,
+    expectedVersion,
+    opts = {}
+  ) => {
     try {
       const result = await excelService.updateRow(
         filePath,
         sheetName,
         pkValue,
         updates,
-        expectedVersion
+        expectedVersion,
+        opts
       );
       if (result.error === "version-conflict") {
         log("WARN", "Version conflict detected", {

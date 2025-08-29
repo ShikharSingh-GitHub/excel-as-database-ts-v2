@@ -47,14 +47,15 @@ contextBridge.exposeInMainWorld("api", {
       ipcRenderer.invoke("sheet:read", filePath, sheetName, opts),
     create: (filePath, sheetName, row) =>
       ipcRenderer.invoke("sheet:create", filePath, sheetName, row),
-    update: (filePath, sheetName, pkValue, updates, expectedVersion) =>
+    update: (filePath, sheetName, pkValue, updates, expectedVersion, opts) =>
       ipcRenderer.invoke(
         "sheet:update",
         filePath,
         sheetName,
         pkValue,
         updates,
-        expectedVersion
+        expectedVersion,
+        opts || {}
       ),
     delete: (filePath, sheetName, pkValue, expectedVersion) =>
       ipcRenderer.invoke(

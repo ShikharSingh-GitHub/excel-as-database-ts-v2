@@ -43,6 +43,7 @@ function readConfig() {
     return {
       folderPath: null,
       pkName: "id",
+      hiddenSheets: [],
       cacheTtlMs: 2000,
       pageSizeDefault: 25,
       maxPageSize: 200,
@@ -450,212 +451,242 @@ function getWorkbookMeta(filePath) {
       return { error: "parse-error" };
     }
 
-    const sheets = wb.SheetNames.filter((n) => !ignoreSheets.includes(n)).map(
-      (name) => {
-        try {
-          const ws = wb.Sheets[name];
-          if (!ws || !ws["!ref"]) {
-            return { name, columns: [], rows: 0, unavailable: true };
-          }
+    // Respect workbook-level hidden flags: if a sheet is marked hidden (1)
+    // or veryHidden (2) in the workbook XML, treat it as unavailable for display
+    // unless explicitly listed in ignoreSheets.
+    const workbookSheets = (wb && wb.Workbook && wb.Workbook.Sheets) || [];
+    const hiddenSheetsFromConfig = (cfg && cfg.hiddenSheets) || [];
 
-          const range = XLSX.utils.decode_range(ws["!ref"] || "A1:A1");
-          let headerRow = getHeaderRowPosition(filePath, name);
-
-          // Check if the header row is within the sheet range
-          if (headerRow > range.e.r) {
-            return {
-              name,
-              columns: [],
-              rows: 0,
-              unavailable: true,
-              error: "Header row beyond sheet range",
-            };
-          }
-
-          // If configured header row looks like data, attempt detection
-          const configuredVals = [];
-          for (let C = range.s.c; C <= range.e.c; ++C) {
-            const cell = ws[XLSX.utils.encode_cell({ c: C, r: headerRow })];
-            configuredVals.push(cell ? cell.v : null);
-          }
-          if (isLikelyDataRow(configuredVals)) {
-            const detected = detectHeaderRow(ws, range);
-            if (detected != null && detected !== headerRow) {
-              // override headerRow for display
-              headerRow = detected;
-            }
-          }
-
-          const headers = [];
-          const seen = new Set();
-
-          for (let C = range.s.c; C <= range.e.c; ++C) {
-            const cell = ws[XLSX.utils.encode_cell({ c: C, r: headerRow })];
-            let val = cell ? String(cell.v).trim() : "";
-            if (val) {
-              let orig = val;
-              let i = 1;
-              while (seen.has(val)) {
-                val = `${orig} (${i})`;
-                i++;
-              }
-              seen.add(val);
-              headers.push(val);
-            }
-          }
-
-          // If no headers found, attempt to detect a better header row and persist it
-          if (headers.length === 0) {
-            try {
-              const detected = detectHeaderRow(ws, range);
-              if (detected != null && detected !== headerRow) {
-                try {
-                  const cfg = readConfig() || {};
-                  cfg.headerRowConfig = cfg.headerRowConfig || {};
-                  cfg.headerRowConfig[fileName] =
-                    cfg.headerRowConfig[fileName] || {};
-                  cfg.headerRowConfig[fileName][name] = detected;
-                  fs.writeFileSync(
-                    CONFIG_PATH,
-                    JSON.stringify(cfg, null, 2),
-                    "utf8"
-                  );
-                  try {
-                    invalidateCache(filePath);
-                  } catch (e) {}
-                  log(
-                    "INFO",
-                    "Persisted detected headerRow from getWorkbookMeta",
-                    { filePath, sheetName: name, from: headerRow, to: detected }
-                  );
-                } catch (e) {}
-                headerRow = detected;
-
-                // rebuild headers from detected row
-                headers.length = 0;
-                seen.clear();
-                for (let C = range.s.c; C <= range.e.c; ++C) {
-                  const cell =
-                    ws[XLSX.utils.encode_cell({ c: C, r: headerRow })];
-                  let val = cell ? String(cell.v).trim() : "";
-                  if (val) {
-                    let orig = val;
-                    let i = 1;
-                    while (seen.has(val)) {
-                      val = `${orig} (${i})`;
-                      i++;
-                    }
-                    seen.add(val);
-                    headers.push(val);
-                  }
-                }
-              }
-
-              // If still no headers, attempt a simple downward scan to find first row with content
-              if (headers.length === 0) {
-                for (
-                  let r = Math.max(range.s.r, headerRow);
-                  r <= Math.min(range.e.r, headerRow + 50);
-                  r++
-                ) {
-                  let nonEmpty = 0;
-                  for (let C = range.s.c; C <= range.e.c; ++C) {
-                    const cell = ws[XLSX.utils.encode_cell({ c: C, r })];
-                    const raw =
-                      cell && cell.v != null ? String(cell.v).trim() : null;
-                    if (raw && raw !== "") nonEmpty++;
-                  }
-                  if (nonEmpty >= 2) {
-                    try {
-                      const cfg = readConfig() || {};
-                      cfg.headerRowConfig = cfg.headerRowConfig || {};
-                      cfg.headerRowConfig[fileName] =
-                        cfg.headerRowConfig[fileName] || {};
-                      cfg.headerRowConfig[fileName][name] = r;
-                      fs.writeFileSync(
-                        CONFIG_PATH,
-                        JSON.stringify(cfg, null, 2),
-                        "utf8"
-                      );
-                      try {
-                        invalidateCache(filePath);
-                      } catch (e) {}
-                      log(
-                        "INFO",
-                        "Persisted fallback headerRow from downward scan",
-                        { filePath, sheetName: name, from: headerRow, to: r }
-                      );
-                    } catch (e) {}
-                    headerRow = r;
-                    // rebuild headers
-                    headers.length = 0;
-                    seen.clear();
-                    for (let C = range.s.c; C <= range.e.c; ++C) {
-                      const cell =
-                        ws[XLSX.utils.encode_cell({ c: C, r: headerRow })];
-                      let val = cell ? String(cell.v).trim() : "";
-                      if (val) {
-                        let orig = val;
-                        let i = 1;
-                        while (seen.has(val)) {
-                          val = `${orig} (${i})`;
-                          i++;
-                        }
-                        seen.add(val);
-                        headers.push(val);
-                      }
-                    }
-                    break;
-                  }
-                }
-              }
-            } catch (e) {
-              // ignore detection errors
-            }
-          }
-
-          // Calculate rows excluding header rows
-          const dataRows = Math.max(0, range.e.r - headerRow);
-          const unavailable = headers.length === 0;
-
-          if (unavailable) {
-            log(
-              "WARN",
-              `Sheet '${name}' has no headers at row ${headerRow + 1}`,
-              {
-                filePath,
-                sheetName: name,
-                headerRow: headerRow + 1,
-              }
-            );
-          }
-
-          return {
-            name,
-            columns: headers,
-            rows: dataRows,
-            unavailable,
-            headerRow: headerRow + 1, // Convert to 1-based for display
-            totalRows: range.e.r + 1,
-          };
-        } catch (sheetError) {
-          log("ERROR", `Error processing sheet '${name}'`, {
+    const visibleSheetNames = wb.SheetNames.map((name, idx) => ({
+      name,
+      info: workbookSheets[idx] || {},
+    }))
+      .filter(({ name, info }) => {
+        const hidden = info && info.Hidden;
+        // Hidden values: 0 = visible, 1 = hidden, 2 = veryHidden
+        if (hidden === 1 || hidden === 2) {
+          log("INFO", "Skipping hidden workbook sheet", {
             filePath,
             sheetName: name,
-            error: sheetError.message,
-            stack: sheetError.stack,
+            hidden,
           });
+          return false;
+        }
+        // Respect user-configured hiddenSheets list
+        if (hiddenSheetsFromConfig.includes(name)) {
+          log("INFO", "Skipping sheet per config.hiddenSheets", {
+            filePath,
+            sheetName: name,
+          });
+          return false;
+        }
+        return !ignoreSheets.includes(name);
+      })
+      .map((s) => s.name);
+
+    const sheets = visibleSheetNames.map((name) => {
+      try {
+        const ws = wb.Sheets[name];
+        if (!ws || !ws["!ref"]) {
+          return { name, columns: [], rows: 0, unavailable: true };
+        }
+
+        const range = XLSX.utils.decode_range(ws["!ref"] || "A1:A1");
+        let headerRow = getHeaderRowPosition(filePath, name);
+
+        // Check if the header row is within the sheet range
+        if (headerRow > range.e.r) {
           return {
             name,
             columns: [],
             rows: 0,
             unavailable: true,
-            error: sheetError.message,
-            errorStack: sheetError.stack,
+            error: "Header row beyond sheet range",
           };
         }
+
+        // If configured header row looks like data, attempt detection
+        const configuredVals = [];
+        for (let C = range.s.c; C <= range.e.c; ++C) {
+          const cell = ws[XLSX.utils.encode_cell({ c: C, r: headerRow })];
+          configuredVals.push(cell ? cell.v : null);
+        }
+        if (isLikelyDataRow(configuredVals)) {
+          const detected = detectHeaderRow(ws, range);
+          if (detected != null && detected !== headerRow) {
+            // override headerRow for display
+            headerRow = detected;
+          }
+        }
+
+        const headers = [];
+        const seen = new Set();
+
+        for (let C = range.s.c; C <= range.e.c; ++C) {
+          const cell = ws[XLSX.utils.encode_cell({ c: C, r: headerRow })];
+          let val = cell ? String(cell.v).trim() : "";
+          if (val) {
+            let orig = val;
+            let i = 1;
+            while (seen.has(val)) {
+              val = `${orig} (${i})`;
+              i++;
+            }
+            seen.add(val);
+            headers.push(val);
+          }
+        }
+
+        // If no headers found, attempt to detect a better header row and persist it
+        if (headers.length === 0) {
+          try {
+            const detected = detectHeaderRow(ws, range);
+            if (detected != null && detected !== headerRow) {
+              try {
+                const cfg = readConfig() || {};
+                cfg.headerRowConfig = cfg.headerRowConfig || {};
+                cfg.headerRowConfig[fileName] =
+                  cfg.headerRowConfig[fileName] || {};
+                cfg.headerRowConfig[fileName][name] = detected;
+                fs.writeFileSync(
+                  CONFIG_PATH,
+                  JSON.stringify(cfg, null, 2),
+                  "utf8"
+                );
+                try {
+                  invalidateCache(filePath);
+                } catch (e) {}
+                log(
+                  "INFO",
+                  "Persisted detected headerRow from getWorkbookMeta",
+                  { filePath, sheetName: name, from: headerRow, to: detected }
+                );
+              } catch (e) {}
+              headerRow = detected;
+
+              // rebuild headers from detected row
+              headers.length = 0;
+              seen.clear();
+              for (let C = range.s.c; C <= range.e.c; ++C) {
+                const cell = ws[XLSX.utils.encode_cell({ c: C, r: headerRow })];
+                let val = cell ? String(cell.v).trim() : "";
+                if (val) {
+                  let orig = val;
+                  let i = 1;
+                  while (seen.has(val)) {
+                    val = `${orig} (${i})`;
+                    i++;
+                  }
+                  seen.add(val);
+                  headers.push(val);
+                }
+              }
+            }
+
+            // If still no headers, attempt a simple downward scan to find first row with content
+            if (headers.length === 0) {
+              for (
+                let r = Math.max(range.s.r, headerRow);
+                r <= Math.min(range.e.r, headerRow + 50);
+                r++
+              ) {
+                let nonEmpty = 0;
+                for (let C = range.s.c; C <= range.e.c; ++C) {
+                  const cell = ws[XLSX.utils.encode_cell({ c: C, r })];
+                  const raw =
+                    cell && cell.v != null ? String(cell.v).trim() : null;
+                  if (raw && raw !== "") nonEmpty++;
+                }
+                if (nonEmpty >= 2) {
+                  try {
+                    const cfg = readConfig() || {};
+                    cfg.headerRowConfig = cfg.headerRowConfig || {};
+                    cfg.headerRowConfig[fileName] =
+                      cfg.headerRowConfig[fileName] || {};
+                    cfg.headerRowConfig[fileName][name] = r;
+                    fs.writeFileSync(
+                      CONFIG_PATH,
+                      JSON.stringify(cfg, null, 2),
+                      "utf8"
+                    );
+                    try {
+                      invalidateCache(filePath);
+                    } catch (e) {}
+                    log(
+                      "INFO",
+                      "Persisted fallback headerRow from downward scan",
+                      { filePath, sheetName: name, from: headerRow, to: r }
+                    );
+                  } catch (e) {}
+                  headerRow = r;
+                  // rebuild headers
+                  headers.length = 0;
+                  seen.clear();
+                  for (let C = range.s.c; C <= range.e.c; ++C) {
+                    const cell =
+                      ws[XLSX.utils.encode_cell({ c: C, r: headerRow })];
+                    let val = cell ? String(cell.v).trim() : "";
+                    if (val) {
+                      let orig = val;
+                      let i = 1;
+                      while (seen.has(val)) {
+                        val = `${orig} (${i})`;
+                        i++;
+                      }
+                      seen.add(val);
+                      headers.push(val);
+                    }
+                  }
+                  break;
+                }
+              }
+            }
+          } catch (e) {
+            // ignore detection errors
+          }
+        }
+
+        // Calculate rows excluding header rows
+        const dataRows = Math.max(0, range.e.r - headerRow);
+        const unavailable = headers.length === 0;
+
+        if (unavailable) {
+          log(
+            "WARN",
+            `Sheet '${name}' has no headers at row ${headerRow + 1}`,
+            {
+              filePath,
+              sheetName: name,
+              headerRow: headerRow + 1,
+            }
+          );
+        }
+
+        return {
+          name,
+          columns: headers,
+          rows: dataRows,
+          unavailable,
+          headerRow: headerRow + 1, // Convert to 1-based for display
+          totalRows: range.e.r + 1,
+        };
+      } catch (sheetError) {
+        log("ERROR", `Error processing sheet '${name}'`, {
+          filePath,
+          sheetName: name,
+          error: sheetError.message,
+          stack: sheetError.stack,
+        });
+        return {
+          name,
+          columns: [],
+          rows: 0,
+          unavailable: true,
+          error: sheetError.message,
+          errorStack: sheetError.stack,
+        };
       }
-    );
+    });
 
     log("INFO", "Workbook metadata retrieved", {
       filePath,
@@ -1007,7 +1038,29 @@ function readSheet(filePath, sheetName, opts = {}) {
 
     const start = (page - 1) * pageSize;
     const rows = filtered.slice(start, start + pageSize);
-    const result = { rows, total, page, pageSize, headers };
+
+    // Detect which header columns contain formulas in the underlying worksheet
+    const formulaColumns = [];
+    try {
+      for (let c = range.s.c; c <= range.e.c; c++) {
+        const header = headers[c - range.s.c];
+        if (!header) continue;
+        let found = false;
+        for (let r = dataStartRow; r <= range.e.r; r++) {
+          const addr = XLSX.utils.encode_cell({ c, r });
+          const cell = ws[addr];
+          if (cell && cell.f) {
+            found = true;
+            break;
+          }
+        }
+        if (found) formulaColumns.push(header);
+      }
+    } catch (e) {
+      // ignore detection errors
+    }
+
+    const result = { rows, total, page, pageSize, headers, formulaColumns };
 
     log("DEBUG", "Sheet data", {
       sheetName,
@@ -1038,7 +1091,8 @@ function readSheet(filePath, sheetName, opts = {}) {
 // Helper function to read sheet as JSON
 function readSheetJson(filePath, sheetName) {
   try {
-    const wb = XLSX.readFile(filePath);
+    // Read with bookVBA and cellStyles so any VBA streams and styles are preserved
+    const wb = XLSX.readFile(filePath, { bookVBA: true, cellStyles: true });
     if (!wb.SheetNames.includes(sheetName)) return null;
     const ws = wb.Sheets[sheetName];
     const json = XLSX.utils.sheet_to_json(ws, { defval: null });
@@ -1073,10 +1127,18 @@ function sanitizeRowsForSheet(rows, pkName, headers) {
   return rows.map((r) => {
     const out = {};
     for (const k of Object.keys(r || {})) {
-      // skip internal underscore-prefixed fields always
-      if (k && k[0] === "_") continue;
+      // By default skip internal underscore-prefixed fields to avoid creating
+      // __EMPTY columns. However, if the sheet headers explicitly include an
+      // underscore-prefixed column (for example "_version"), preserve that
+      // field so it can be written back to the workbook.
+      if (k && k[0] === "_") {
+        const headerIncludes = Array.isArray(headers) && headers.includes(k);
+        if (!headerIncludes) continue;
+      }
+
       // only include pk if the sheet headers include it; otherwise skip to avoid __EMPTY columns
       if (k === pkName && !hasPkHeader) continue;
+
       out[k] = r[k];
     }
     return out;
@@ -1112,7 +1174,12 @@ function writeWorkbookAtomic(filePath, workbook, bookType) {
   const tmp = path.join(dir, `.${base}.tmp.${Date.now()}`);
 
   try {
-    XLSX.writeFile(workbook, tmp, { bookType: bookType });
+    // Always request cellStyles preservation; only enable bookVBA for xlsm
+    const writeOpts = { bookType: bookType, cellStyles: true };
+    if (bookType === "xlsm") {
+      writeOpts.bookVBA = true;
+    }
+    XLSX.writeFile(workbook, tmp, writeOpts);
     fs.renameSync(tmp, filePath);
     log("INFO", "Workbook written atomically", { filePath });
   } catch (e) {
@@ -1150,7 +1217,7 @@ async function createRow(filePath, sheetName, row, opts = {}) {
 
     try {
       const r = readSheetJson(filePath, sheetName) || {
-        wb: XLSX.readFile(filePath),
+        wb: XLSX.readFile(filePath, { bookVBA: true, cellStyles: true }),
         json: [],
       };
 
@@ -1279,6 +1346,25 @@ async function createRow(filePath, sheetName, row, opts = {}) {
           XLSX.utils.sheet_add_json(newWs, sanitizedData, { origin: 0 });
         }
 
+        // Preserve existing formula cells in the data area: if the original worksheet
+        // has a formula at a data cell, restore that cell object so we don't overwrite formulas.
+        try {
+          const dataRowsCount = Array.isArray(sanitizedData)
+            ? sanitizedData.length
+            : 0;
+          for (let rIdx = dataStart; rIdx < dataStart + dataRowsCount; rIdx++) {
+            for (let c = range.s.c; c <= range.e.c; c++) {
+              const addr = XLSX.utils.encode_cell({ c, r: rIdx });
+              const origCell = ws[addr];
+              if (origCell && origCell.f) {
+                newWs[addr] = Object.assign({}, origCell);
+              }
+            }
+          }
+        } catch (e) {
+          // non-fatal; if preservation fails, proceed with written data
+        }
+
         fullWs = newWs;
       } catch (e) {
         // fallback: full replacement
@@ -1348,7 +1434,7 @@ async function updateRow(
 
     try {
       const r = readSheetJson(filePath, sheetName) || {
-        wb: XLSX.readFile(filePath),
+        wb: XLSX.readFile(filePath, { bookVBA: true, cellStyles: true }),
         json: [],
       };
 
@@ -1391,7 +1477,24 @@ async function updateRow(
 
       if (!json || json.length === 0) json = r.json || [];
 
-      const idx = json.findIndex((r) => String(r[pkName]) === String(pkValue));
+      let idx = -1;
+      if (pkValue !== undefined && pkValue !== null && String(pkValue) !== "") {
+        idx = json.findIndex((r) => String(r[pkName]) === String(pkValue));
+      }
+
+      // If pkValue not provided or not found, allow index-based update when caller supplied an index
+      if (idx === -1 && opts && typeof opts.index === "number") {
+        const providedIndex = Number(opts.index);
+        if (providedIndex >= 0 && providedIndex < json.length) {
+          idx = providedIndex;
+          log("INFO", "Using index-based update fallback", {
+            filePath,
+            sheetName,
+            providedIndex,
+          });
+        }
+      }
+
       if (idx === -1) {
         log("WARN", "Row not found for update", {
           filePath,
@@ -1428,6 +1531,107 @@ async function updateRow(
       // sanitize rows to avoid writing internal underscore-prefixed fields
       const sanitized = sanitizeRowsForSheet(json, pkName, headers);
 
+      // Try a safe in-place update when possible: update only the specific cell objects
+      // This avoids rebuilding the entire data area which can shift formatting or rows.
+      try {
+        const updatableKeys = Object.keys(updates || {}).filter(
+          (k) => k && k[0] !== "_" && k !== pkName
+        );
+        const hasAllHeaders = Array.isArray(headers)
+          ? updatableKeys.every((k) => headers.includes(k))
+          : false;
+
+        if (headers.length > 0 && hasAllHeaders) {
+          const dataStart = headerRowPos + 1;
+          const targetRow = dataStart + idx;
+          let anyUpdated = false;
+
+          for (const key of updatableKeys) {
+            const colIndex = headers.indexOf(key) + range.s.c;
+            if (colIndex < range.s.c || colIndex > range.e.c) continue;
+            const addr = XLSX.utils.encode_cell({ c: colIndex, r: targetRow });
+            const origCell = ws && ws[addr];
+            const newVal = updates[key];
+
+            // Do not overwrite formula cells
+            if (origCell && origCell.f) continue;
+
+            // If value is null/undefined/empty, remove the cell to avoid stale data
+            if (newVal === null || newVal === undefined || newVal === "") {
+              if (ws && ws[addr]) {
+                delete ws[addr];
+                anyUpdated = true;
+              }
+              continue;
+            }
+
+            const newCell = origCell ? Object.assign({}, origCell) : {};
+            newCell.v = newVal;
+            // Set cell type according to the new value regardless of original type
+            const newType = typeof newVal === "number" ? "n" : "s";
+            newCell.t = newType;
+            // If changing from numeric to string, remove numeric format to avoid NaN when reading
+            if (origCell && origCell.t === "n" && newType === "s") {
+              delete newCell.z;
+            }
+            // Ensure we don't accidentally set a formula
+            delete newCell.f;
+
+            if (!wb || !wb.Sheets) continue;
+            wb.Sheets[sheetName] = ws;
+            ws[addr] = newCell;
+            anyUpdated = true;
+          }
+
+          if (anyUpdated) {
+            // Also persist the incremented _version into the worksheet if the
+            // sheet exposes a "_version" header so the on-disk workbook reflects
+            // the optimistic concurrency bump.
+            try {
+              if (Array.isArray(headers) && headers.includes("_version")) {
+                const verColIndex = headers.indexOf("_version") + range.s.c;
+                const verAddr = XLSX.utils.encode_cell({
+                  c: verColIndex,
+                  r: targetRow,
+                });
+                const verCell =
+                  ws && ws[verAddr] ? Object.assign({}, ws[verAddr]) : {};
+                verCell.v = updated["_version"];
+                verCell.t = typeof verCell.v === "number" ? "n" : "s";
+                // ensure no formula is present on the version cell
+                delete verCell.f;
+                // if changing from numeric to string, remove numeric format
+                if (
+                  ws &&
+                  ws[verAddr] &&
+                  ws[verAddr].t === "n" &&
+                  verCell.t === "s"
+                ) {
+                  delete verCell.z;
+                }
+                ws[verAddr] = verCell;
+              }
+            } catch (e) {
+              // non-fatal; proceed to write whatever we updated
+            }
+
+            const ext = path.extname(filePath).toLowerCase().replace(".", "");
+            const bookType = ext === "xlsm" ? "xlsm" : "xlsx";
+            writeWorkbookAtomic(filePath, wb, bookType);
+            invalidateCache(filePath);
+            log("INFO", "Row updated (in-place)", {
+              filePath,
+              sheetName,
+              pkValue,
+              updates,
+            });
+            return { success: true, row: updated };
+          }
+        }
+      } catch (e) {
+        // any error here should fall back to the full-rebuild path below
+      }
+
       // rebuild full worksheet preserving top rows and header row (clone full cell objects)
       let fullWs;
       try {
@@ -1456,6 +1660,38 @@ async function updateRow(
           });
         } else {
           XLSX.utils.sheet_add_json(newWs, sanitized, { origin: 0 });
+        }
+
+        // Restore formula cells from original worksheet in the data area to avoid overwriting formulas
+        try {
+          const dataRowsCount = Array.isArray(sanitized) ? sanitized.length : 0;
+          for (let rIdx = dataStart; rIdx < dataStart + dataRowsCount; rIdx++) {
+            for (let c = range.s.c; c <= range.e.c; c++) {
+              const addr = XLSX.utils.encode_cell({ c, r: rIdx });
+              const origCell = ws[addr];
+              if (origCell && origCell.f) {
+                newWs[addr] = Object.assign({}, origCell);
+              }
+            }
+          }
+        } catch (e) {
+          // ignore
+        }
+
+        // Restore formula cells from original worksheet in the data area to avoid overwriting formulas
+        try {
+          const dataRowsCount = Array.isArray(sanitized) ? sanitized.length : 0;
+          for (let rIdx = dataStart; rIdx < dataStart + dataRowsCount; rIdx++) {
+            for (let c = range.s.c; c <= range.e.c; c++) {
+              const addr = XLSX.utils.encode_cell({ c, r: rIdx });
+              const origCell = ws[addr];
+              if (origCell && origCell.f) {
+                newWs[addr] = Object.assign({}, origCell);
+              }
+            }
+          }
+        } catch (e) {
+          // ignore
         }
 
         fullWs = newWs;
@@ -1519,7 +1755,7 @@ async function deleteRow(filePath, sheetName, pkValue, expectedVersion) {
 
     try {
       const r = readSheetJson(filePath, sheetName) || {
-        wb: XLSX.readFile(filePath),
+        wb: XLSX.readFile(filePath, { bookVBA: true, cellStyles: true }),
         json: [],
       };
 

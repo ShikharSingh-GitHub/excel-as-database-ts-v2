@@ -13,6 +13,7 @@ export default function CrudModal({
   onSubmit,
   onChange,
   onResolve,
+  formulaColumns = [],
 }: any) {
   if (!open) return null;
 
@@ -106,24 +107,49 @@ export default function CrudModal({
         {/* Content */}
         <div className="px-6 py-4 max-h-[40vh] overflow-y-auto text-gray-900 dark:text-gray-100">
           <div className="space-y-4">
-            {headers.map((header: string) => (
-              <div key={header} className="space-y-2">
-                <label className="block text-sm font-medium text-blue-800 dark:text-gray-200">
-                  {header}
-                </label>
-                <input
-                  className="w-full px-3 py-2.5 border border-blue-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-sm bg-blue-50/30 dark:bg-gray-800 dark:text-gray-100 focus:bg-white dark:focus:bg-transparent"
-                  value={data[header] || ""}
-                  onChange={(e) => onChange && onChange(header, e.target.value)}
-                  placeholder={`Enter ${header}...`}
-                />
-                {errors[header] && (
-                  <p className="text-xs text-red-600 bg-red-50 px-2 py-1 rounded dark:bg-red-900">
-                    {errors[header]}
-                  </p>
-                )}
-              </div>
-            ))}
+            {headers.map((header: string) => {
+              const isFormula =
+                Array.isArray(formulaColumns) &&
+                formulaColumns.includes(header);
+              return (
+                <div key={header} className="space-y-2">
+                  <label className="block text-sm font-medium text-blue-800 dark:text-gray-200">
+                    {header}
+                  </label>
+                  <div className="relative">
+                    <input
+                      readOnly={isFormula}
+                      className={
+                        "w-full px-3 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-sm " +
+                        (isFormula
+                          ? "bg-yellow-50/40 border-yellow-200 text-yellow-900 dark:bg-yellow-900/20 dark:border-yellow-700"
+                          : "bg-blue-50/30 dark:bg-gray-800 dark:text-gray-100")
+                      }
+                      value={data[header] ?? ""}
+                      onChange={(e) => {
+                        if (!isFormula)
+                          onChange && onChange(header, e.target.value);
+                      }}
+                      placeholder={
+                        isFormula
+                          ? `Formula column — read-only`
+                          : `Enter ${header}...`
+                      }
+                    />
+                    {isFormula && (
+                      <span className="absolute right-2 top-2 text-xs px-2 py-0.5 rounded bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-200">
+                        formula
+                      </span>
+                    )}
+                  </div>
+                  {errors[header] && (
+                    <p className="text-xs text-red-600 bg-red-50 px-2 py-1 rounded dark:bg-red-900">
+                      {errors[header]}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
 

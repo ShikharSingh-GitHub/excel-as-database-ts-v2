@@ -357,13 +357,21 @@ export default function App() {
     const updates = Object.assign({}, row);
     delete updates[pkName];
     delete updates["_version"];
+    // If the sheet doesn't expose a PK column in headers, the modal's row
+    // data may not contain the PK. In that case pass the selected row index
+    // to the backend so it can perform an index-based update.
+    const rowIndex =
+      selectedCell && typeof selectedCell.row === "number"
+        ? selectedCell.row
+        : null;
     const res = await (window as any).api.invoke(
       "sheet:update",
       activeFile,
       activeSheet,
       pkValue,
       updates,
-      expected
+      expected,
+      { index: rowIndex }
     );
     if (res && res.error) {
       if (res.error === "version-conflict") {
@@ -647,6 +655,20 @@ export default function App() {
                   conflict: null,
                 })
               }
+              onEditRow={() => {
+                if (selectedCell && selectedCell.row >= 0) {
+                  const rowData = sheetRows.rows[selectedCell.row] || {};
+                  setModal({
+                    open: true,
+                    mode: "edit",
+                    data: { ...(rowData || {}) },
+                    errors: {},
+                    conflict: null,
+                  });
+                } else {
+                  setToast("❌ No row selected to edit");
+                }
+              }}
               onDeleteRow={() => {
                 if (selectedCell && selectedCell.row >= 0) {
                   const confirmDelete = window.confirm(
@@ -819,6 +841,7 @@ export default function App() {
           headers={sheetRows.headers || []}
           data={modal.data || {}}
           errors={modal.errors || {}}
+          formulaColumns={sheetRows.formulaColumns || []}
           onClose={() => setModal({ open: false, mode: null, data: null })}
           onSubmit={() => {
             if (modal.mode === "add") submitAdd(modal.data);

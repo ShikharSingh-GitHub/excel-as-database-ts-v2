@@ -20,6 +20,7 @@ interface ExcelToolbarProps {
   onCut?: () => void;
   onAddRow?: () => void;
   onDeleteRow?: () => void;
+  onEditRow?: () => void;
   onSort?: (direction: "asc" | "desc" | "reset") => void;
   onFilter?: () => void;
   readOnly?: boolean;
@@ -34,6 +35,7 @@ export default function ExcelToolbar({
   onDeleteRow,
   onSort,
   onFilter,
+  onEditRow,
   readOnly = false,
 }: ExcelToolbarProps) {
   return (
@@ -88,6 +90,14 @@ export default function ExcelToolbar({
                 className="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-green-600 to-green-700 dark:from-green-700 dark:to-green-800 text-white rounded-md hover:from-green-700 hover:to-green-800 text-sm font-medium transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-1">
                 <Plus size={14} />
                 Add Row
+              </button>
+            </Tooltip>
+            <Tooltip content="Edit selected row">
+              <button
+                onClick={onEditRow}
+                className="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-yellow-500 to-yellow-600 dark:from-yellow-600 dark:to-yellow-700 text-white rounded-md hover:from-yellow-600 hover:to-yellow-700 text-sm font-medium transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-offset-1">
+                <Scissors size={14} />
+                Edit Row
               </button>
             </Tooltip>
             <Tooltip content="Delete selected row">
