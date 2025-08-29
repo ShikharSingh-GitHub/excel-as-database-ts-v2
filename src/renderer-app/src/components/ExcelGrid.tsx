@@ -202,18 +202,18 @@ export default function ExcelGrid({
   );
 
   return (
-    <div className="excel-grid h-full flex-1 min-h-0 flex flex-col overflow-hidden bg-gradient-to-br from-white to-gray-50">
+    <div className="excel-grid h-full flex-1 min-h-0 flex flex-col overflow-hidden bg-gradient-to-br from-blue-50/30 to-indigo-50/30">
       <div
         className="flex-1 min-h-0 overflow-y-auto pb-16 custom-scrollbar h-full"
         style={{
           height: "100%",
           scrollbarWidth: "thin",
-          scrollbarColor: "#cbd5e1 #f1f5f9",
+          scrollbarColor: "#3b82f6 #dbeafe",
         }}>
         <table className="w-full table-fixed border-collapse">
           <thead className="sticky top-0 z-20">
-            <tr className="bg-gradient-to-r from-gray-100 to-gray-200 border-b border-gray-300 shadow-sm">
-              <th className="w-12 px-2 py-2 text-center text-xs font-semibold text-gray-700 bg-gradient-to-b from-gray-100 to-gray-200 border-r border-gray-300">
+            <tr className="bg-gradient-to-r from-blue-100 to-indigo-100 border-b border-blue-300 shadow-sm">
+              <th className="w-12 px-2 py-3 text-center text-xs font-semibold text-blue-800 bg-gradient-to-b from-blue-100 to-blue-200 border-r border-blue-300">
                 <span title="Row number">#</span>
               </th>
               {headers
@@ -221,9 +221,9 @@ export default function ExcelGrid({
                 .map((header, index) => (
                   <th
                     key={header}
-                    className={`relative px-3 py-2 text-left text-xs font-semibold text-gray-700 bg-gradient-to-b from-gray-100 to-gray-200 border-r border-gray-300 select-none cursor-pointer hover:bg-gradient-to-b hover:from-blue-50 hover:to-blue-100 transition-all duration-200 ${
+                    className={`relative px-3 py-3 text-left text-xs font-semibold text-blue-800 bg-gradient-to-b from-blue-100 to-blue-200 border-r border-blue-300 select-none cursor-pointer hover:bg-gradient-to-b hover:from-blue-200 hover:to-blue-300 transition-all duration-200 ${
                       sortState?.column === header
-                        ? "bg-gradient-to-b from-blue-100 to-blue-200 text-blue-800"
+                        ? "bg-gradient-to-b from-blue-200 to-blue-300 text-blue-900 shadow-sm"
                         : ""
                     }`}
                     style={{
@@ -277,11 +277,11 @@ export default function ExcelGrid({
                     return (
                       <td
                         key={header}
-                        className={`relative px-3 py-2 text-sm border-r border-gray-200 border-b border-gray-200 cursor-cell transition-all ${
+                        className={`relative px-3 py-2.5 text-sm border-r border-blue-200/50 border-b border-blue-200/50 cursor-cell transition-all duration-200 ${
                           isSelected
-                            ? "bg-blue-100 ring-2 ring-blue-500 ring-inset"
-                            : "hover:bg-gray-50"
-                        } ${isEditing ? "bg-white" : ""}`}
+                            ? "bg-blue-100 ring-2 ring-blue-500 ring-inset shadow-sm"
+                            : "hover:bg-blue-50/50"
+                        } ${isEditing ? "bg-white shadow-sm" : ""}`}
                         style={{
                           width: columnWidths[colIndex] || DEFAULT_COLUMN_WIDTH,
                         }}

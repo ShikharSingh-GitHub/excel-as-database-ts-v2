@@ -574,16 +574,15 @@ export default function App() {
                   setToast("❌ No cell selected");
                 }
               }}
-              onPaste={async () => {
+              onPaste={() => {
                 if (selectedCell) {
-                  try {
-                    const text = await navigator.clipboard.readText();
+                  navigator.clipboard.readText().then((text) => {
                     const header = sheetRows.headers[selectedCell.col];
-                    await handleCellEdit(selectedCell.row, header, text);
-                    setToast("✅ Pasted from clipboard");
-                  } catch (error) {
-                    setToast("❌ Paste failed");
-                  }
+                    if (header) {
+                      handleCellEdit(selectedCell.row, header, text);
+                      setToast("✅ Pasted from clipboard");
+                    }
+                  });
                 } else {
                   setToast("❌ No cell selected");
                 }
@@ -596,7 +595,9 @@ export default function App() {
                     ] || "";
                   navigator.clipboard.writeText(String(cellValue));
                   const header = sheetRows.headers[selectedCell.col];
-                  handleCellEdit(selectedCell.row, header, "");
+                  if (header) {
+                    handleCellEdit(selectedCell.row, header, "");
+                  }
                   setToast("✅ Cut to clipboard");
                 } else {
                   setToast("❌ No cell selected");
@@ -687,18 +688,18 @@ export default function App() {
 
             <main className="flex-1 flex flex-col overflow-hidden min-h-0">
               {/* Quick Filter Bar */}
-              <div className="h-10 px-4 border-b border-gray-200/50 flex items-center gap-3 bg-white/60 backdrop-blur-sm flex-shrink-0">
+              <div className="h-12 px-6 border-b border-blue-200/50 flex items-center gap-4 bg-gradient-to-r from-blue-50/60 to-indigo-50/60 backdrop-blur-sm flex-shrink-0">
                 <div className="relative">
                   <Tooltip content="Search and filter data across all columns">
                     <input
                       value={filterText}
                       onChange={(e) => setFilterText(e.target.value)}
                       placeholder="🔍 Search data..."
-                      className="pl-3 pr-10 py-2 border border-gray-300 rounded-lg text-sm w-64 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/80 backdrop-blur-sm transition-all"
+                      className="pl-4 pr-12 py-2.5 border border-blue-200 rounded-lg text-sm w-72 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/90 backdrop-blur-sm transition-all duration-200"
                     />
                   </Tooltip>
                 </div>
-                <div className="ml-auto text-xs text-gray-500 truncate bg-gray-100 px-2 py-1 rounded">
+                <div className="ml-auto text-sm text-blue-700 truncate bg-blue-100 px-3 py-1.5 rounded-lg border border-blue-200">
                   {meta ? meta.path.split("/").pop() : "No file selected"}
                 </div>
               </div>

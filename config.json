@@ -177,6 +177,12 @@
     },
     "/Users/shikhar/Desktop/workbook/sample_large_perf.xlsx": {
       "Data": 0
+    },
+    "sample_customers.xlsx": {
+      "Customers": 0
+    },
+    "/Users/shikhar/Desktop/workbook/sample_customers.xlsx": {
+      "Customers": 0
     }
   },
   "ui": {

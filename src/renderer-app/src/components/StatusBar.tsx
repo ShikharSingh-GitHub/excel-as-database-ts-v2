@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { ChevronLeft, ChevronRight, ArrowRight, CheckCircle } from "lucide-react";
 import Tooltip from "./Tooltip";
 
 interface StatusBarProps {
@@ -46,23 +47,23 @@ export default function StatusBar({
     setJumpValue(page !== undefined ? String(page) : "");
   }, [page]);
   return (
-    <div className="status-bar bg-white/95 backdrop-blur-sm border-t border-gray-200/50 px-4 py-3 text-sm text-gray-600 flex items-center justify-between shadow-sm">
+    <div className="status-bar bg-gradient-to-r from-blue-50 to-indigo-50 border-t border-blue-200 px-6 py-3 text-sm text-blue-700 flex items-center justify-between shadow-sm">
       <div className="flex items-center gap-6">
         {/* Sheet Info */}
         <div className="flex items-center gap-2">
-          <span className="font-medium text-gray-700">Sheet:</span>
-          <span className="text-gray-900 font-semibold bg-blue-50 px-2 py-1 rounded">
+          <span className="font-medium text-blue-800">Sheet:</span>
+          <span className="text-blue-900 font-semibold bg-blue-100 px-3 py-1 rounded-lg border border-blue-200">
             {activeSheet || "None"}
           </span>
         </div>
 
         {readOnly && (
-          <span className="px-2 py-0.5 bg-yellow-100 text-yellow-800 rounded text-xs">
+          <span className="px-3 py-1 bg-amber-100 text-amber-800 rounded-lg text-xs font-medium border border-amber-200">
             READ ONLY
           </span>
         )}
 
-        <span>
+        <span className="text-blue-700">
           {totalRows} rows × {totalCols} columns
         </span>
       </div>
@@ -76,12 +77,12 @@ export default function StatusBar({
                 onClick={onPrevPage}
                 disabled={!onPrevPage || page <= 1}
                 title="Previous page"
-                className="w-7 h-7 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 disabled:opacity-50">
-                ◀
+                className="w-8 h-8 flex items-center justify-center rounded-lg bg-blue-100 hover:bg-blue-200 disabled:opacity-50 disabled:cursor-not-allowed text-blue-700 transition-all duration-200">
+                <ChevronLeft size={16} />
               </button>
             </Tooltip>
 
-            <span className="px-1 text-xs text-gray-600">
+            <span className="px-2 text-xs text-blue-800 font-medium">
               {page} / {totalPages}
             </span>
 
@@ -90,8 +91,8 @@ export default function StatusBar({
                 onClick={onNextPage}
                 disabled={!onNextPage || page >= totalPages}
                 title="Next page"
-                className="w-7 h-7 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 disabled:opacity-50">
-                ▶
+                className="w-8 h-8 flex items-center justify-center rounded-lg bg-blue-100 hover:bg-blue-200 disabled:opacity-50 disabled:cursor-not-allowed text-blue-700 transition-all duration-200">
+                <ChevronRight size={16} />
               </button>
             </Tooltip>
 
@@ -111,7 +112,7 @@ export default function StatusBar({
                       }
                     }
                   }}
-                  className="w-14 px-1 py-0.5 border rounded text-xs bg-white"
+                  className="w-14 px-2 py-1 border border-blue-200 rounded-lg text-xs bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
                   aria-label="Jump to page"
                 />
               </Tooltip>
@@ -124,7 +125,8 @@ export default function StatusBar({
                       onJumpPage(n);
                     }
                   }}
-                  className="px-2 py-0.5 rounded bg-blue-600 text-white text-xs hover:bg-blue-700">
+                  className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-blue-600 text-white text-xs hover:bg-blue-700 transition-all duration-200">
+                  <ArrowRight size={12} />
                   Go
                 </button>
               </Tooltip>
@@ -132,26 +134,25 @@ export default function StatusBar({
           </div>
         )}
 
-        <div className="flex items-center gap-4">
-          {selectedRange && <span>Selected: {selectedRange}</span>}
+        <div className="flex items-center gap-4 text-blue-700">
+          {selectedRange && <span className="font-medium">Selected: {selectedRange}</span>}
 
           {count !== undefined && count > 1 && (
             <div className="flex items-center gap-3">
-              <span>Count: {count}</span>
-              {sum !== undefined && <span>Sum: {sum.toLocaleString()}</span>}
+              <span>Count: <span className="font-medium">{count}</span></span>
+              {sum !== undefined && <span>Sum: <span className="font-medium">{sum.toLocaleString()}</span></span>}
               {average !== undefined && (
-                <span>Average: {average.toFixed(2)}</span>
+                <span>Average: <span className="font-medium">{average.toFixed(2)}</span></span>
               )}
             </div>
           )}
-
-          {/* numeric rows count removed from center per preference */}
         </div>
       </div>
 
       {/* Right side - Ready status */}
       <div className="flex items-center gap-2">
-        <span className="text-green-600">Ready</span>
+        <CheckCircle size={16} className="text-green-600" />
+        <span className="text-green-700 font-medium">Ready</span>
       </div>
     </div>
   );
