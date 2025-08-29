@@ -1,5 +1,5 @@
+import { AlertTriangle, RotateCcw, Save, X } from "lucide-react";
 import React from "react";
-import { X, AlertTriangle, Save, RotateCcw } from "lucide-react";
 
 export default function CrudModal({
   open,
@@ -21,8 +21,8 @@ export default function CrudModal({
       (conflict && (conflict.id ?? conflict[Object.keys(conflict)[0]])) || "id";
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm z-50">
-        <div className="bg-white rounded-xl shadow-2xl border border-blue-200 w-full max-w-4xl max-h-[90vh] overflow-hidden m-4">
-          <div className="bg-gradient-to-r from-red-50 to-orange-50 border-b border-red-200 px-6 py-4">
+        <div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl border border-blue-200 dark:border-gray-700 w-full max-w-4xl max-h-[90vh] overflow-hidden m-4">
+          <div className="bg-gradient-to-r from-red-50 to-orange-50 dark:from-red-900 dark:to-orange-900 border-b border-red-200 dark:border-red-800 px-6 py-4">
             <div className="flex items-center gap-3">
               <AlertTriangle className="text-red-600" size={24} />
               <h2 className="text-lg font-bold text-red-800">
@@ -38,24 +38,30 @@ export default function CrudModal({
               The row was changed by another process. Choose how to resolve.
             </p>
           </div>
-          <div className="p-6">
+          <div className="p-6 text-gray-900 dark:text-gray-100">
             <div className="grid grid-cols-2 gap-6 mb-6">
               <div>
-                <h3 className="font-semibold text-blue-800 mb-3">Current (on disk)</h3>
-                <div className="border border-blue-200 p-4 rounded-lg bg-blue-50/50 max-h-48 overflow-auto">
+                <h3 className="font-semibold text-blue-800 mb-3">
+                  Current (on disk)
+                </h3>
+                <div className="border border-blue-200 dark:border-gray-700 p-4 rounded-lg bg-blue-50/50 dark:bg-transparent max-h-48 overflow-auto">
                   {Object.entries(conflict).map(([k, v]) => (
                     <div key={k} className="text-sm mb-2">
-                      <strong className="text-blue-900">{k}:</strong> <span className="text-blue-700">{String(v)}</span>
+                      <strong className="text-blue-900">{k}:</strong>{" "}
+                      <span className="text-blue-700">{String(v)}</span>
                     </div>
                   ))}
                 </div>
               </div>
               <div>
-                <h3 className="font-semibold text-blue-800 mb-3">Your changes</h3>
-                <div className="border border-blue-200 p-4 rounded-lg bg-blue-50/50 max-h-48 overflow-auto">
+                <h3 className="font-semibold text-blue-800 mb-3">
+                  Your changes
+                </h3>
+                <div className="border border-blue-200 dark:border-gray-700 p-4 rounded-lg bg-blue-50/50 dark:bg-transparent max-h-48 overflow-auto">
                   {Object.entries(data || {}).map(([k, v]) => (
                     <div key={k} className="text-sm mb-2">
-                      <strong className="text-blue-900">{k}:</strong> <span className="text-blue-700">{String(v)}</span>
+                      <strong className="text-blue-900">{k}:</strong>{" "}
+                      <span className="text-blue-700">{String(v)}</span>
                     </div>
                   ))}
                 </div>
@@ -65,7 +71,7 @@ export default function CrudModal({
             <div className="flex justify-end gap-3">
               <button
                 onClick={() => onResolve && onResolve("reload")}
-                className="inline-flex items-center gap-2 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-all duration-200 font-medium">
+                className="inline-flex items-center gap-2 px-4 py-2.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-all duration-200 font-medium">
                 <RotateCcw size={16} />
                 Reload
               </button>
@@ -84,13 +90,11 @@ export default function CrudModal({
 
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm z-[9999] p-4">
-      <div className="bg-white rounded-xl shadow-2xl border border-blue-200 w-full max-w-md max-h-[70vh] overflow-hidden">
+      <div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl border border-blue-200 dark:border-gray-700 w-full max-w-md max-h-[70vh] overflow-hidden">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+        <div className="px-6 py-4 border-b border-blue-200 dark:border-gray-700 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-900">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-blue-900">
-              {title}
-            </h2>
+            <h2 className="text-lg font-semibold text-blue-900">{title}</h2>
             <button
               onClick={onClose}
               className="p-1 hover:bg-blue-100 rounded-lg transition-colors">
@@ -100,21 +104,21 @@ export default function CrudModal({
         </div>
 
         {/* Content */}
-        <div className="px-6 py-4 max-h-[40vh] overflow-y-auto">
+        <div className="px-6 py-4 max-h-[40vh] overflow-y-auto text-gray-900 dark:text-gray-100">
           <div className="space-y-4">
             {headers.map((header: string) => (
               <div key={header} className="space-y-2">
-                <label className="block text-sm font-medium text-blue-800">
+                <label className="block text-sm font-medium text-blue-800 dark:text-gray-200">
                   {header}
                 </label>
                 <input
-                  className="w-full px-3 py-2.5 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-sm bg-blue-50/30 focus:bg-white"
+                  className="w-full px-3 py-2.5 border border-blue-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-sm bg-blue-50/30 dark:bg-gray-800 dark:text-gray-100 focus:bg-white dark:focus:bg-transparent"
                   value={data[header] || ""}
                   onChange={(e) => onChange && onChange(header, e.target.value)}
                   placeholder={`Enter ${header}...`}
                 />
                 {errors[header] && (
-                  <p className="text-xs text-red-600 bg-red-50 px-2 py-1 rounded">
+                  <p className="text-xs text-red-600 bg-red-50 px-2 py-1 rounded dark:bg-red-900">
                     {errors[header]}
                   </p>
                 )}
@@ -124,10 +128,10 @@ export default function CrudModal({
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-blue-200 bg-blue-50/30 flex justify-end gap-3">
+        <div className="px-6 py-4 border-t border-blue-200 dark:border-gray-700 bg-blue-50/30 dark:bg-transparent flex justify-end gap-3">
           <button
             onClick={onClose}
-            className="px-4 py-2.5 text-sm text-blue-700 bg-white border border-blue-200 rounded-lg hover:bg-blue-50 transition-all duration-200 font-medium">
+            className="px-4 py-2.5 text-sm text-blue-700 dark:text-gray-100 bg-white dark:bg-gray-800 border border-blue-200 dark:border-gray-700 rounded-lg hover:bg-blue-50 dark:hover:bg-gray-700 transition-all duration-200 font-medium">
             Cancel
           </button>
           <button

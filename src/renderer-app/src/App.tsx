@@ -73,6 +73,27 @@ export default function App() {
       try {
         const cfg = await (window as any).api.invoke("config:get");
         setConfig(cfg || {});
+        // Initialize theme from config.ui.theme (auto/light/dark)
+        try {
+          const theme = cfg && cfg.ui && cfg.ui.theme ? cfg.ui.theme : "auto";
+          if (theme === "dark") {
+            setDark(true);
+            document.documentElement.classList.add("dark");
+          } else if (theme === "light") {
+            setDark(false);
+            document.documentElement.classList.remove("dark");
+          } else {
+            // auto: follow system preference
+            const prefersDark =
+              typeof window !== "undefined" &&
+              window.matchMedia &&
+              window.matchMedia("(prefers-color-scheme: dark)").matches;
+            setDark(prefersDark);
+            document.documentElement.classList.toggle("dark", prefersDark);
+          }
+        } catch (e) {
+          // ignore theme initialization errors
+        }
         const folder = cfg && cfg.folderPath;
         if (!folder) {
           const p = await (window as any).api.invoke("folder:pick");
@@ -95,6 +116,20 @@ export default function App() {
       }
     })();
   }, []);
+
+  // When dark toggles, update document class and persist preference
+  useEffect(() => {
+    try {
+      document.documentElement.classList.toggle("dark", Boolean(dark));
+      // persist into config.ui.theme
+      const nextTheme = dark ? "dark" : "light";
+      if (config) {
+        const newUi = Object.assign({}, config.ui || {}, { theme: nextTheme });
+        (window as any).api.invoke("config:set", { ui: newUi }).catch(() => {});
+        setConfig((prev: any) => ({ ...(prev || {}), ui: newUi }));
+      }
+    } catch (e) {}
+  }, [dark]);
 
   const refreshFiles = useCallback(async () => {
     try {
@@ -494,12 +529,12 @@ export default function App() {
       <div className="flex h-screen flex-col bg-gradient-to-br from-gray-50 to-blue-50 text-gray-900 dark:from-gray-900 dark:to-gray-800 dark:text-gray-100 relative">
         <header className="flex flex-col">
           {/* Title Bar */}
-          <div className="h-12 px-4 border-b border-gray-200/50 flex items-center gap-3 bg-white/80 backdrop-blur-sm shadow-sm z-0">
+          <div className="h-12 px-4 border-b border-gray-200/50 flex items-center gap-3 bg-white/80 dark:bg-gray-900/70 backdrop-blur-sm shadow-sm z-0">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold text-sm">📊</span>
               </div>
-              <div className="flex-1 font-semibold text-gray-800 text-lg">
+              <div className="flex-1 font-semibold text-gray-800 dark:text-gray-100 text-lg">
                 Excel Database
               </div>
             </div>
@@ -522,7 +557,7 @@ export default function App() {
                       setToast("❌ Failed to pick folder");
                     }
                   }}
-                  className="p-2 rounded-lg text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                  className="p-2 rounded-lg text-gray-600 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                   📁
                 </button>
               </Tooltip>
@@ -530,14 +565,14 @@ export default function App() {
                 content={dark ? "Switch to light mode" : "Switch to dark mode"}>
                 <button
                   onClick={() => setDark(!dark)}
-                  className="p-2 rounded-lg text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                  className="p-2 rounded-lg text-gray-600 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                   {dark ? "☀️" : "🌙"}
                 </button>
               </Tooltip>
               <Tooltip content="Refresh all files">
                 <button
                   onClick={refreshFiles}
-                  className="p-2 rounded-lg text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                  className="p-2 rounded-lg text-gray-600 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                   🔄
                 </button>
               </Tooltip>
@@ -688,18 +723,20 @@ export default function App() {
 
             <main className="flex-1 flex flex-col overflow-hidden min-h-0">
               {/* Quick Filter Bar */}
-              <div className="h-12 px-6 border-b border-blue-200/50 flex items-center gap-4 bg-gradient-to-r from-blue-50/60 to-indigo-50/60 backdrop-blur-sm flex-shrink-0">
+              <div
+                className="px-4 border-b border-blue-200/50 flex items-center gap-3 bg-gradient-to-r from-blue-50/60 to-indigo-50/60 dark:bg-gradient-to-r dark:from-gray-900 dark:to-gray-800 dark:border-gray-700 backdrop-blur-sm flex-shrink-0"
+                style={{ height: "39.5px" }}>
                 <div className="relative">
                   <Tooltip content="Search and filter data across all columns">
                     <input
                       value={filterText}
                       onChange={(e) => setFilterText(e.target.value)}
                       placeholder="🔍 Search data..."
-                      className="pl-4 pr-12 py-2.5 border border-blue-200 rounded-lg text-sm w-72 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/90 backdrop-blur-sm transition-all duration-200"
+                      className="pl-4 pr-12 h-8 py-0 rounded-md border border-blue-200 text-sm w-64 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/90 dark:bg-blue-900/60 dark:text-white placeholder-gray-600 dark:placeholder-white/70 backdrop-blur-sm transition-all duration-200"
                     />
                   </Tooltip>
                 </div>
-                <div className="ml-auto text-sm text-blue-700 truncate bg-blue-100 px-3 py-1.5 rounded-lg border border-blue-200">
+                <div className="ml-auto text-sm text-blue-700 dark:text-blue-100 truncate bg-blue-100 dark:bg-gradient-to-r dark:from-blue-900 dark:to-blue-800 rounded-md border border-blue-200 dark:border-transparent chosen-folder-name flex items-center px-3 h-8">
                   {meta ? meta.path.split("/").pop() : "No file selected"}
                 </div>
               </div>

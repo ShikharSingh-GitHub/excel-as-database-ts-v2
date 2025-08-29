@@ -1,11 +1,11 @@
 import React, { useEffect } from "react";
 
-export default function Toast({ 
-  message, 
-  type = "info", 
-  onClose, 
-  autoClose = true, 
-  duration = 4000 
+export default function Toast({
+  message,
+  type = "info",
+  onClose,
+  autoClose = true,
+  duration = 4000,
 }: {
   message: string;
   type?: "info" | "success" | "error";
@@ -15,10 +15,10 @@ export default function Toast({
 }) {
   const bg =
     type === "success"
-      ? "bg-green-500"
+      ? "bg-green-500 dark:bg-green-600"
       : type === "error"
-      ? "bg-red-500"
-      : "bg-sky-500";
+      ? "bg-red-500 dark:bg-red-600"
+      : "bg-sky-500 dark:bg-sky-600";
 
   useEffect(() => {
     if (autoClose && onClose) {
@@ -32,7 +32,7 @@ export default function Toast({
 
   return (
     <div
-      className={`${bg} fixed top-4 right-4 p-4 rounded-lg text-white shadow-lg z-[10000] max-w-sm`}
+      className={`${bg} fixed top-4 right-4 p-4 rounded-lg text-white dark:text-gray-100 shadow-lg z-[10000] max-w-sm`}
       role="alert">
       <div className="flex items-center justify-between">
         <span>{message}</span>

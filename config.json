@@ -186,7 +186,7 @@
     }
   },
   "ui": {
-    "theme": "auto",
+    "theme": "light",
     "defaultSort": "asc",
     "showSystemColumns": false
   },

@@ -29,14 +29,16 @@ export default function FilterModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
-      <div className="bg-white rounded-lg shadow-lg p-4 w-96">
+      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg p-4 w-96 text-gray-900 dark:text-gray-100">
         <h3 className="text-lg font-semibold mb-2">Filter</h3>
         <div className="mb-2">
-          <label className="block text-sm text-gray-700 mb-1">Column</label>
+          <label className="block text-sm text-gray-700 dark:text-gray-300 mb-1">
+            Column
+          </label>
           <select
             value={header || ""}
             onChange={(e) => setHeader(e.target.value || null)}
-            className="w-full border px-2 py-1 rounded">
+            className="w-full border px-2 py-1 rounded bg-white dark:bg-gray-800 dark:text-gray-100 border-gray-300 dark:border-gray-700">
             <option value="">All columns</option>
             {headerOptions.map((h) => (
               <option key={h} value={h}>
@@ -46,16 +48,20 @@ export default function FilterModal({
           </select>
         </div>
         <div className="mb-4">
-          <label className="block text-sm text-gray-700 mb-1">Value</label>
+          <label className="block text-sm text-gray-700 dark:text-gray-300 mb-1">
+            Value
+          </label>
           <input
             value={value}
             onChange={(e) => setValue(e.target.value)}
-            className="w-full border px-2 py-1 rounded"
+            className="w-full border px-2 py-1 rounded bg-white dark:bg-gray-800 dark:text-gray-100 border-gray-300 dark:border-gray-700"
             placeholder="Contains..."
           />
         </div>
         <div className="flex justify-end gap-2">
-          <button onClick={onClose} className="px-3 py-1 rounded border">
+          <button
+            onClick={onClose}
+            className="px-3 py-1 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-gray-100">
             Cancel
           </button>
           <button

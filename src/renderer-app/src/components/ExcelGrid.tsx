@@ -202,7 +202,7 @@ export default function ExcelGrid({
   );
 
   return (
-    <div className="excel-grid h-full flex-1 min-h-0 flex flex-col overflow-hidden bg-gradient-to-br from-blue-50/30 to-indigo-50/30">
+    <div className="excel-grid h-full flex-1 min-h-0 flex flex-col overflow-hidden bg-gradient-to-br from-blue-50/30 to-indigo-50/30 dark:from-gray-800 dark:to-gray-900">
       <div
         className="flex-1 min-h-0 overflow-y-auto pb-16 custom-scrollbar h-full"
         style={{
@@ -212,8 +212,8 @@ export default function ExcelGrid({
         }}>
         <table className="w-full table-fixed border-collapse">
           <thead className="sticky top-0 z-20">
-            <tr className="bg-gradient-to-r from-blue-100 to-indigo-100 border-b border-blue-300 shadow-sm">
-              <th className="w-12 px-2 py-3 text-center text-xs font-semibold text-blue-800 bg-gradient-to-b from-blue-100 to-blue-200 border-r border-blue-300">
+            <tr className="bg-gradient-to-r from-blue-100 to-indigo-100 dark:bg-gradient-to-r dark:from-blue-900 dark:to-blue-800 dark:border-b dark:border-gray-700 border-b border-blue-300 shadow-sm">
+              <th className="w-12 px-2 py-3 text-center text-xs font-semibold text-blue-800 dark:text-blue-200 bg-gradient-to-b from-blue-100 to-blue-200 dark:bg-gradient-to-b dark:from-blue-900 dark:to-blue-800 border-r border-blue-300 dark:border-gray-700 select-none transition-all duration-200">
                 <span title="Row number">#</span>
               </th>
               {headers
@@ -221,9 +221,9 @@ export default function ExcelGrid({
                 .map((header, index) => (
                   <th
                     key={header}
-                    className={`relative px-3 py-3 text-left text-xs font-semibold text-blue-800 bg-gradient-to-b from-blue-100 to-blue-200 border-r border-blue-300 select-none cursor-pointer hover:bg-gradient-to-b hover:from-blue-200 hover:to-blue-300 transition-all duration-200 ${
+                    className={`relative px-3 py-3 text-left text-xs font-semibold text-blue-800 dark:text-blue-200 bg-gradient-to-b from-blue-100 to-blue-200 dark:bg-gradient-to-b dark:from-blue-900 dark:to-blue-800 border-r border-blue-300 dark:border-gray-700 select-none cursor-pointer hover:bg-gradient-to-b hover:from-blue-200 hover:to-blue-300 dark:hover:bg-blue-800 transition-all duration-200 ${
                       sortState?.column === header
-                        ? "bg-gradient-to-b from-blue-200 to-blue-300 text-blue-900 shadow-sm"
+                        ? "bg-gradient-to-b from-blue-200 to-blue-300 text-blue-900 shadow-sm dark:bg-gradient-to-b dark:from-blue-900 dark:to-blue-800 dark:text-blue-200"
                         : ""
                     }`}
                     style={{
@@ -237,7 +237,7 @@ export default function ExcelGrid({
                       <span className="truncate font-medium">{header}</span>
                       {sortState?.column === header && (
                         <span
-                          className="ml-1 text-blue-700 font-bold"
+                          className="ml-1 text-blue-700 dark:text-blue-300 font-bold"
                           title={
                             sortState.direction === "asc"
                               ? "Sorted ascending"
@@ -250,7 +250,7 @@ export default function ExcelGrid({
 
                     {/* Resize handle */}
                     <div
-                      className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-500 opacity-0 hover:opacity-100 transition-opacity duration-200"
+                      className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-500 dark:hover:bg-blue-400 opacity-0 hover:opacity-100 transition-opacity duration-200"
                       onMouseDown={(e) => handleMouseDown(e, index)}
                       style={{ zIndex: 1000 }}
                     />
@@ -262,9 +262,9 @@ export default function ExcelGrid({
             {rows.map((row, rowIndex) => (
               <tr
                 key={rowIndex}
-                className="hover:bg-blue-50/30 transition-colors"
+                className="hover:bg-blue-50/30 dark:hover:bg-blue-800 transition-colors"
                 onContextMenu={(e) => handleContextMenu(e, rowIndex)}>
-                <td className="w-12 px-2 py-2 text-center text-xs font-medium text-gray-700 bg-gray-50 border-r border-gray-300">
+                <td className="w-12 px-2 py-2 text-center text-xs font-medium text-gray-700 dark:text-blue-100 bg-gray-50 dark:bg-blue-900/10 border-r border-gray-300 dark:border-gray-700">
                   {startIndex + rowIndex + 1}
                 </td>
                 {headers
@@ -277,11 +277,15 @@ export default function ExcelGrid({
                     return (
                       <td
                         key={header}
-                        className={`relative px-3 py-2.5 text-sm border-r border-blue-200/50 border-b border-blue-200/50 cursor-cell transition-all duration-200 ${
+                        className={`relative px-3 py-2.5 text-sm border-r border-blue-200/50 border-b border-blue-200/50 dark:border-gray-700 cursor-cell transition-all duration-200 ${
                           isSelected
-                            ? "bg-blue-100 ring-2 ring-blue-500 ring-inset shadow-sm"
-                            : "hover:bg-blue-50/50"
-                        } ${isEditing ? "bg-white shadow-sm" : ""}`}
+                            ? "bg-blue-100 ring-2 ring-blue-500 ring-inset shadow-sm dark:bg-blue-800"
+                            : "hover:bg-blue-50/50 dark:hover:bg-blue-800"
+                        } ${
+                          isEditing
+                            ? "bg-white shadow-sm dark:bg-blue-900/20"
+                            : ""
+                        }`}
                         style={{
                           width: columnWidths[colIndex] || DEFAULT_COLUMN_WIDTH,
                         }}
@@ -326,7 +330,7 @@ export default function ExcelGrid({
                             className="w-full h-full border-none outline-none bg-transparent text-sm"
                           />
                         ) : (
-                          <span className="truncate block w-full text-gray-900">
+                          <span className="truncate block w-full text-gray-900 dark:text-gray-100">
                             {String(cellValue)}
                           </span>
                         )}
@@ -342,7 +346,7 @@ export default function ExcelGrid({
       {/* Context Menu */}
       {contextMenu && (
         <div
-          className="fixed bg-white border border-gray-200 rounded-lg shadow-lg py-2 z-50"
+          className="fixed bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg py-2 z-50 text-gray-900 dark:text-gray-100"
           style={{
             left: contextMenu.x,
             top: contextMenu.y,
@@ -353,7 +357,7 @@ export default function ExcelGrid({
                 ? handleAddRowAbove(contextMenu.rowIndex)
                 : onRowAdd?.()
             }
-            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2">
+            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2">
             ➕ Add Row Above
           </button>
           <button
@@ -362,13 +366,13 @@ export default function ExcelGrid({
                 ? handleAddRowBelow(contextMenu.rowIndex)
                 : onRowAdd?.()
             }
-            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2">
+            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2">
             ➕ Add Row Below
           </button>
           {contextMenu.rowIndex !== undefined && (
             <button
               onClick={() => handleDeleteRow(contextMenu.rowIndex!)}
-              className="w-full px-4 py-2 text-left text-sm hover:bg-red-50 hover:text-red-700 flex items-center gap-2">
+              className="w-full px-4 py-2 text-left text-sm hover:bg-red-50 dark:hover:bg-red-900 hover:text-red-700 dark:hover:text-red-300 flex items-center gap-2">
               🗑️ Delete Row
             </button>
           )}

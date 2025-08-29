@@ -164,7 +164,7 @@ export default function ContextMenu({
   return (
     <div
       ref={menuRef}
-      className="fixed bg-white border border-gray-300 rounded-md shadow-lg py-1 z-50 min-w-48"
+      className="fixed bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md shadow-lg py-1 z-50 min-w-48 text-gray-900 dark:text-gray-100"
       style={{ left: x, top: y }}>
       {menuItems.map((item, index) => (
         <React.Fragment key={index}>
@@ -177,11 +177,11 @@ export default function ContextMenu({
             }}
             disabled={item.disabled}
             className={`
-              w-full px-3 py-2 text-left text-sm hover:bg-blue-50 flex items-center justify-between
+              w-full px-3 py-2 text-left text-sm hover:bg-blue-50 dark:hover:bg-gray-700 flex items-center justify-between
               ${
                 item.disabled
-                  ? "text-gray-400 cursor-not-allowed"
-                  : "text-gray-700 cursor-pointer"
+                  ? "text-gray-400 dark:text-gray-500 cursor-not-allowed"
+                  : "text-gray-700 dark:text-gray-100 cursor-pointer"
               }
             `}>
             <span>{item.label}</span>
@@ -191,7 +191,9 @@ export default function ContextMenu({
               </span>
             )}
           </button>
-          {item.separator && <hr className="my-1 border-gray-200" />}
+          {item.separator && (
+            <hr className="my-1 border-gray-200 dark:border-gray-700" />
+          )}
         </React.Fragment>
       ))}
     </div>

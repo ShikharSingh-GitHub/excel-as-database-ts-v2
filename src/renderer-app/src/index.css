@@ -11,10 +11,87 @@ body,
   padding: 0;
 }
 
+/* Compact / Sleek mode: globally reduce spacing and radii to free up room for the grid */
+html,
+body,
+#root {
+  /* Slightly smaller base font for a denser layout */
+  font-size: 14px;
+}
+
+/* Make toolbar, formula-bar and statusbar tighter */
+.excel-toolbar,
+.formula-bar,
+.status-bar {
+  padding-top: 0.35rem; /* ~6px */
+  padding-bottom: 0.35rem;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+  box-shadow: none; /* remove extra shadow for sleeker look */
+}
+
+/* Slimmer buttons in toolbars and the formula bar */
+.excel-toolbar button,
+.formula-bar button,
+.status-bar button,
+.sidebar button {
+  padding: 0.35rem 0.5rem !important;
+  border-radius: 0.375rem !important; /* rounded-md */
+  line-height: 1;
+}
+
+/* Smaller icons by default inside toolbar-like controls */
+.excel-toolbar svg,
+.formula-bar svg,
+.status-bar svg {
+  width: 16px !important;
+  height: 16px !important;
+}
+
+/* Tighter inputs */
+.formula-bar input,
+.excel-toolbar input,
+.crud-modal input,
+.filter-modal input,
+.sidebar input {
+  padding: 0.35rem 0.5rem !important;
+  font-size: 0.95rem !important;
+  border-radius: 0.375rem !important;
+}
+
+/* Slightly reduce card/modal corner radius to feel sleeker */
+.crud-modal,
+.filter-modal,
+.toast,
+.modal {
+  border-radius: 0.5rem;
+}
+
+/* Reduce hover elevation */
+.hover\:bg-blue-100:hover,
+.hover\:bg-gray-100:hover {
+  box-shadow: none !important;
+}
+
+/* Space between chosen-folder name and Choose Folder control */
+.chosen-folder-name {
+  margin-right: 0.5rem;
+  min-width: 0;
+  max-width: 40%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 body {
   font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto,
     "Helvetica Neue", Arial, sans-serif;
   background: #f8fafc;
+}
+
+/* Dark mode body background */
+.dark body {
+  background: #0b1220; /* dark slate */
 }
 
 /* Custom scrollbar styles */
@@ -61,6 +138,28 @@ body {
   height: 8px;
 }
 
+/* Tippy light theme overrides: ensure white background and dark text */
+.tippy-box[data-theme~="light"] {
+  background: #ffffff;
+  color: #0f172a; /* slate-900 */
+  border: 1px solid rgba(2, 6, 23, 0.06);
+  box-shadow: 0 4px 16px rgba(2, 6, 23, 0.08);
+}
+.tippy-box[data-theme~="light"] .tippy-arrow {
+  color: #ffffff;
+}
+
+/* tippy dark theme overrides */
+.tippy-box[data-theme~="dark"] {
+  background: #0b1220; /* dark slate */
+  color: #e6eef8; /* light text */
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  box-shadow: 0 6px 20px rgba(2, 6, 23, 0.6);
+}
+.tippy-box[data-theme~="dark"] .tippy-arrow {
+  color: #0b1220;
+}
+
 .custom-scrollbar::-webkit-scrollbar-track {
   background: #f1f5f9;
   border-radius: 4px;
@@ -86,4 +185,24 @@ body {
 
 .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: #9ca3af;
+}
+
+/* Force all text to white in dark theme for consistent contrast */
+.dark,
+.dark body,
+.dark body * {
+  color: #ffffff !important;
+}
+
+/* Dark-mode hover: prefer a slightly lighter dark-blue for interactive hover states */
+.dark .hover\:bg-blue-100:hover,
+.dark .hover\:bg-blue-50:hover,
+.dark .hover\:bg-\[blue-50\/50\]:hover,
+.dark .hover\:bg-gray-100:hover {
+  background-color: #1e3a8a !important; /* Tailwind blue-800-ish */
+}
+
+/* Also override hover utilities that set inline opacity variants */
+.dark .hover\:bg-blue-50\/50:hover {
+  background-color: rgba(30, 58, 138, 0.2) !important;
 }
