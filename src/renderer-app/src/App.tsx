@@ -14,6 +14,8 @@ import "./index.css";
 
 type FileEntry = { name: string; path: string; size: number; mtimeMs: number };
 
+// Note: XlsmConversionStatus component removed - using toast notifications instead
+
 export default function App() {
   const [dark, setDark] = useState(false);
   const [config, setConfig] = useState<any>(null);
@@ -101,13 +103,55 @@ export default function App() {
             await (window as any).api.invoke("config:set", { folderPath: p });
             setConfig((prev: any) => ({ ...(prev || {}), folderPath: p }));
             const res = await (window as any).api.invoke("folder:scan", p);
-            if (!res.error) setFiles(res.files || []);
+            if (!res.error) {
+              setFiles(res.files || []);
+
+              // Check for new XLSM files that had macros stripped
+              try {
+                const newXlsmFiles = await (window as any).api.invoke(
+                  "xlsm:getNewFiles"
+                );
+                if (newXlsmFiles.length > 0) {
+                  const fileNames = newXlsmFiles
+                    .map((f: string) => f.split("/").pop())
+                    .join(", ");
+                  setToast(
+                    `📋 XLSM files detected: ${fileNames}. Macros have been removed; formulas and formatting preserved.`
+                  );
+                  // Clear the notifications
+                  await (window as any).api.invoke("xlsm:clearNotifications");
+                }
+              } catch (e) {
+                console.error("Failed to check XLSM notifications:", e);
+              }
+            }
           } else {
             setToast("❌ No folder selected");
           }
         } else {
           const res = await (window as any).api.invoke("folder:scan", folder);
-          if (!res.error) setFiles(res.files || []);
+          if (!res.error) {
+            setFiles(res.files || []);
+
+            // Check for new XLSM files that had macros stripped
+            try {
+              const newXlsmFiles = await (window as any).api.invoke(
+                "xlsm:getNewFiles"
+              );
+              if (newXlsmFiles.length > 0) {
+                const fileNames = newXlsmFiles
+                  .map((f: string) => f.split("/").pop())
+                  .join(", ");
+                setToast(
+                  `📋 XLSM files detected: ${fileNames}. Macros have been removed; formulas and formatting preserved.`
+                );
+                // Clear the notifications
+                await (window as any).api.invoke("xlsm:clearNotifications");
+              }
+            } catch (e) {
+              console.error("Failed to check XLSM notifications:", e);
+            }
+          }
         }
       } catch (err) {
         const e = err as any;
@@ -136,7 +180,28 @@ export default function App() {
       const folder = (config && config.folderPath) || null;
       if (!folder) return;
       const res = await (window as any).api.invoke("folder:scan", folder);
-      if (!res.error) setFiles(res.files || []);
+      if (!res.error) {
+        setFiles(res.files || []);
+
+        // Check for new XLSM files that had macros stripped
+        try {
+          const newXlsmFiles = await (window as any).api.invoke(
+            "xlsm:getNewFiles"
+          );
+          if (newXlsmFiles.length > 0) {
+            const fileNames = newXlsmFiles
+              .map((f: string) => f.split("/").pop())
+              .join(", ");
+            setToast(
+              `📋 XLSM files detected: ${fileNames}. Macros have been removed; formulas and formatting preserved.`
+            );
+            // Clear the notifications
+            await (window as any).api.invoke("xlsm:clearNotifications");
+          }
+        } catch (e) {
+          console.error("Failed to check XLSM notifications:", e);
+        }
+      }
     } catch (e) {
       console.error(e);
     }
@@ -149,7 +214,28 @@ export default function App() {
         await (window as any).api.invoke("config:set", { folderPath: p });
         setConfig((prev: any) => ({ ...(prev || {}), folderPath: p }));
         const res = await (window as any).api.invoke("folder:scan", p);
-        if (!res.error) setFiles(res.files || []);
+        if (!res.error) {
+          setFiles(res.files || []);
+
+          // Check for new XLSM files that had macros stripped
+          try {
+            const newXlsmFiles = await (window as any).api.invoke(
+              "xlsm:getNewFiles"
+            );
+            if (newXlsmFiles.length > 0) {
+              const fileNames = newXlsmFiles
+                .map((f: string) => f.split("/").pop())
+                .join(", ");
+              setToast(
+                `📋 XLSM files detected: ${fileNames}. Macros have been removed; formulas and formatting preserved.`
+              );
+              // Clear the notifications
+              await (window as any).api.invoke("xlsm:clearNotifications");
+            }
+          } catch (e) {
+            console.error("Failed to check XLSM notifications:", e);
+          }
+        }
       } else {
         setToast("❌ No folder selected");
       }
@@ -405,7 +491,7 @@ export default function App() {
         return;
       }
       setModal({ open: false, mode: null, data: null });
-      await loadSheet(activeSheet, sheetRows.page);
+      await loadSheet(activeSheet, sheetRows.page, sortState);
       setToast("✅ Row added");
     } catch (err) {
       const e = err as any;
@@ -415,35 +501,29 @@ export default function App() {
     }
   };
 
-  const deleteRow = async (row: any) => {
+  const deleteRow = async (rowIndex: number) => {
     if (!activeFile || !activeSheet) return setToast("❌ No active sheet");
     if (!confirm("Delete this row?")) return;
 
-    const pkName = (config && config.pkName) || "id";
-    const pkValue = row[pkName];
-    const expected = row["_version"];
+    // Convert 0-based row index to 1-based row number
+    const rowNumber = rowIndex + 1;
 
     try {
       const res = await (window as any).api.invoke(
         "sheet:delete",
         activeFile,
         activeSheet,
-        pkValue,
-        expected
+        rowNumber,
+        null // No version check needed for row number-based operations
       );
 
       if (res && res.error) {
-        if (res.error === "version-conflict") {
-          setToast("❌ Version conflict, reload sheet");
-          await loadSheet(activeSheet, 1);
-          return;
-        }
         setToast("❌ " + (res.message || "Delete failed"));
         return;
       }
 
       // Refresh the sheet data immediately
-      await loadSheet(activeSheet, sheetRows.page);
+      await loadSheet(activeSheet, sheetRows.page, sortState);
       setToast("✅ Row deleted");
     } catch (error) {
       console.error("Delete error:", error);
@@ -468,32 +548,26 @@ export default function App() {
         return;
       }
 
-      const pkName = (config && config.pkName) || "id";
-      const pkValue = row[pkName];
-      const expected = row["_version"];
+      // Convert 0-based row index to 1-based row number
+      const rowNumber = rowIndex + 1;
       const updates = { [colKey]: value };
 
       const res = await (window as any).api.invoke(
         "sheet:update",
         activeFile,
         activeSheet,
-        pkValue,
+        rowNumber,
         updates,
-        expected
+        null // No version check needed for row number-based operations
       );
 
       if (res && res.error) {
-        if (res.error === "version-conflict") {
-          setToast("Version conflict, please reload");
-          await loadSheet(activeSheet, sheetRows.page);
-          return;
-        }
         setToast(res.message || "Update failed");
         return;
       }
 
       // Refresh the current page
-      await loadSheet(activeSheet, sheetRows.page);
+      await loadSheet(activeSheet, sheetRows.page, sortState);
       setToast("✅ Cell updated successfully");
     } catch (error) {
       console.error("Error updating cell:", error);
@@ -675,7 +749,7 @@ export default function App() {
                     "Are you sure you want to delete this row?"
                   );
                   if (confirmDelete) {
-                    deleteRow(sheetRows.rows[selectedCell.row]);
+                    deleteRow(selectedCell.row);
                   }
                 } else {
                   setToast("❌ No row selected");
@@ -759,7 +833,9 @@ export default function App() {
                   </Tooltip>
                 </div>
                 <div className="ml-auto text-sm text-blue-700 dark:text-blue-100 truncate bg-blue-100 dark:bg-gradient-to-r dark:from-blue-900 dark:to-blue-800 rounded-md border border-blue-200 dark:border-transparent chosen-folder-name flex items-center px-3 h-8">
-                  {meta ? meta.path.split("/").pop() : "No file selected"}
+                  {meta && meta.path
+                    ? meta.path.split("/").pop()
+                    : "No file selected"}
                 </div>
               </div>
 
@@ -775,9 +851,7 @@ export default function App() {
                     onCellEdit={handleCellEdit}
                     onRowAdd={openAddModal}
                     onRowDelete={(rowIndex) => {
-                      if (sheetRows.rows[rowIndex]) {
-                        deleteRow(sheetRows.rows[rowIndex]);
-                      }
+                      deleteRow(rowIndex);
                     }}
                     readOnly={(
                       (config && config.readOnlySheets) ||
@@ -968,8 +1042,8 @@ export default function App() {
             onPaste={() => setToast("✅ Pasted from clipboard")}
             onInsertRow={openAddModal}
             onDeleteRow={() => {
-              if (selectedCell && sheetRows.rows[selectedCell.row]) {
-                deleteRow(sheetRows.rows[selectedCell.row]);
+              if (selectedCell) {
+                deleteRow(selectedCell.row);
               }
             }}
             onHideColumn={async () => {

@@ -91,8 +91,20 @@ const svc = require("../src/electron/excelService");
       const tmpWs = XLSX.utils.json_to_sheet([sampleRow], { header: headers });
       wb.SheetNames.push(tmpSheetName);
       wb.Sheets[tmpSheetName] = tmpWs;
-      XLSX.writeFile(wb, copyPath, { bookVBA: true, cellStyles: true });
-      console.log("Added temporary sheet for CRUD tests:", tmpSheetName);
+      // Safe write: for .xlsm write to a .data.xlsx sidecar instead of overwriting the presentation
+      const ext = path.extname(copyPath).toLowerCase().replace(".", "");
+      const sidecarPath = ext === "xlsm" ? `${copyPath}.data.xlsx` : copyPath;
+      const writeArgs =
+        ext === "xlsm"
+          ? { bookType: "xlsx", cellStyles: true }
+          : { bookVBA: true, cellStyles: true };
+      XLSX.writeFile(wb, sidecarPath, writeArgs);
+      console.log(
+        "Added temporary sheet for CRUD tests:",
+        tmpSheetName,
+        "->",
+        sidecarPath
+      );
     } catch (e) {
       console.warn(
         "Failed to add temporary sheet; attempting to proceed:",
@@ -132,7 +144,7 @@ const svc = require("../src/electron/excelService");
       copyPath,
       tmpSheetName,
       { [pkName]: require("uuid").v4(), col1: "created" },
-      {}
+      { usePresentationSheet: true }
     );
     console.log(
       "createRes:",
@@ -216,7 +228,8 @@ const svc = require("../src/electron/excelService");
       tmpSheetName,
       targetRow[pkName],
       { col1: "updated" },
-      targetRow["_version"]
+      targetRow["_version"],
+      { usePresentationSheet: true }
     );
     assert(
       updateRes && updateRes.success,
@@ -232,7 +245,8 @@ const svc = require("../src/electron/excelService");
       copyPath,
       tmpSheetName,
       createdRow[pkName],
-      createdRow["_version"]
+      createdRow["_version"],
+      { usePresentationSheet: true }
     );
     assert(
       delRes && delRes.success,
@@ -263,22 +277,52 @@ const svc = require("../src/electron/excelService");
     assert(hasVBA2, "VBA lost after edits");
     console.log("VBA preserved");
 
-    // Cleanup: remove temporary sheet from copy
+    // Cleanup: remove temporary sheet from sidecar if present, otherwise from presentation
     try {
-      const wbCleanup = XLSX.readFile(copyPath, {
-        bookVBA: true,
-        cellStyles: true,
-      });
-      if (wbCleanup.SheetNames.includes(tmpSheetName)) {
-        delete wbCleanup.Sheets[tmpSheetName];
-        wbCleanup.SheetNames = wbCleanup.SheetNames.filter(
-          (n) => n !== tmpSheetName
-        );
-        XLSX.writeFile(wbCleanup, copyPath, {
-          bookVBA: true,
+      const ext2 = path.extname(copyPath).toLowerCase().replace(".", "");
+      const sidecar2 = ext2 === "xlsm" ? `${copyPath}.data.xlsx` : copyPath;
+      if (fs.existsSync(sidecar2)) {
+        const wbCleanup = XLSX.readFile(sidecar2, {
+          bookVBA: false,
           cellStyles: true,
         });
-        console.log("Cleaned up temporary sheet");
+        if (wbCleanup.SheetNames.includes(tmpSheetName)) {
+          delete wbCleanup.Sheets[tmpSheetName];
+          wbCleanup.SheetNames = wbCleanup.SheetNames.filter(
+            (n) => n !== tmpSheetName
+          );
+          XLSX.writeFile(wbCleanup, sidecar2, {
+            bookType: "xlsx",
+            cellStyles: true,
+          });
+          console.log("Cleaned up temporary sheet from sidecar", sidecar2);
+        }
+      } else {
+        // fallback: attempt to remove from presentation (less desirable)
+        try {
+          // Avoid overwriting the original .xlsm; write cleanup to sidecar instead
+          const wbCleanup2 = XLSX.readFile(copyPath, {
+            bookVBA: true,
+            cellStyles: true,
+          });
+          if (wbCleanup2.SheetNames.includes(tmpSheetName)) {
+            delete wbCleanup2.Sheets[tmpSheetName];
+            wbCleanup2.SheetNames = wbCleanup2.SheetNames.filter(
+              (n) => n !== tmpSheetName
+            );
+            const sidecarCleanup = `${copyPath}.data.xlsx`;
+            XLSX.writeFile(wbCleanup2, sidecarCleanup, {
+              bookType: "xlsx",
+              cellStyles: true,
+            });
+            console.log(
+              "Cleaned up temporary sheet by writing sidecar",
+              sidecarCleanup
+            );
+          }
+        } catch (e) {
+          // ignore cleanup errors
+        }
       }
     } catch (e) {
       // ignore cleanup errors

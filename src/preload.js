@@ -39,6 +39,10 @@ contextBridge.exposeInMainWorld("api", {
   workbook: {
     meta: (filePath) => ipcRenderer.invoke("workbook:meta", filePath),
     export: (filePath) => ipcRenderer.invoke("workbook:export", filePath),
+    ensureDataSheet: (filePath, sourceSheetName) =>
+      ipcRenderer.invoke("workbook:ensureDataSheet", filePath, sourceSheetName),
+    save: (filePath, opts) =>
+      ipcRenderer.invoke("workbook:save", filePath, opts),
   },
 
   // Sheet operations
@@ -71,6 +75,12 @@ contextBridge.exposeInMainWorld("api", {
   sort: {
     get: (filePath) => ipcRenderer.invoke("sort:get", filePath),
     set: (filePath, state) => ipcRenderer.invoke("sort:set", filePath, state),
+  },
+
+  // XLSM operations
+  xlsm: {
+    getNewFiles: () => ipcRenderer.invoke("xlsm:getNewFiles"),
+    clearNotifications: () => ipcRenderer.invoke("xlsm:clearNotifications"),
   },
 
   // Utility

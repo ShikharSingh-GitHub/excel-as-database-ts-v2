@@ -1,10 +1,15 @@
 {
-  "folderPath": "/Users/shikhar/Desktop/workbook",
-  "pkName": "id",
-  "hiddenSheets": [
-    "backlog",
+  "folderPath": "/Users/shikhar/Developer/workbook",
+  "pkName": "App ID",
+  "cacheTtlMs": 2000,
+  "pageSizeDefault": 25,
+  "maxPageSize": 200,
+  "autoRefreshSeconds": 0,
+  "readOnlySheets": [],
+  "ignoreSheets": [
     "Tags",
     "Step_Template",
+    "backlog",
     "Release",
     "masters",
     "API",
@@ -13,18 +18,9 @@
     "UI Element",
     "Function",
     "Function Step",
-    "Test Case Function Step"
+    "Test Case Function Step",
+    "_data"
   ],
-  "cacheTtlMs": 2000,
-  "pageSizeDefault": 25,
-  "maxPageSize": 200,
-  "readOnlySheets": [
-    "sample_bad_headers",
-    "sample_conflict_stress",
-    "sample_customers_conflict"
-  ],
-  "ignoreSheets": ["sample_hidden_sheets", "_metadata", "config", "temp"],
-  "autoRefreshSeconds": 0,
   "recentWorkbooks": [],
   "headerRowConfig": {
     "End_To_End_Globalsqa1 (1).xlsm": {
@@ -65,92 +61,112 @@
       "Function Step": 4,
       "Test Case Function Step": 4
     },
-    "Eve Echoes Skills Planner v5.0 copy.xlsx": {
-      "Skill Planner": 0
+    "End_To_End_Globalsqa1 (1).xlsx": {
+      "Application": 4
     },
-    "/Users/shikhar/Desktop/workbook/Eve Echoes Skills Planner v5.0 copy.xlsx": {
-      "Skill Planner": 0
+    "/Users/shikhar/Desktop/workbook/End_To_End_Globalsqa1 (1).xlsx": {
+      "Application": 4
     },
-    "sample_inventory.xlsx": {
-      "Inventory": 0
+    "End_To_End_Globalsqa1 (1).xlsm.data.xlsx": {
+      "Application": 4
     },
-    "/Users/shikhar/Desktop/workbook/sample_inventory.xlsx": {
-      "Inventory": 0
+    "/Users/shikhar/Desktop/workbook/End_To_End_Globalsqa1 (1).xlsm.data.xlsx": {
+      "Application": 4
     },
-    "sample_hidden_sheets.xlsm": {
-      "VisibleData": 0,
-      "HiddenAdmin": 0
+    "End_To_End_Globalsqa1 (1).temp.xlsx": {
+      "Application": 4,
+      "Test Set": 4,
+      "Test Case": 4,
+      "Test Case Step": 4,
+      "Playwright Configuration": 4,
+      "Tags": 4,
+      "Step_Template": 3,
+      "backlog": 0,
+      "Release": 1,
+      "masters": 0,
+      "API": 4,
+      "API Attribute": 4,
+      "Page": 4,
+      "UI Element": 4,
+      "Function": 4,
+      "Function Step": 4,
+      "Test Case Function Step": 4
     },
-    "/Users/shikhar/Desktop/workbook/sample_hidden_sheets.xlsm": {
-      "VisibleData": 0,
-      "HiddenAdmin": 0
+    "/Users/shikhar/Developer/workbook/End_To_End_Globalsqa1 (1).temp.xlsx": {
+      "Application": 4,
+      "Test Set": 4,
+      "Test Case": 4,
+      "Test Case Step": 4,
+      "Playwright Configuration": 4,
+      "Tags": 4,
+      "Step_Template": 3,
+      "backlog": 0,
+      "Release": 1,
+      "masters": 0,
+      "API": 4,
+      "API Attribute": 4,
+      "Page": 4,
+      "UI Element": 4,
+      "Function": 4,
+      "Function Step": 4,
+      "Test Case Function Step": 4
     },
-    "sample_bad_headers.xlsx": {
-      "NoHeaders": 1
+    "End_To_End_Globalsqa1 (1).working.xlsx": {
+      "Application": 4,
+      "Test Set": 4,
+      "Test Case": 4,
+      "Test Case Step": 4,
+      "Playwright Configuration": 4,
+      "Tags": 4,
+      "Step_Template": 3,
+      "backlog": 0,
+      "Release": 1,
+      "masters": 0,
+      "API": 4,
+      "API Attribute": 4,
+      "Page": 4,
+      "UI Element": 4,
+      "Function": 4,
+      "Function Step": 4,
+      "Test Case Function Step": 4,
+      "_data": 0
     },
-    "/Users/shikhar/Desktop/workbook/sample_bad_headers.xlsx": {
-      "NoHeaders": 1
-    },
-    "sample_conflict_stress.xlsx": {
-      "Conflicts": 0
-    },
-    "/Users/shikhar/Desktop/workbook/sample_conflict_stress.xlsx": {
-      "Conflicts": 0
-    },
-    "sample_customers_conflict.xlsx": {
-      "Customers": 0
-    },
-    "/Users/shikhar/Desktop/workbook/sample_customers_conflict.xlsx": {
-      "Customers": 0
-    },
-    "sample_orders.xlsx": {
-      "Orders": 0
-    },
-    "/Users/shikhar/Desktop/workbook/sample_orders.xlsx": {
-      "Orders": 0
-    },
-    "sample_policies.xlsx": {
-      "Policies": 0
-    },
-    "/Users/shikhar/Desktop/workbook/sample_policies.xlsx": {
-      "Policies": 0
-    },
-    "sample_large.xlsx": {
-      "Data": 0
-    },
-    "/Users/shikhar/Desktop/workbook/sample_large.xlsx": {
-      "Data": 0
-    },
-    "sample_large_perf.xlsx": {
-      "Data": 0
-    },
-    "/Users/shikhar/Desktop/workbook/sample_large_perf.xlsx": {
-      "Data": 0
-    },
-    "sample_customers.xlsx": {
-      "Customers": 0
-    },
-    "/Users/shikhar/Desktop/workbook/sample_customers.xlsx": {
-      "Customers": 0
+    "/Users/shikhar/Developer/workbook/End_To_End_Globalsqa1 (1).working.xlsx": {
+      "Application": 4,
+      "Test Set": 4,
+      "Test Case": 4,
+      "Test Case Step": 4,
+      "Playwright Configuration": 4,
+      "Tags": 4,
+      "Step_Template": 3,
+      "backlog": 0,
+      "Release": 1,
+      "masters": 0,
+      "API": 4,
+      "API Attribute": 4,
+      "Page": 4,
+      "UI Element": 4,
+      "Function": 4,
+      "Function Step": 4,
+      "Test Case Function Step": 4,
+      "_data": 0
     }
   },
   "ui": {
-    "theme": "light",
-    "defaultSort": "asc",
-    "showSystemColumns": false
+    "theme": "light"
   },
-  "validation": {
-    "enableTypeHints": true,
-    "strictMode": false
+  "xlsmConversion": {
+    "enabled": true,
+    "preserveVBA": true,
+    "preserveFormulas": true,
+    "preserveStyles": true,
+    "autoConvert": true,
+    "useBridge": false,
+    "fallbackToExcelJS": true,
+    "preferExcelJS": true,
+    "preserveFormatting": true
   },
-  "sortState": {
-    "/Users/shikhar/Desktop/workbook/sample_large.xlsx": {
-      "columnFilters": {}
-    },
-    "/Users/shikhar/Desktop/workbook/sample_inventory.xlsx": {
-      "columnFilters": {
-        "id": "2"
-      }
-    }
-  }
+  "dataSheetName": "_data",
+  "useSidecarForXlsm": true,
+  "requireNativeBridgeForXlsm": true
 }

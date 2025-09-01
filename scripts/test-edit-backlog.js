@@ -120,8 +120,13 @@ async function run(sampleFile) {
     );
     console.log("updateRow result:", res);
 
-    // snapshot after
-    const after = excelService.readSheetJson(tmp, sheetName);
+    // snapshot after (read sidecar if present for .xlsm)
+    const extAfter = path.extname(tmp).toLowerCase().replace(".", "");
+    const readBackPath =
+      extAfter === "xlsm" && fs.existsSync(`${tmp}.data.xlsx`)
+        ? `${tmp}.data.xlsx`
+        : tmp;
+    const after = excelService.readSheetJson(readBackPath, sheetName);
     const afterRow = after.json.find(
       (r) => String(r[pkName]) === String(pkValue)
     );
@@ -162,17 +167,21 @@ async function run(sampleFile) {
     ws[addr] = newCell;
     // write workbook
     const ext = path.extname(tmp).toLowerCase().replace(".", "");
-    const writeOpts = { cellStyles: true };
-    if (ext === "xlsm") writeOpts.bookVBA = true;
-    XLSX.writeFile(wb, tmp, writeOpts);
+    const targetWrite = ext === "xlsm" ? `${tmp}.data.xlsx` : tmp;
+    const writeArgs =
+      ext === "xlsm"
+        ? { bookType: "xlsx", cellStyles: true }
+        : { bookVBA: true, cellStyles: true };
+    // Write to sidecar for .xlsm to avoid destructive overwrites
+    XLSX.writeFile(wb, targetWrite, writeArgs);
 
-    const after = excelService.readSheetJson(tmp, sheetName);
+    const after = excelService.readSheetJson(targetWrite, sheetName);
     const beforeRow = before.json && before.json[0];
     const afterRow = after.json && after.json[0];
     const diffs = diffObjects(beforeRow || {}, afterRow || {});
     console.log("Row diffs (before -> after):");
     console.table(diffs);
-    console.log("Test copy left at:", tmp);
+    console.log("Test copy left at:", targetWrite);
     process.exit(0);
   }
 }

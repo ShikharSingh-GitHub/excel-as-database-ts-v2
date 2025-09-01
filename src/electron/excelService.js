@@ -3,6 +3,7 @@ const path = require("path");
 const XLSX = require("xlsx");
 const lockfile = require("proper-lockfile");
 const { v4: uuidv4 } = require("uuid");
+// Note: excelBridge and enhancedExcelService removed - using cleanXlsmService in main.js
 
 const CONFIG_PATH = path.join(__dirname, "..", "..", "config.json");
 const LOG_DIR = path.join(__dirname, "..", "..", "logs");
@@ -39,7 +40,7 @@ function readConfig() {
   try {
     return JSON.parse(fs.readFileSync(CONFIG_PATH, "utf8"));
   } catch (e) {
-    // Return default config if file doesn't exist
+    // Return minimal default config if file doesn't exist or is invalid
     return {
       folderPath: null,
       pkName: "id",
@@ -51,16 +52,9 @@ function readConfig() {
       ignoreSheets: ["_metadata", "config", "temp"],
       autoRefreshSeconds: 0,
       recentWorkbooks: [],
-      ui: {
-        theme: "auto",
-        defaultSort: "asc",
-        showSystemColumns: false,
-      },
-      validation: {
-        enableTypeHints: true,
-        strictMode: false,
-      },
-      headerRowConfig: {}, // Added for configurable header rows
+      ui: { showSystemColumns: false },
+      validation: { strictMode: false },
+      headerRowConfig: {},
     };
   }
 }
@@ -85,6 +79,8 @@ function addRecentWorkbook(filePath) {
   writeConfig(cfg);
   return cfg.recentWorkbooks;
 }
+
+// (Stray duplicate code removed) Ensure write logic is handled in writeTargetSheet()
 
 // Get recent workbooks
 function getRecentWorkbooks() {
@@ -440,7 +436,8 @@ function isLikelyDataRow(values) {
 
 // Workbook metadata
 function getWorkbookMeta(filePath) {
-  if (!filePath || !fs.existsSync(filePath)) return { error: "not-found" };
+  if (!filePath || !fs.existsSync(filePath))
+    return { error: "not-found", message: `File not found: ${filePath}` };
 
   try {
     const cfg = readConfig() || {};
@@ -737,6 +734,160 @@ function invalidateCache(filePath) {
   });
 }
 
+// Sidecar helpers: store app-managed data in a separate .xlsx file to avoid
+// ever writing back to a presentation .xlsm workbook.
+function getSidecarPath(filePath) {
+  if (!filePath) return null;
+  try {
+    const preferred = `${filePath}.data.xlsx`;
+    const legacy = `${filePath}.data`;
+    // If preferred exists, return it
+    if (fs.existsSync(preferred)) return preferred;
+    // If legacy exists but preferred doesn't, attempt to rename legacy -> preferred
+    if (fs.existsSync(legacy)) {
+      try {
+        fs.renameSync(legacy, preferred);
+        log("INFO", "Normalized legacy sidecar to .data.xlsx", {
+          from: legacy,
+          to: preferred,
+        });
+        return preferred;
+      } catch (e) {
+        // If rename fails, fall back to returning the legacy path
+        log("WARN", "Failed to rename legacy sidecar; using legacy path", {
+          legacy,
+          message: e && e.message,
+        });
+        return legacy;
+      }
+    }
+    // neither exists yet: return preferred path as default for new sidecar
+    return preferred;
+  } catch (e) {
+    return `${filePath}.data.xlsx`;
+  }
+}
+
+function ensureSidecarExists(filePath, sourceSheetName) {
+  try {
+    const cfg = readConfig() || {};
+    const dataSheetName = cfg.dataSheetName || "_data";
+    const sidecar = getSidecarPath(filePath);
+    if (!sidecar) return { created: false };
+    if (fs.existsSync(sidecar)) return { created: false, path: sidecar };
+
+    // Build data rows from presentation sheet if available
+    let dataRows = [];
+    try {
+      if (fs.existsSync(filePath)) {
+        const wb = XLSX.readFile(filePath, { bookVBA: true, cellStyles: true });
+        if (
+          wb &&
+          Array.isArray(wb.SheetNames) &&
+          wb.SheetNames.includes(sourceSheetName)
+        ) {
+          const headerRow =
+            getHeaderRowPosition(filePath, sourceSheetName) || 0;
+          const ws = wb.Sheets[sourceSheetName];
+          const range =
+            ws && ws["!ref"] ? XLSX.utils.decode_range(ws["!ref"]) : null;
+          if (ws && range) {
+            const headers = [];
+            for (let C = range.s.c; C <= range.e.c; ++C) {
+              const cell = ws[XLSX.utils.encode_cell({ c: C, r: headerRow })];
+              let val = cell ? String(cell.v).trim() : "";
+              if (val) headers.push(val);
+            }
+            const dataStart = headerRow + 1;
+            if (headers.length > 0) {
+              dataRows = XLSX.utils.sheet_to_json(ws, {
+                defval: null,
+                range: dataStart,
+                header: headers,
+              });
+            } else {
+              dataRows = XLSX.utils.sheet_to_json(ws, { defval: null });
+            }
+          }
+        }
+      }
+    } catch (e) {
+      // If reading presentation fails, create an empty sidecar
+      dataRows = [];
+    }
+
+    ensurePkAndVersion(dataRows, cfg.pkName || "id");
+
+    const newWs = XLSX.utils.json_to_sheet(dataRows, { header: undefined });
+    const newWb = { SheetNames: [dataSheetName], Sheets: {} };
+    newWb.Sheets[dataSheetName] = newWs;
+    // write as xlsx to sidecar path using atomic temp+rename
+    const tmp = sidecar + `.tmp.${Date.now()}`;
+    XLSX.writeFile(newWb, tmp, { bookType: "xlsx", cellStyles: true });
+    fs.renameSync(tmp, sidecar);
+    log("INFO", "Sidecar data workbook created", { sidecar, filePath });
+    return { created: true, path: sidecar };
+  } catch (e) {
+    log("ERROR", "Failed to create sidecar", { filePath, message: e.message });
+    return { created: false, error: e.message };
+  }
+}
+
+// Centralized writer that respects sidecar policy for xlsm files.
+function writeTargetSheet(filePath, targetSheet, fullWs) {
+  const cfg = readConfig() || {};
+  const useSidecar = cfg.useSidecarForXlsm !== false;
+  const ext = path
+    .extname(filePath || "")
+    .toLowerCase()
+    .replace(".", "");
+
+  if (ext === "xlsm" && useSidecar) {
+    const sidecar = getSidecarPath(filePath);
+    try {
+      if (!fs.existsSync(sidecar)) ensureSidecarExists(filePath, targetSheet);
+      const scWb = fs.existsSync(sidecar)
+        ? XLSX.readFile(sidecar, { bookVBA: false, cellStyles: true })
+        : { SheetNames: [], Sheets: {} };
+      scWb.Sheets[targetSheet] = fullWs;
+      if (!scWb.SheetNames.includes(targetSheet))
+        scWb.SheetNames.push(targetSheet);
+      XLSX.writeFile(scWb, sidecar, { bookType: "xlsx", cellStyles: true });
+      log("INFO", "Wrote sheet to sidecar", { filePath, sidecar, targetSheet });
+      return true;
+    } catch (e) {
+      log("WARN", "Sidecar write failed", {
+        filePath,
+        targetSheet,
+        message: e.message,
+      });
+      return false;
+    }
+  }
+
+  // Non-xlsm or sidecar disabled: write back to original file (riskier)
+  try {
+    const wb = XLSX.readFile(filePath, { bookVBA: true, cellStyles: true });
+    if (!wb.SheetNames.includes(targetSheet)) wb.SheetNames.push(targetSheet);
+    wb.Sheets[targetSheet] = fullWs;
+    wb.Workbook = wb.Workbook || {};
+    wb.Workbook.Sheets = wb.Workbook.Sheets || [];
+    if (!wb.Workbook.Sheets.some((s) => s && s.name === targetSheet)) {
+      wb.Workbook.Sheets.push({ name: targetSheet, Hidden: 1 });
+    }
+    const bookType = ext === "xlsm" ? "xlsm" : "xlsx";
+    writeWorkbookAtomic(filePath, wb, bookType);
+    return true;
+  } catch (e) {
+    log("ERROR", "Failed to write sheet to workbook", {
+      filePath,
+      targetSheet,
+      message: e.message,
+    });
+    throw e;
+  }
+}
+
 // Sheet reading with pagination, filtering, and sorting
 function readSheet(filePath, sheetName, opts = {}) {
   const page = Math.max(1, (opts && opts.page) || 1);
@@ -745,7 +896,23 @@ function readSheet(filePath, sheetName, opts = {}) {
   const columnFilters = (opts && opts.columnFilters) || {};
   const sort = (opts && opts.sort) || null;
 
-  if (!filePath || !fs.existsSync(filePath)) return { error: "not-found" };
+  if (!filePath)
+    return { error: "not-found", message: `File not found: ${filePath}` };
+
+  // Prefer sidecar for .xlsm when present
+  try {
+    const ext = path
+      .extname(filePath || "")
+      .toLowerCase()
+      .replace(".", "");
+    if (ext === "xlsm") {
+      const sc = getSidecarPath(filePath);
+      if (sc && fs.existsSync(sc)) filePath = sc;
+    }
+  } catch (e) {}
+
+  if (!fs.existsSync(filePath))
+    return { error: "not-found", message: `File not found: ${filePath}` };
 
   try {
     const cfg = readConfig() || {};
@@ -763,11 +930,18 @@ function readSheet(filePath, sheetName, opts = {}) {
     const cached = cacheGet(cacheKey, ttl);
     if (cached) return cached;
 
-    const wb = XLSX.readFile(filePath);
-    if (!wb || !wb.SheetNames || !wb.SheetNames.includes(sheetName)) {
+    const dataSheetName = cfg.dataSheetName || "_data";
+    // By default, read the requested presentation sheet. Only route to the
+    // dedicated data sheet when the caller explicitly requests it via
+    // opts.useDataSheet === true.
+    const targetSheet = opts && opts.useDataSheet ? dataSheetName : sheetName;
+
+    const wb = XLSX.readFile(filePath, { bookVBA: true, cellStyles: true });
+    if (!wb || !wb.SheetNames || !wb.SheetNames.includes(targetSheet)) {
       log("ERROR", "Sheet not found or invalid workbook", {
         filePath,
-        sheetName,
+        requestedSheet: sheetName,
+        targetSheet,
         hasWorkbook: !!wb,
         hasSheetNames: !!wb?.SheetNames,
         availableSheets: wb?.SheetNames || [],
@@ -775,15 +949,21 @@ function readSheet(filePath, sheetName, opts = {}) {
       return { error: "sheet-not-found" };
     }
 
-    const ws = wb.Sheets[sheetName];
+    const ws = wb.Sheets[targetSheet];
     if (!ws) {
-      log("ERROR", "Worksheet is undefined", { filePath, sheetName });
+      log("ERROR", "Worksheet is undefined", {
+        filePath,
+        sheetName: targetSheet,
+      });
       return { error: "sheet-not-found" };
     }
 
-    // If the sheet has no range (!ref) it's effectively empty/ unavailable
+    // If the sheet has no range (!ref) it's effectively empty/unavailable
     if (!ws["!ref"]) {
-      log("WARN", "Worksheet has no range (!ref)", { filePath, sheetName });
+      log("WARN", "Worksheet has no range (!ref)", {
+        filePath,
+        sheetName: targetSheet,
+      });
       return {
         error: "sheet-unavailable",
         message: "No headers (row 1 empty) - sheet unavailable for table view",
@@ -791,7 +971,7 @@ function readSheet(filePath, sheetName, opts = {}) {
     }
 
     const range = XLSX.utils.decode_range(ws["!ref"] || "A1:A1");
-    let headerRow = getHeaderRowPosition(filePath, sheetName);
+    let headerRow = getHeaderRowPosition(filePath, targetSheet);
 
     // Check if header row is within sheet range
     if (headerRow > range.e.r) {
@@ -1088,9 +1268,27 @@ function readSheet(filePath, sheetName, opts = {}) {
   }
 }
 
-// Helper function to read sheet as JSON
+// Helper function to read sheet as JSON. Prefer sidecar for .xlsm when present.
 function readSheetJson(filePath, sheetName) {
   try {
+    if (!filePath) return null;
+    // prefer sidecar for .xlsm
+    try {
+      const ext = path
+        .extname(filePath || "")
+        .toLowerCase()
+        .replace(".", "");
+      if (ext === "xlsm") {
+        const sc = getSidecarPath(filePath);
+        if (sc && fs.existsSync(sc)) filePath = sc;
+      }
+    } catch (e) {}
+
+    if (!fs.existsSync(filePath)) {
+      log("ERROR", "readSheetJson file not found", { filePath, sheetName });
+      return null;
+    }
+
     // Read with bookVBA and cellStyles so any VBA streams and styles are preserved
     const wb = XLSX.readFile(filePath, { bookVBA: true, cellStyles: true });
     if (!wb.SheetNames.includes(sheetName)) return null;
@@ -1174,11 +1372,31 @@ function writeWorkbookAtomic(filePath, workbook, bookType) {
   const tmp = path.join(dir, `.${base}.tmp.${Date.now()}`);
 
   try {
-    // Always request cellStyles preservation; only enable bookVBA for xlsm
-    const writeOpts = { bookType: bookType, cellStyles: true };
+    // If caller requested an xlsm write, avoid overwriting the original
+    // workbook with SheetJS (known to be destructive). Instead write an
+    // .xlsx sidecar to store the workbook contents and leave the .xlsm
+    // untouched. Native bridge should be used for true .xlsm modifications.
     if (bookType === "xlsm") {
-      writeOpts.bookVBA = true;
+      const cfg = readConfig() || {};
+      const allowOverwrite =
+        !!process.env.ALLOW_XLSM_OVERWRITE || !!cfg.allowWriteBackToXlsm;
+      if (!allowOverwrite) {
+        const sidecar = getSidecarPath(filePath) || `${filePath}.data.xlsx`;
+        const writeOpts = { bookType: "xlsx", cellStyles: true };
+        XLSX.writeFile(workbook, tmp, writeOpts);
+        fs.renameSync(tmp, sidecar);
+        log("WARN", "Refused to write .xlsm directly; wrote sidecar instead", {
+          filePath,
+          sidecar,
+        });
+        return;
+      }
+      // allowed to overwrite .xlsm: continue to write back to original
     }
+
+    // Non-xlsm: perform atomic write back to original path
+    const writeOpts = { bookType: bookType || "xlsx", cellStyles: true };
+    if (bookType === "xlsm") writeOpts.bookVBA = true;
     XLSX.writeFile(workbook, tmp, writeOpts);
     fs.renameSync(tmp, filePath);
     log("INFO", "Workbook written atomically", { filePath });
@@ -1199,11 +1417,223 @@ function writeWorkbookAtomic(filePath, workbook, bookType) {
   }
 }
 
+// Ensure a dedicated data sheet exists. If missing, create it and optionally
+// copy data from the provided source sheet. This migration helper will create
+// a backup copy before modifying the workbook.
+async function ensureDataSheetExists(filePath, sourceSheetName) {
+  try {
+    const cfg = readConfig() || {};
+    const dataSheetName = cfg.dataSheetName || "_data";
+    if (!dataSheetName) return { created: false };
+    const useSidecar = cfg.useSidecarForXlsm !== false;
+    const ext = path
+      .extname(filePath || "")
+      .toLowerCase()
+      .replace(".", "");
+
+    // If xlsm and sidecar is enabled, ensure sidecar exists and return
+    if (ext === "xlsm" && useSidecar) {
+      const sc = ensureSidecarExists(filePath, sourceSheetName);
+      if (sc && sc.created) {
+        invalidateCache(filePath);
+        return { created: true, dataSheetName, sidecar: sc.path };
+      }
+      if (sc && sc.path)
+        return { created: false, dataSheetName, sidecar: sc.path };
+    }
+
+    const wb = XLSX.readFile(filePath, { bookVBA: true, cellStyles: true });
+    if (wb.SheetNames.includes(dataSheetName)) return { created: false };
+
+    // Build data sheet contents: prefer copying from source sheet if available
+    let dataRows = [];
+    if (sourceSheetName && wb.SheetNames.includes(sourceSheetName)) {
+      const headerRow = getHeaderRowPosition(filePath, sourceSheetName) || 0;
+      const ws = wb.Sheets[sourceSheetName];
+      const range =
+        ws && ws["!ref"] ? XLSX.utils.decode_range(ws["!ref"]) : null;
+      if (ws && range) {
+        const headers = [];
+        for (let C = range.s.c; C <= range.e.c; ++C) {
+          const cell = ws[XLSX.utils.encode_cell({ c: C, r: headerRow })];
+          let val = cell ? String(cell.v).trim() : "";
+          if (val) headers.push(val);
+        }
+        const dataStart = headerRow + 1;
+        if (headers.length > 0) {
+          dataRows = XLSX.utils.sheet_to_json(ws, {
+            defval: null,
+            range: dataStart,
+            header: headers,
+          });
+        } else {
+          dataRows = XLSX.utils.sheet_to_json(ws, { defval: null });
+        }
+      }
+    }
+
+    // Ensure pk/version exist on data rows
+    ensurePkAndVersion(dataRows, cfg.pkName || "id");
+
+    const newWs = XLSX.utils.json_to_sheet(dataRows, { header: undefined });
+    // Prepare to write using a fresh workbook read from disk so we don't
+    // accidentally hold references to the presentation sheet objects and
+    // mutate them in-memory which can cause cell-address loss.
+    try {
+      const freshWb = XLSX.readFile(filePath, {
+        bookVBA: true,
+        cellStyles: true,
+      });
+      if (!freshWb.SheetNames.includes(dataSheetName))
+        freshWb.SheetNames.push(dataSheetName);
+      freshWb.Sheets[dataSheetName] = newWs;
+      freshWb.Workbook = freshWb.Workbook || {};
+      freshWb.Workbook.Sheets = freshWb.Workbook.Sheets || [];
+      if (!freshWb.Workbook.Sheets.some((s) => s && s.name === dataSheetName)) {
+        freshWb.Workbook.Sheets.push({ name: dataSheetName, Hidden: 1 });
+      }
+
+      // Backup original before writing
+      try {
+        const bak = `${filePath}.bak.${Date.now()}`;
+        fs.copyFileSync(filePath, bak);
+        log("INFO", "Backup created before data-sheet migration", {
+          filePath,
+          bak,
+        });
+      } catch (e) {
+        log("WARN", "Failed to create backup before data-sheet migration", {
+          filePath,
+          message: e.message,
+        });
+      }
+
+      const ext = path.extname(filePath).toLowerCase().replace(".", "");
+      // If workbook is an xlsm, prefer using the native Excel bridge to create
+      // the hidden data sheet. This avoids a full SheetJS write which has
+      // proven destructive for some .xlsm workbooks. If sidecar is enabled we
+      // already created it earlier and won't reach this path.
+      try {
+        if (ext === "xlsm") {
+          try {
+            const bridgeAvailable = await excelBridge.pythonAvailable();
+            if (bridgeAvailable) {
+              const res = await excelBridge.createSheetWithExcelBridge({
+                path: filePath,
+                sheet: dataSheetName,
+                rows: dataRows,
+              });
+              if (res && res.ok) {
+                invalidateCache(filePath);
+                log("INFO", "Data sheet created via native bridge", {
+                  filePath,
+                  dataSheetName,
+                });
+                return { created: true, dataSheetName };
+              }
+            }
+          } catch (e) {
+            // bridge failed; will fall back to SheetJS write below
+            log("WARN", "Native bridge create failed, falling back", {
+              filePath,
+              message: e && e.message,
+            });
+          }
+        }
+
+        const bookType = ext === "xlsm" ? "xlsm" : "xlsx";
+        writeWorkbookAtomic(filePath, freshWb, bookType);
+        invalidateCache(filePath);
+        log("INFO", "Data sheet created", { filePath, dataSheetName });
+        return { created: true, dataSheetName };
+      } catch (e) {
+        // fall through to existing fallback
+        throw e;
+      }
+    } catch (e) {
+      // If fresh write fails, fall back to the original workbook write as a last resort
+      try {
+        wb.SheetNames.push(dataSheetName);
+        wb.Sheets[dataSheetName] = newWs;
+        wb.Workbook = wb.Workbook || {};
+        wb.Workbook.Sheets = wb.Workbook.Sheets || [];
+        wb.Workbook.Sheets.push({ name: dataSheetName, Hidden: 1 });
+        const ext = path.extname(filePath).toLowerCase().replace(".", "");
+        const bookType = ext === "xlsm" ? "xlsm" : "xlsx";
+        writeWorkbookAtomic(filePath, wb, bookType);
+        invalidateCache(filePath);
+        log("WARN", "Data sheet created via fallback write", {
+          filePath,
+          dataSheetName,
+          message: e.message,
+        });
+        return { created: true, dataSheetName };
+      } catch (e2) {
+        log("ERROR", "Failed to create data sheet", {
+          filePath,
+          message: e2.message,
+        });
+        return { created: false, error: e2.message };
+      }
+    }
+  } catch (e) {
+    log("ERROR", "Failed to ensure data sheet", {
+      filePath,
+      message: e.message,
+    });
+    return { created: false, error: e.message };
+  }
+}
+
 // CRUD operations
 async function createRow(filePath, sheetName, row, opts = {}) {
   try {
     const cfg = readConfig() || {};
+    // Safety guard: for .xlsm workbooks prefer native Excel bridge to avoid
+    // destructive SheetJS writes. This can be overridden by setting
+    // config.requireNativeBridgeForXlsm = false.
+    try {
+      const ext = path
+        .extname(filePath || "")
+        .toLowerCase()
+        .replace(".", "");
+      const requireBridge = cfg.requireNativeBridgeForXlsm !== false;
+      console.debug &&
+        console.debug("createRow: ext/requireBridge", { ext, requireBridge });
+      log("DEBUG", "createRow: ext/requireBridge", {
+        filePath,
+        ext,
+        requireBridge,
+      });
+      if (ext === "xlsm" && requireBridge) {
+        const bridgeAvailable = await excelBridge.pythonAvailable();
+        console.debug &&
+          console.debug("createRow: bridgeAvailable", {
+            filePath,
+            bridgeAvailable,
+          });
+        log("DEBUG", "createRow: bridgeAvailable", {
+          filePath,
+          bridgeAvailable,
+        });
+        if (!bridgeAvailable) {
+          log("WARN", "Refusing to write .xlsm without native bridge", {
+            filePath,
+            sheetName,
+          });
+          return {
+            error: "native-bridge-required",
+            message:
+              "Native Excel bridge (xlwings) required for .xlsm to avoid data loss. Install xlwings or set config.requireNativeBridgeForXlsm = false to allow risky writes.",
+          };
+        }
+      }
+    } catch (e) {
+      // ignore bridge detection errors
+    }
+
     const readOnly = cfg.readOnlySheets || [];
+
     if (readOnly.includes(sheetName)) {
       log("WARN", "Attempt to create row in read-only sheet", {
         filePath,
@@ -1213,19 +1643,67 @@ async function createRow(filePath, sheetName, row, opts = {}) {
     }
 
     const pkName = cfg.pkName || "id";
+    const dataSheetName = cfg.dataSheetName || "_data";
+    // Default to writing to the requested presentation sheet (`sheetName`).
+    // Only write to the dedicated data sheet when the caller explicitly sets
+    // opts.useDataSheet === true.
+    const useDataSheet = opts && opts.useDataSheet;
+    let targetSheet = useDataSheet && dataSheetName ? dataSheetName : sheetName;
+
+    // Ensure data sheet exists if we're routing there. For xlsm workbooks,
+    // prefer writing to the dedicated data sheet when it exists to avoid
+    // destructive full SheetJS writes on presentation sheets.
+    try {
+      await ensureDataSheetExists(filePath, sheetName);
+    } catch (e) {}
+
+    try {
+      const ext = path
+        .extname(filePath || "")
+        .toLowerCase()
+        .replace(".", "");
+      // If workbook is xlsm and data sheet is present, write to data sheet by default
+      // unless caller explicitly requested the presentation sheet via opts.usePresentationSheet.
+      if (ext === "xlsm" && !(opts && opts.usePresentationSheet)) {
+        try {
+          const sidecar = getSidecarPath(filePath);
+          // If a sidecar exists, prefer it (we created it earlier via ensureDataSheetExists)
+          if (sidecar && fs.existsSync(sidecar)) {
+            targetSheet = dataSheetName;
+          } else {
+            const fresh = XLSX.readFile(filePath, {
+              bookVBA: true,
+              cellStyles: true,
+            });
+            if (
+              fresh &&
+              Array.isArray(fresh.SheetNames) &&
+              fresh.SheetNames.includes(dataSheetName)
+            ) {
+              // route to data sheet in-workbook
+              targetSheet = dataSheetName;
+            }
+          }
+        } catch (e) {
+          // ignore read errors and keep targetSheet as-is
+        }
+      }
+    } catch (e) {}
+    console.log &&
+      console.log("createRow: targetSheet decided", { targetSheet });
     const release = await acquireLock(filePath, { timeoutMs: 5000 });
 
     try {
-      const r = readSheetJson(filePath, sheetName) || {
+      const r = readSheetJson(filePath, targetSheet) || {
         wb: XLSX.readFile(filePath, { bookVBA: true, cellStyles: true }),
         json: [],
       };
 
       const wb = r.wb;
-      const ws = wb.Sheets[sheetName];
+      const ws = wb.Sheets[targetSheet];
 
       // determine header row and headers
-      const headerRowPos = getHeaderRowPosition(filePath, sheetName) || 0;
+      const headerRowPos = getHeaderRowPosition(filePath, targetSheet) || 0;
       const range =
         ws && ws["!ref"]
           ? XLSX.utils.decode_range(ws["!ref"])
@@ -1287,8 +1765,6 @@ async function createRow(filePath, sheetName, row, opts = {}) {
           index: existingIdx,
         });
       } else {
-        // If caller provided an insertIndex, insert at that position within the data
-        // (0-based relative to the first data row). Otherwise append as before.
         const insertIndex =
           typeof (opts && opts.insertIndex) === "number"
             ? Number(opts.insertIndex)
@@ -1309,65 +1785,63 @@ async function createRow(filePath, sheetName, row, opts = {}) {
 
       // sanitize rows before writing to sheet to avoid creating __EMPTY* columns for internal fields
       const sanitizedData = sanitizeRowsForSheet(existingData, pkName, headers);
-      // create a worksheet for the data rows only
       const dataWs = XLSX.utils.json_to_sheet(sanitizedData, {
         header: headers.length > 0 ? headers : undefined,
       });
 
-      // build a full worksheet by preserving top rows through headerRowPos and appending data
       let fullWs;
       try {
-        // copy top rows by cloning cell objects to preserve formulas/styles/comments
-        const newWs = {};
-        const cols = range.e.c - range.s.c + 1;
-        const rowsCount = headerRowPos - range.s.r + 1;
-        for (let rIdx = range.s.r; rIdx <= headerRowPos; rIdx++) {
-          for (let c = range.s.c; c <= range.e.c; c++) {
-            const addr = XLSX.utils.encode_cell({ c, r: rIdx });
-            const cell = ws[addr];
-            if (cell) {
-              // shallow clone the cell object to new worksheet
-              newWs[addr] = Object.assign({}, cell);
-            }
-          }
-        }
-
-        // attach merges if present
-        if (ws && ws["!merges"]) newWs["!merges"] = ws["!merges"];
-
-        // now append data rows starting at dataStart
-        if (headers.length > 0) {
-          XLSX.utils.sheet_add_json(newWs, sanitizedData, {
-            origin: dataStart,
-            skipHeader: true,
-            header: headers,
+        if (targetSheet !== sheetName) {
+          fullWs = XLSX.utils.json_to_sheet(sanitizedData, {
+            header: undefined,
           });
         } else {
-          XLSX.utils.sheet_add_json(newWs, sanitizedData, { origin: 0 });
-        }
-
-        // Preserve existing formula cells in the data area: if the original worksheet
-        // has a formula at a data cell, restore that cell object so we don't overwrite formulas.
-        try {
-          const dataRowsCount = Array.isArray(sanitizedData)
-            ? sanitizedData.length
-            : 0;
-          for (let rIdx = dataStart; rIdx < dataStart + dataRowsCount; rIdx++) {
+          const newWs = {};
+          const cols = range.e.c - range.s.c + 1;
+          const rowsCount = headerRowPos - range.s.r + 1;
+          for (let rIdx = range.s.r; rIdx <= headerRowPos; rIdx++) {
             for (let c = range.s.c; c <= range.e.c; c++) {
               const addr = XLSX.utils.encode_cell({ c, r: rIdx });
-              const origCell = ws[addr];
-              if (origCell && origCell.f) {
-                newWs[addr] = Object.assign({}, origCell);
-              }
+              const cell = ws[addr];
+              if (cell) newWs[addr] = Object.assign({}, cell);
             }
           }
-        } catch (e) {
-          // non-fatal; if preservation fails, proceed with written data
-        }
 
-        fullWs = newWs;
+          if (ws && ws["!merges"]) newWs["!merges"] = ws["!merges"];
+
+          if (headers.length > 0) {
+            XLSX.utils.sheet_add_json(newWs, sanitizedData, {
+              origin: dataStart,
+              skipHeader: true,
+              header: headers,
+            });
+          } else {
+            XLSX.utils.sheet_add_json(newWs, sanitizedData, { origin: 0 });
+          }
+
+          try {
+            const dataRowsCount = Array.isArray(sanitizedData)
+              ? sanitizedData.length
+              : 0;
+            for (
+              let rIdx = dataStart;
+              rIdx < dataStart + dataRowsCount;
+              rIdx++
+            ) {
+              for (let c = range.s.c; c <= range.e.c; c++) {
+                const addr = XLSX.utils.encode_cell({ c, r: rIdx });
+                const origCell = ws[addr];
+                if (origCell && origCell.f)
+                  newWs[addr] = Object.assign({}, origCell);
+              }
+            }
+          } catch (e) {
+            // non-fatal
+          }
+
+          fullWs = newWs;
+        }
       } catch (e) {
-        // fallback: full replacement
         const headersFallback = Array.from(
           new Set([].concat(...existingData.map(Object.keys)))
         );
@@ -1376,15 +1850,150 @@ async function createRow(filePath, sheetName, row, opts = {}) {
         });
       }
 
-      wb.Sheets[sheetName] = fullWs;
+      if (targetSheet !== sheetName) {
+        console.log &&
+          console.log("createRow: routing to data sheet", {
+            filePath,
+            targetSheet,
+            sheetName,
+          });
+        // Prefer native bridge for .xlsm data-sheet writes
+        // Centralized write that respects sidecar policy for xlsm
+        try {
+          const wrote = writeTargetSheet(filePath, targetSheet, fullWs);
+          if (!wrote) {
+            // If writeTargetSheet returned false (sidecar failed), attempt bridge as fallback
+            const bridgeAvailable = await excelBridge.pythonAvailable();
+            if (bridgeAvailable) {
+              const rowsToWrite = sanitizedData || [];
+              console.debug &&
+                console.debug(
+                  "DEBUG: Attempting bridge createSheetWithExcelBridge",
+                  {
+                    filePath,
+                    targetSheet,
+                    sampleRows: Math.min(rowsToWrite.length, 5),
+                  }
+                );
+              log("DEBUG", "Attempting bridge createSheetWithExcelBridge", {
+                filePath,
+                targetSheet,
+                rows: Math.min(rowsToWrite.length, 5),
+              });
+              const res = await excelBridge.createSheetWithExcelBridge({
+                path: filePath,
+                sheet: targetSheet,
+                rows: rowsToWrite,
+              });
+              log("DEBUG", "Bridge createSheetWithExcelBridge result", {
+                filePath,
+                targetSheet,
+                result: res && typeof res === "object" ? res.ok : String(res),
+              });
+              if (res && res.ok) {
+                invalidateCache(filePath);
+                log("INFO", "Data sheet created via native bridge", {
+                  filePath,
+                  dataSheetName: targetSheet,
+                });
+              } else {
+                throw new Error("bridge-create-failed");
+              }
+            } else {
+              throw new Error("bridge-unavailable");
+            }
+          }
+        } catch (e) {
+          // Last resort: write into original workbook (risky)
+          try {
+            const ext = path.extname(filePath).toLowerCase().replace(".", "");
+            const freshWb = XLSX.readFile(filePath, {
+              bookVBA: true,
+              cellStyles: true,
+            });
+            if (!freshWb.SheetNames.includes(targetSheet))
+              freshWb.SheetNames.push(targetSheet);
+            freshWb.Sheets[targetSheet] = fullWs;
+            freshWb.Workbook = freshWb.Workbook || {};
+            freshWb.Workbook.Sheets = freshWb.Workbook.Sheets || [];
+            if (
+              !freshWb.Workbook.Sheets.some((s) => s && s.name === targetSheet)
+            ) {
+              freshWb.Workbook.Sheets.push({ name: targetSheet, Hidden: 1 });
+            }
+            const bookType = ext === "xlsm" ? "xlsm" : "xlsx";
+            writeWorkbookAtomic(filePath, freshWb, bookType);
+          } catch (e2) {
+            wb.Sheets[targetSheet] = fullWs;
+            const ext = path.extname(filePath).toLowerCase().replace(".", "");
+            const bookType = ext === "xlsm" ? "xlsm" : "xlsx";
+            writeWorkbookAtomic(filePath, wb, bookType);
+          }
+        }
+      } else {
+        // For presentation-sheet writes on .xlsm, prefer the native bridge
+        // to perform an insert/replace so we avoid full SheetJS overwrite.
+        let usedBridge = false;
+        try {
+          const ext = path.extname(filePath).toLowerCase().replace(".", "");
+          if (ext === "xlsm") {
+            const available = await excelBridge.pythonAvailable();
+            if (available) {
+              // attempt to insert the single new row via bridge
+              const insertIndex =
+                typeof (opts && opts.insertIndex) === "number"
+                  ? Number(opts.insertIndex)
+                  : null;
+              console.debug &&
+                console.debug("DEBUG: Attempting bridge insert_row", {
+                  filePath,
+                  targetSheet,
+                  insertIndex,
+                });
+              log("DEBUG", "Attempting bridge insert_row", {
+                filePath,
+                targetSheet,
+                insertIndex,
+              });
+              const res = await excelBridge.writeWithExcelBridge({
+                path: filePath,
+                sheet: targetSheet,
+                op: "insert_row",
+                index: insertIndex,
+                row: sanitizedData[
+                  existingIdx === -1 ? sanitizedData.length - 1 : existingIdx
+                ],
+              });
+              log("DEBUG", "Bridge insert_row result", {
+                filePath,
+                targetSheet,
+                res,
+              });
+              if (res && res.ok) {
+                invalidateCache(filePath);
+                usedBridge = true;
+              }
+            }
+          }
+        } catch (e) {
+          // ignore bridge errors and fall through to SheetJS write
+        }
 
-      const ext = path.extname(filePath).toLowerCase().replace(".", "");
-      const bookType = ext === "xlsm" ? "xlsm" : "xlsx";
+        if (!usedBridge) {
+          wb.Sheets[targetSheet] = fullWs;
+          const ext = path.extname(filePath).toLowerCase().replace(".", "");
+          const bookType = ext === "xlsm" ? "xlsm" : "xlsx";
+          writeWorkbookAtomic(filePath, wb, bookType);
+        }
+      }
 
-      writeWorkbookAtomic(filePath, wb, bookType);
       invalidateCache(filePath);
 
-      log("INFO", "Row created", { filePath, sheetName, row: newRow });
+      log("INFO", "Row created", {
+        filePath,
+        sheetName: targetSheet,
+        row: newRow,
+      });
       return { success: true, row: newRow };
     } finally {
       try {
@@ -1420,6 +2029,22 @@ async function updateRow(
 ) {
   try {
     const cfg = readConfig() || {};
+    // Safety guard: refuse to perform SheetJS-based write to .xlsm unless
+    // native bridge is available or config override present.
+    let xlsmWriteAllowed = true;
+    try {
+      const ext = path
+        .extname(filePath || "")
+        .toLowerCase()
+        .replace(".", "");
+      const requireBridge = cfg.requireNativeBridgeForXlsm !== false;
+      if (ext === "xlsm" && requireBridge) {
+        const bridgeAvailable = await excelBridge.pythonAvailable();
+        if (!bridgeAvailable) {
+          xlsmWriteAllowed = false;
+        }
+      }
+    } catch (e) {}
     const readOnly = cfg.readOnlySheets || [];
     if (readOnly.includes(sheetName)) {
       log("WARN", "Attempt to update row in read-only sheet", {
@@ -1430,18 +2055,31 @@ async function updateRow(
     }
 
     const pkName = cfg.pkName || "id";
+    const dataSheetName = cfg.dataSheetName || "_data";
+    // Default to updating the requested presentation sheet (`sheetName`).
+    // Use the dedicated data sheet only when opts.useDataSheet === true.
+    const useDataSheet = opts && opts.useDataSheet;
+    let targetSheet = useDataSheet && dataSheetName ? dataSheetName : sheetName;
+
+    // Ensure data sheet exists if routing updates there
+    if (targetSheet === dataSheetName) {
+      try {
+        await ensureDataSheetExists(filePath, sheetName);
+      } catch (e) {}
+    }
+
     const release = await acquireLock(filePath, { timeoutMs: 5000 });
 
     try {
-      const r = readSheetJson(filePath, sheetName) || {
+      const r = readSheetJson(filePath, targetSheet) || {
         wb: XLSX.readFile(filePath, { bookVBA: true, cellStyles: true }),
         json: [],
       };
 
       const wb = r.wb;
-      const ws = wb.Sheets[sheetName];
+      const ws = wb.Sheets[targetSheet];
 
-      const headerRowPos = getHeaderRowPosition(filePath, sheetName) || 0;
+      const headerRowPos = getHeaderRowPosition(filePath, targetSheet) || 0;
       const range =
         ws && ws["!ref"]
           ? XLSX.utils.decode_range(ws["!ref"])
@@ -1489,7 +2127,7 @@ async function updateRow(
           idx = providedIndex;
           log("INFO", "Using index-based update fallback", {
             filePath,
-            sheetName,
+            sheetName: targetSheet,
             providedIndex,
           });
         }
@@ -1578,7 +2216,8 @@ async function updateRow(
             delete newCell.f;
 
             if (!wb || !wb.Sheets) continue;
-            wb.Sheets[sheetName] = ws;
+            // write to the target sheet (may differ from the presentation sheet)
+            wb.Sheets[targetSheet] = ws;
             ws[addr] = newCell;
             anyUpdated = true;
           }
@@ -1615,13 +2254,129 @@ async function updateRow(
               // non-fatal; proceed to write whatever we updated
             }
 
-            const ext = path.extname(filePath).toLowerCase().replace(".", "");
-            const bookType = ext === "xlsm" ? "xlsm" : "xlsx";
-            writeWorkbookAtomic(filePath, wb, bookType);
+            // For in-place updates that target the presentation sheet, prefer
+            // using the native Excel bridge (xlwings) to perform targeted cell
+            // updates so we avoid a full SheetJS write that can corrupt .xlsm
+            // presentation content. If the bridge is unavailable or fails,
+            // fall back to the previous write behavior.
+            const doNativeBridge = async () => {
+              try {
+                // Only attempt bridge for presentation-sheet in-place updates
+                if (targetSheet === sheetName) {
+                  const available = await excelBridge.pythonAvailable();
+                  if (!available) return false;
+
+                  // Build patches for each updated header cell plus _version
+                  const patches = [];
+                  const dataStart = headerRowPos + 1;
+                  const targetRow = dataStart + idx;
+
+                  for (const key of updatableKeys) {
+                    const colIndex = headers.indexOf(key) + range.s.c;
+                    if (colIndex < range.s.c || colIndex > range.e.c) continue;
+                    const addr = XLSX.utils.encode_cell({
+                      c: colIndex,
+                      r: targetRow,
+                    });
+                    const newVal = updates[key];
+                    patches.push({ addr, value: newVal });
+                  }
+
+                  // include version cell if present
+                  if (Array.isArray(headers) && headers.includes("_version")) {
+                    const verColIndex = headers.indexOf("_version") + range.s.c;
+                    const verAddr = XLSX.utils.encode_cell({
+                      c: verColIndex,
+                      r: targetRow,
+                    });
+                    patches.push({ addr: verAddr, value: updated["_version"] });
+                  }
+
+                  if (patches.length === 0) return false;
+
+                  // invoke bridge
+                  const res = await excelBridge.writeWithExcelBridge({
+                    path: filePath,
+                    sheet: targetSheet,
+                    patches,
+                  });
+                  if (res && res.ok) {
+                    return true;
+                  }
+                }
+              } catch (e) {
+                // ignore and fall through to fallback writer
+              }
+              return false;
+            };
+
+            // attempt native bridge first for presentation sheet updates
+            const usedBridge = await doNativeBridge();
+            if (!usedBridge) {
+              // If writing to .xlsm and js-based writes are not allowed, abort
+              if (!xlsmWriteAllowed) {
+                log(
+                  "ERROR",
+                  "Blocked risky SheetJS write to .xlsm; bridge unavailable",
+                  {
+                    filePath,
+                    sheetName: targetSheet,
+                  }
+                );
+                return {
+                  error: "native-bridge-required",
+                  message:
+                    "Native Excel bridge required for .xlsm writes to avoid corruption. Install xlwings or set config.requireNativeBridgeForXlsm = false to override.",
+                };
+              }
+              if (targetSheet !== sheetName) {
+                try {
+                  const freshWb = XLSX.readFile(filePath, {
+                    bookVBA: true,
+                    cellStyles: true,
+                  });
+                  if (!freshWb.SheetNames.includes(targetSheet))
+                    freshWb.SheetNames.push(targetSheet);
+                  freshWb.Sheets[targetSheet] = ws;
+                  freshWb.Workbook = freshWb.Workbook || {};
+                  freshWb.Workbook.Sheets = freshWb.Workbook.Sheets || [];
+                  if (
+                    !freshWb.Workbook.Sheets.some(
+                      (s) => s && s.name === targetSheet
+                    )
+                  ) {
+                    freshWb.Workbook.Sheets.push({
+                      name: targetSheet,
+                      Hidden: 1,
+                    });
+                  }
+                  const ext = path
+                    .extname(filePath)
+                    .toLowerCase()
+                    .replace(".", "");
+                  const bookType = ext === "xlsm" ? "xlsm" : "xlsx";
+                  writeWorkbookAtomic(filePath, freshWb, bookType);
+                } catch (e) {
+                  const ext = path
+                    .extname(filePath)
+                    .toLowerCase()
+                    .replace(".", "");
+                  const bookType = ext === "xlsm" ? "xlsm" : "xlsx";
+                  writeWorkbookAtomic(filePath, wb, bookType);
+                }
+              } else {
+                const ext = path
+                  .extname(filePath)
+                  .toLowerCase()
+                  .replace(".", "");
+                const bookType = ext === "xlsm" ? "xlsm" : "xlsx";
+                writeWorkbookAtomic(filePath, wb, bookType);
+              }
+            }
             invalidateCache(filePath);
             log("INFO", "Row updated (in-place)", {
               filePath,
-              sheetName,
+              sheetName: targetSheet,
               pkValue,
               updates,
             });
@@ -1632,69 +2387,59 @@ async function updateRow(
         // any error here should fall back to the full-rebuild path below
       }
 
-      // rebuild full worksheet preserving top rows and header row (clone full cell objects)
+      // rebuild full worksheet preserving header/top when operating on presentation
+      // sheet; otherwise, when operating on dedicated data sheet, write JSON
+      // directly to avoid touching presentation formatting.
       let fullWs;
       try {
-        const newWs = {};
-        const dataStart = headerRowPos + 1;
-        for (let rIdx = range.s.r; rIdx <= headerRowPos; rIdx++) {
-          for (let c = range.s.c; c <= range.e.c; c++) {
-            const addr = XLSX.utils.encode_cell({ c, r: rIdx });
-            const cell = ws[addr];
-            if (cell) {
-              // shallow clone the cell object to preserve formulas/styles/comments
-              newWs[addr] = Object.assign({}, cell);
-            }
-          }
-        }
-
-        // attach merges if present
-        if (ws && ws["!merges"]) newWs["!merges"] = ws["!merges"];
-
-        // now append data rows starting at dataStart (use sanitized rows)
-        if (headers.length > 0) {
-          XLSX.utils.sheet_add_json(newWs, sanitized, {
-            origin: dataStart,
-            skipHeader: true,
-            header: headers,
-          });
+        if (targetSheet !== sheetName) {
+          fullWs = XLSX.utils.json_to_sheet(sanitized, { header: undefined });
         } else {
-          XLSX.utils.sheet_add_json(newWs, sanitized, { origin: 0 });
-        }
-
-        // Restore formula cells from original worksheet in the data area to avoid overwriting formulas
-        try {
-          const dataRowsCount = Array.isArray(sanitized) ? sanitized.length : 0;
-          for (let rIdx = dataStart; rIdx < dataStart + dataRowsCount; rIdx++) {
+          const newWs = {};
+          const dataStart = headerRowPos + 1;
+          for (let rIdx = range.s.r; rIdx <= headerRowPos; rIdx++) {
             for (let c = range.s.c; c <= range.e.c; c++) {
               const addr = XLSX.utils.encode_cell({ c, r: rIdx });
-              const origCell = ws[addr];
-              if (origCell && origCell.f) {
-                newWs[addr] = Object.assign({}, origCell);
+              const cell = ws[addr];
+              if (cell) {
+                newWs[addr] = Object.assign({}, cell);
               }
             }
           }
-        } catch (e) {
-          // ignore
-        }
 
-        // Restore formula cells from original worksheet in the data area to avoid overwriting formulas
-        try {
-          const dataRowsCount = Array.isArray(sanitized) ? sanitized.length : 0;
-          for (let rIdx = dataStart; rIdx < dataStart + dataRowsCount; rIdx++) {
-            for (let c = range.s.c; c <= range.e.c; c++) {
-              const addr = XLSX.utils.encode_cell({ c, r: rIdx });
-              const origCell = ws[addr];
-              if (origCell && origCell.f) {
-                newWs[addr] = Object.assign({}, origCell);
+          if (ws && ws["!merges"]) newWs["!merges"] = ws["!merges"];
+
+          if (headers.length > 0) {
+            XLSX.utils.sheet_add_json(newWs, sanitized, {
+              origin: dataStart,
+              skipHeader: true,
+              header: headers,
+            });
+          } else {
+            XLSX.utils.sheet_add_json(newWs, sanitized, { origin: 0 });
+          }
+
+          try {
+            const dataRowsCount = Array.isArray(sanitized)
+              ? sanitized.length
+              : 0;
+            for (
+              let rIdx = dataStart;
+              rIdx < dataStart + dataRowsCount;
+              rIdx++
+            ) {
+              for (let c = range.s.c; c <= range.e.c; c++) {
+                const addr = XLSX.utils.encode_cell({ c, r: rIdx });
+                const origCell = ws[addr];
+                if (origCell && origCell.f) {
+                  newWs[addr] = Object.assign({}, origCell);
+                }
               }
             }
-          }
-        } catch (e) {
-          // ignore
-        }
+          } catch (e) {}
 
-        fullWs = newWs;
+          fullWs = newWs;
+        }
       } catch (e) {
         const headersFallback = Array.from(
           new Set([].concat(...sanitized.map(Object.keys)))
@@ -1704,15 +2449,85 @@ async function updateRow(
         });
       }
 
-      wb.Sheets[sheetName] = fullWs;
+      if (targetSheet !== sheetName) {
+        try {
+          const wrote = writeTargetSheet(filePath, targetSheet, fullWs);
+          if (!wrote) {
+            const bridgeAvailable = await excelBridge.pythonAvailable();
+            if (bridgeAvailable) {
+              const rowsToWrite = sanitized || [];
+              const res = await excelBridge.createSheetWithExcelBridge({
+                path: filePath,
+                sheet: targetSheet,
+                rows: rowsToWrite,
+              });
+              if (res && res.ok) {
+                invalidateCache(filePath);
+                log("INFO", "Data sheet written via native bridge", {
+                  filePath,
+                  dataSheet: targetSheet,
+                });
+              } else {
+                throw new Error("bridge-create-failed");
+              }
+            } else {
+              throw new Error("bridge-unavailable");
+            }
+          }
+        } catch (e) {
+          try {
+            wb.Sheets[targetSheet] = fullWs;
+            const ext = path.extname(filePath).toLowerCase().replace(".", "");
+            const bookType = ext === "xlsm" ? "xlsm" : "xlsx";
+            writeWorkbookAtomic(filePath, wb, bookType);
+          } catch (e2) {
+            log("ERROR", "Failed to persist updated sheet", {
+              filePath,
+              targetSheet,
+              message: e2.message,
+            });
+            throw e2;
+          }
+        }
+      } else {
+        // For presentation-sheet deletions on .xlsm prefer native bridge
+        let usedBridge = false;
+        try {
+          const ext = path.extname(filePath).toLowerCase().replace(".", "");
+          if (ext === "xlsm") {
+            const available = await excelBridge.pythonAvailable();
+            if (available) {
+              const res = await excelBridge.writeWithExcelBridge({
+                path: filePath,
+                sheet: targetSheet,
+                op: "delete_row",
+                index: idx,
+              });
+              if (res && res.ok) {
+                invalidateCache(filePath);
+                usedBridge = true;
+              }
+            }
+          }
+        } catch (e) {
+          // ignore and fall back
+        }
 
-      const ext = path.extname(filePath).toLowerCase().replace(".", "");
-      const bookType = ext === "xlsm" ? "xlsm" : "xlsx";
-
-      writeWorkbookAtomic(filePath, wb, bookType);
+        if (!usedBridge) {
+          wb.Sheets[targetSheet] = fullWs;
+          const ext = path.extname(filePath).toLowerCase().replace(".", "");
+          const bookType = ext === "xlsm" ? "xlsm" : "xlsx";
+          writeWorkbookAtomic(filePath, wb, bookType);
+        }
+      }
       invalidateCache(filePath);
 
-      log("INFO", "Row updated", { filePath, sheetName, pkValue, updates });
+      log("INFO", "Row updated", {
+        filePath,
+        sheetName: targetSheet,
+        pkValue,
+        updates,
+      });
       return { success: true, row: updated };
     } finally {
       try {
@@ -1741,6 +2556,28 @@ async function updateRow(
 async function deleteRow(filePath, sheetName, pkValue, expectedVersion) {
   try {
     const cfg = readConfig() || {};
+    // Safety guard similar to create/update: block risky .xlsm writes unless bridge available
+    try {
+      const ext = path
+        .extname(filePath || "")
+        .toLowerCase()
+        .replace(".", "");
+      const requireBridge = cfg.requireNativeBridgeForXlsm !== false;
+      if (ext === "xlsm" && requireBridge) {
+        const bridgeAvailable = await excelBridge.pythonAvailable();
+        if (!bridgeAvailable) {
+          log("WARN", "Refusing to delete row in .xlsm without native bridge", {
+            filePath,
+            sheetName,
+          });
+          return {
+            error: "native-bridge-required",
+            message:
+              "Native Excel bridge (xlwings) required for .xlsm to avoid data loss. Install xlwings or set config.requireNativeBridgeForXlsm = false to allow risky writes.",
+          };
+        }
+      }
+    } catch (e) {}
     const readOnly = cfg.readOnlySheets || [];
     if (readOnly.includes(sheetName)) {
       log("WARN", "Attempt to delete row in read-only sheet", {
@@ -1751,18 +2588,44 @@ async function deleteRow(filePath, sheetName, pkValue, expectedVersion) {
     }
 
     const pkName = cfg.pkName || "id";
+    const dataSheetName = cfg.dataSheetName || "_data";
+    const usePresentation = false; // deletions should default to data sheet; caller can set opts.usePresentationSheet if needed
+    let targetSheet =
+      !usePresentation && dataSheetName ? dataSheetName : sheetName;
+
+    // Ensure data sheet exists if routing deletions there
+    if (targetSheet === dataSheetName) {
+      try {
+        ensureDataSheetExists(filePath, sheetName);
+      } catch (e) {}
+    } else {
+      // If xlsm and sidecar exists, prefer routing deletions to sidecar
+      try {
+        const ext = path
+          .extname(filePath || "")
+          .toLowerCase()
+          .replace(".", "");
+        if (ext === "xlsm") {
+          const sidecar = getSidecarPath(filePath);
+          if (sidecar && fs.existsSync(sidecar)) {
+            targetSheet = dataSheetName;
+          }
+        }
+      } catch (e) {}
+    }
+
     const release = await acquireLock(filePath, { timeoutMs: 5000 });
 
     try {
-      const r = readSheetJson(filePath, sheetName) || {
+      const r = readSheetJson(filePath, targetSheet) || {
         wb: XLSX.readFile(filePath, { bookVBA: true, cellStyles: true }),
         json: [],
       };
 
       const wb = r.wb;
-      const ws = wb.Sheets[sheetName];
+      const ws = wb.Sheets[targetSheet];
 
-      const headerRowPos = getHeaderRowPosition(filePath, sheetName) || 0;
+      const headerRowPos = getHeaderRowPosition(filePath, targetSheet) || 0;
       const range =
         ws && ws["!ref"]
           ? XLSX.utils.decode_range(ws["!ref"])
@@ -1829,37 +2692,39 @@ async function deleteRow(filePath, sheetName, pkValue, expectedVersion) {
       // sanitize rows to avoid writing internal underscore-prefixed fields
       const sanitized = sanitizeRowsForSheet(json, pkName, headers);
 
-      // rebuild full worksheet preserving header/top rows (clone full cell objects)
+      // rebuild full worksheet preserving header/top rows if operating on
+      // presentation sheet; otherwise write JSON directly to the data sheet.
       let fullWs;
       try {
-        const newWs = {};
-        const dataStart = headerRowPos + 1;
-        for (let rIdx = range.s.r; rIdx <= headerRowPos; rIdx++) {
-          for (let c = range.s.c; c <= range.e.c; c++) {
-            const addr = XLSX.utils.encode_cell({ c, r: rIdx });
-            const cell = ws[addr];
-            if (cell) {
-              // shallow clone the cell object to preserve formulas/styles/comments
-              newWs[addr] = Object.assign({}, cell);
+        if (targetSheet !== sheetName) {
+          fullWs = XLSX.utils.json_to_sheet(sanitized, { header: undefined });
+        } else {
+          const newWs = {};
+          const dataStart = headerRowPos + 1;
+          for (let rIdx = range.s.r; rIdx <= headerRowPos; rIdx++) {
+            for (let c = range.s.c; c <= range.e.c; c++) {
+              const addr = XLSX.utils.encode_cell({ c, r: rIdx });
+              const cell = ws[addr];
+              if (cell) {
+                newWs[addr] = Object.assign({}, cell);
+              }
             }
           }
+
+          if (ws && ws["!merges"]) newWs["!merges"] = ws["!merges"];
+
+          if (headers.length > 0) {
+            XLSX.utils.sheet_add_json(newWs, sanitized, {
+              origin: dataStart,
+              skipHeader: true,
+              header: headers,
+            });
+          } else {
+            XLSX.utils.sheet_add_json(newWs, sanitized, { origin: 0 });
+          }
+
+          fullWs = newWs;
         }
-
-        // attach merges if present
-        if (ws && ws["!merges"]) newWs["!merges"] = ws["!merges"];
-
-        // now append data rows starting at dataStart (use sanitized rows)
-        if (headers.length > 0) {
-          XLSX.utils.sheet_add_json(newWs, sanitized, {
-            origin: dataStart,
-            skipHeader: true,
-            header: headers,
-          });
-        } else {
-          XLSX.utils.sheet_add_json(newWs, sanitized, { origin: 0 });
-        }
-
-        fullWs = newWs;
       } catch (e) {
         const headersFallback = Array.from(
           new Set([].concat(...sanitized.map(Object.keys)))
@@ -1869,15 +2734,93 @@ async function deleteRow(filePath, sheetName, pkValue, expectedVersion) {
         });
       }
 
-      wb.Sheets[sheetName] = fullWs;
-
-      const ext = path.extname(filePath).toLowerCase().replace(".", "");
-      const bookType = ext === "xlsm" ? "xlsm" : "xlsx";
-
-      writeWorkbookAtomic(filePath, wb, bookType);
+      if (targetSheet !== sheetName) {
+        const ext = path.extname(filePath).toLowerCase().replace(".", "");
+        if (ext === "xlsm") {
+          try {
+            const bridgeAvailable = await excelBridge.pythonAvailable();
+            if (bridgeAvailable) {
+              const rowsToWrite = sanitized || [];
+              const res = await excelBridge.createSheetWithExcelBridge({
+                path: filePath,
+                sheet: targetSheet,
+                rows: rowsToWrite,
+              });
+              if (res && res.ok) {
+                invalidateCache(filePath);
+                log("INFO", "Data sheet written via native bridge", {
+                  filePath,
+                  dataSheet: targetSheet,
+                });
+              } else {
+                throw new Error("bridge-create-failed");
+              }
+            } else {
+              throw new Error("bridge-unavailable");
+            }
+          } catch (e) {
+            log("WARN", "Native bridge write failed; falling back", {
+              filePath,
+              message: e && e.message,
+            });
+            try {
+              const freshWb = XLSX.readFile(filePath, {
+                bookVBA: true,
+                cellStyles: true,
+              });
+              if (!freshWb.SheetNames.includes(targetSheet))
+                freshWb.SheetNames.push(targetSheet);
+              freshWb.Sheets[targetSheet] = fullWs;
+              freshWb.Workbook = freshWb.Workbook || {};
+              freshWb.Workbook.Sheets = freshWb.Workbook.Sheets || [];
+              if (
+                !freshWb.Workbook.Sheets.some(
+                  (s) => s && s.name === targetSheet
+                )
+              ) {
+                freshWb.Workbook.Sheets.push({ name: targetSheet, Hidden: 1 });
+              }
+              const bookType = ext === "xlsm" ? "xlsm" : "xlsx";
+              writeWorkbookAtomic(filePath, freshWb, bookType);
+            } catch (e2) {
+              wb.Sheets[targetSheet] = fullWs;
+              const bookType = ext === "xlsm" ? "xlsm" : "xlsx";
+              writeWorkbookAtomic(filePath, wb, bookType);
+            }
+          }
+        } else {
+          try {
+            const freshWb = XLSX.readFile(filePath, {
+              bookVBA: true,
+              cellStyles: true,
+            });
+            if (!freshWb.SheetNames.includes(targetSheet))
+              freshWb.SheetNames.push(targetSheet);
+            freshWb.Sheets[targetSheet] = fullWs;
+            freshWb.Workbook = freshWb.Workbook || {};
+            freshWb.Workbook.Sheets = freshWb.Workbook.Sheets || [];
+            if (
+              !freshWb.Workbook.Sheets.some((s) => s && s.name === targetSheet)
+            ) {
+              freshWb.Workbook.Sheets.push({ name: targetSheet, Hidden: 1 });
+            }
+            const bookType = ext === "xlsm" ? "xlsm" : "xlsx";
+            writeWorkbookAtomic(filePath, freshWb, bookType);
+          } catch (e) {
+            wb.Sheets[targetSheet] = fullWs;
+            const bookType = ext === "xlsm" ? "xlsm" : "xlsx";
+            writeWorkbookAtomic(filePath, wb, bookType);
+          }
+        }
+      } else {
+        wb.Sheets[targetSheet] = fullWs;
+        const ext = path.extname(filePath).toLowerCase().replace(".", "");
+        const bookType = ext === "xlsm" ? "xlsm" : "xlsx";
+        writeWorkbookAtomic(filePath, wb, bookType);
+      }
       invalidateCache(filePath);
 
-      log("INFO", "Row deleted", { filePath, sheetName, pkValue });
+      log("INFO", "Row deleted", { filePath, sheetName: targetSheet, pkValue });
       return { success: true };
     } finally {
       try {
@@ -1955,4 +2898,7 @@ module.exports = {
   detectHeaderRow,
   isLikelyDataRow,
   getHeaderRowPosition,
+  ensureDataSheetExists,
 };
+
+// Note: Enhanced wrapper functions removed - using cleanXlsmService directly in main.js

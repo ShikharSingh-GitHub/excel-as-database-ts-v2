@@ -1,7 +1,20 @@
-const { app, BrowserWindow, ipcMain, dialog } = require("electron");
+// Try to load Electron APIs. When this file is required in a plain Node
+// context (for diagnostics or tests) `require('electron')` may fail or be
+// unavailable. Wrap in try/catch and leave variables undefined so the file
+// can be safely required outside of Electron.
+let app, BrowserWindow, ipcMain, dialog;
+try {
+  ({ app, BrowserWindow, ipcMain, dialog } = require("electron"));
+} catch (e) {
+  app = undefined;
+  BrowserWindow = undefined;
+  ipcMain = undefined;
+  dialog = undefined;
+}
 const path = require("path");
 const fs = require("fs");
 const excelService = require("./electron/excelService");
+const cleanXlsmService = require("./electron/cleanXlsmService");
 
 // Simple logging function for main process
 function log(level, message, ctx) {
@@ -100,168 +113,272 @@ function loadProductionRenderer() {
   }
 }
 
-app.whenReady().then(() => {
-  createWindow();
+// Only start the app when Electron's `app` is available. This prevents
+// calling into Electron APIs when the module is loaded in plain Node.
+if (app && typeof app.whenReady === "function") {
+  app.whenReady().then(() => {
+    createWindow();
 
-  app.on("activate", function () {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+    app.on("activate", function () {
+      if (
+        BrowserWindow &&
+        BrowserWindow.getAllWindows &&
+        BrowserWindow.getAllWindows().length === 0
+      )
+        createWindow();
+    });
   });
-});
+} else {
+  log("INFO", "Electron app API not available; skipping app startup");
+}
 
-app.on("window-all-closed", function () {
-  if (process.platform !== "darwin") app.quit();
-});
+if (app && typeof app.on === "function") {
+  app.on("window-all-closed", function () {
+    if (process.platform !== "darwin") app.quit();
+  });
+}
 
-// IPC handlers
-ipcMain.handle("config:get", async () => {
-  return excelService.readConfig();
-});
+// Register IPC handlers only when ipcMain is available (i.e., running under
+// Electron). This lets the file be required for static analysis or tests in
+// plain Node without attempting to register IPC endpoints.
+if (ipcMain) {
+  // IPC handlers
+  ipcMain.handle("config:get", async () => {
+    return excelService.readConfig();
+  });
 
-ipcMain.handle("config:set", async (event, partial) => {
-  return excelService.writeConfig(partial);
-});
+  ipcMain.handle("config:set", async (event, partial) => {
+    return excelService.writeConfig(partial);
+  });
 
-ipcMain.handle("config:getValue", async (event, key, defaultValue) => {
-  return excelService.getConfigValue(key, defaultValue);
-});
+  ipcMain.handle("config:getValue", async (event, key, defaultValue) => {
+    return excelService.getConfigValue(key, defaultValue);
+  });
 
-ipcMain.handle("config:addRecentWorkbook", async (event, filePath) => {
-  return excelService.addRecentWorkbook(filePath);
-});
+  ipcMain.handle("config:addRecentWorkbook", async (event, filePath) => {
+    return excelService.addRecentWorkbook(filePath);
+  });
 
-ipcMain.handle("config:getRecentWorkbooks", async () => {
-  return excelService.getRecentWorkbooks();
-});
+  ipcMain.handle("config:getRecentWorkbooks", async () => {
+    return excelService.getRecentWorkbooks();
+  });
 
-ipcMain.handle("config:isSheetReadOnly", async (event, sheetName) => {
-  return excelService.isSheetReadOnly(sheetName);
-});
+  ipcMain.handle("config:isSheetReadOnly", async (event, sheetName) => {
+    return excelService.isSheetReadOnly(sheetName);
+  });
 
-ipcMain.handle("folder:pick", async () => {
-  const res = await dialog.showOpenDialog({ properties: ["openDirectory"] });
-  if (res.canceled) return null;
-  return res.filePaths[0];
-});
+  ipcMain.handle("folder:pick", async () => {
+    const res = await dialog.showOpenDialog({ properties: ["openDirectory"] });
+    if (res.canceled) return null;
+    return res.filePaths[0];
+  });
 
-ipcMain.handle("folder:scan", async (event, folderPath) => {
-  return excelService.scanFolder(folderPath);
-});
-
-ipcMain.handle("workbook:meta", async (event, filePath) => {
-  // Ensure fresh metadata: invalidate any caches and validate configured header rows
-  try {
-    if (excelService.invalidateCache) {
-      try {
-        excelService.invalidateCache(filePath);
-      } catch (e) {}
+  ipcMain.handle("folder:scan", async (event, folderPath) => {
+    try {
+      return await cleanXlsmService.scanFolder(folderPath);
+    } catch (e) {
+      log("ERROR", "folder:scan failed", {
+        folderPath,
+        message: e.message,
+      });
+      return { error: "scan-failed", message: e.message };
     }
-    const meta = excelService.getWorkbookMeta(filePath);
-    if (meta && meta.sheets && Array.isArray(meta.sheets)) {
-      // Trigger a validation for any configured header rows (this will persist corrections)
-      for (const s of meta.sheets) {
+  });
+
+  ipcMain.handle("workbook:meta", async (event, filePath) => {
+    // Ensure fresh metadata: invalidate any caches and validate configured header rows
+    try {
+      if (excelService.invalidateCache) {
         try {
-          // call exported helper to validate/persist
-          if (excelService.getHeaderRowPosition) {
-            excelService.getHeaderRowPosition(filePath, s.name);
-          }
+          excelService.invalidateCache(filePath);
         } catch (e) {}
       }
-      // re-read metadata to reflect any persisted corrections
+      log("INFO", "Getting workbook metadata with clean XLSM service", {
+        filePath,
+      });
+      const meta = await cleanXlsmService.getWorkbookMeta(filePath);
+      if (meta && meta.sheets && Array.isArray(meta.sheets)) {
+        // Trigger a validation for any configured header rows (this will persist corrections)
+        for (const s of meta.sheets) {
+          try {
+            // call exported helper to validate/persist
+            if (excelService.getHeaderRowPosition) {
+              excelService.getHeaderRowPosition(filePath, s.name);
+            }
+          } catch (e) {}
+        }
+        // re-read metadata to reflect any persisted corrections
+        return excelService.getWorkbookMeta(filePath);
+      }
+      return meta;
+    } catch (e) {
       return excelService.getWorkbookMeta(filePath);
     }
-    return meta;
-  } catch (e) {
-    return excelService.getWorkbookMeta(filePath);
-  }
-});
+  });
 
-ipcMain.handle("sort:get", async (event, filePath) => {
-  return excelService.getSortState(filePath);
-});
-
-ipcMain.handle("sort:set", async (event, filePath, state) => {
-  return excelService.setSortState(filePath, state);
-});
-
-ipcMain.handle("sheet:read", async (event, filePath, sheetName, opts) => {
-  return excelService.readSheet(filePath, sheetName, opts || {});
-});
-
-ipcMain.handle("sheet:create", async (event, filePath, sheetName, row) => {
-  return excelService.createRow(filePath, sheetName, row);
-});
-
-ipcMain.handle(
-  "sheet:update",
-  async (
-    event,
-    filePath,
-    sheetName,
-    pkValue,
-    updates,
-    expectedVersion,
-    opts = {}
-  ) => {
-    try {
-      const result = await excelService.updateRow(
-        filePath,
-        sheetName,
-        pkValue,
-        updates,
-        expectedVersion,
-        opts
-      );
-      if (result.error === "version-conflict") {
-        log("WARN", "Version conflict detected", {
-          filePath,
-          sheetName,
-          pkValue,
-          expectedVersion,
-          currentVersion: result.current["_version"],
-        });
+  ipcMain.handle(
+    "workbook:ensureDataSheet",
+    async (event, filePath, sourceSheetName) => {
+      try {
+        return excelService.ensureDataSheetExists(filePath, sourceSheetName);
+      } catch (e) {
+        return { error: "ensure-failed", message: e.message };
       }
-      return result;
+    }
+  );
+
+  ipcMain.handle("sort:get", async (event, filePath) => {
+    return excelService.getSortState(filePath);
+  });
+
+  ipcMain.handle("sort:set", async (event, filePath, state) => {
+    return excelService.setSortState(filePath, state);
+  });
+
+  ipcMain.handle("sheet:read", async (event, filePath, sheetName, opts) => {
+    try {
+      return await cleanXlsmService.readSheet(filePath, sheetName, opts || {});
     } catch (e) {
-      log("ERROR", "sheet:update failed", {
+      log("ERROR", "sheet:read failed", {
         filePath,
         sheetName,
         message: e.message,
       });
-      return { error: "update-failed", message: e.message };
+      return { error: "read-failed", message: e.message };
     }
-  }
-);
+  });
 
-ipcMain.handle(
-  "sheet:delete",
-  async (event, filePath, sheetName, pkValue, expectedVersion) => {
-    return excelService.deleteRow(
+  ipcMain.handle("sheet:create", async (event, filePath, sheetName, row) => {
+    try {
+      return await cleanXlsmService.createRow(filePath, sheetName, row);
+    } catch (e) {
+      log("ERROR", "sheet:create failed", {
+        filePath,
+        sheetName,
+        message: e.message,
+      });
+      return { error: "create-failed", message: e.message };
+    }
+  });
+
+  ipcMain.handle(
+    "sheet:update",
+    async (
+      event,
       filePath,
       sheetName,
       pkValue,
-      expectedVersion
-    );
-  }
-);
+      updates,
+      expectedVersion,
+      opts = {}
+    ) => {
+      try {
+        const result = await cleanXlsmService.updateRow(
+          filePath,
+          sheetName,
+          pkValue,
+          updates,
+          expectedVersion,
+          opts
+        );
+        if (result.error === "version-conflict") {
+          log("WARN", "Version conflict detected", {
+            filePath,
+            sheetName,
+            pkValue,
+            expectedVersion,
+            currentVersion: result.current["_version"],
+          });
+        }
+        return result;
+      } catch (e) {
+        log("ERROR", "sheet:update failed", {
+          filePath,
+          sheetName,
+          message: e.message,
+        });
+        return { error: "update-failed", message: e.message };
+      }
+    }
+  );
 
-ipcMain.handle("workbook:export", async (event, filePath) => {
-  return excelService.exportWorkbook(filePath);
-});
+  ipcMain.handle(
+    "sheet:delete",
+    async (event, filePath, sheetName, pkValue, expectedVersion) => {
+      try {
+        return await cleanXlsmService.deleteRow(
+          filePath,
+          sheetName,
+          pkValue,
+          expectedVersion
+        );
+      } catch (e) {
+        log("ERROR", "sheet:delete failed", {
+          filePath,
+          sheetName,
+          pkValue,
+          message: e.message,
+        });
+        return { error: "delete-failed", message: e.message };
+      }
+    }
+  );
 
-ipcMain.handle("folder:refresh", async () => {
-  return excelService.refreshFolder();
-});
+  ipcMain.handle("workbook:export", async (event, filePath) => {
+    return excelService.exportWorkbook(filePath);
+  });
 
-// simple ping
-ipcMain.handle("ping", async () => "pong");
+  // Manual save: for XLSM files, working copy is automatically saved
+  ipcMain.handle("workbook:save", async (event, filePath, opts = {}) => {
+    try {
+      return await cleanXlsmService.saveFile(filePath, opts);
+    } catch (e) {
+      log("ERROR", "workbook:save failed", {
+        filePath,
+        message: e.message,
+      });
+      return { error: "save-failed", message: e.message };
+    }
+  });
 
-// Listen for forwarded renderer console events
-ipcMain.on("renderer:console", (event, payload) => {
-  try {
-    const { level, args } = payload || {};
-    const msg = args && args.length ? args.map(String).join(" ") : "";
-    log("RENDERER", msg || "(no message)");
-  } catch (e) {
-    console.error("Failed to log renderer console", e);
-  }
-});
+  ipcMain.handle("folder:refresh", async () => {
+    return excelService.refreshFolder();
+  });
+
+  // Get XLSM notification status
+  ipcMain.handle("xlsm:getNewFiles", async () => {
+    try {
+      return cleanXlsmService.getNewXlsmFiles();
+    } catch (e) {
+      log("ERROR", "xlsm:getNewFiles failed", { message: e.message });
+      return [];
+    }
+  });
+
+  // Clear XLSM notifications
+  ipcMain.handle("xlsm:clearNotifications", async () => {
+    try {
+      cleanXlsmService.clearNotifications();
+      return { success: true };
+    } catch (e) {
+      log("ERROR", "xlsm:clearNotifications failed", { message: e.message });
+      return { success: false, error: e.message };
+    }
+  });
+
+  // simple ping
+  ipcMain.handle("ping", async () => "pong");
+
+  // Listen for forwarded renderer console events
+  ipcMain.on("renderer:console", (event, payload) => {
+    try {
+      const { level, args } = payload || {};
+      const msg = args && args.length ? args.map(String).join(" ") : "";
+      log("RENDERER", msg || "(no message)");
+    } catch (e) {
+      console.error("Failed to log renderer console", e);
+    }
+  });
+} else {
+  log("INFO", "ipcMain not available; skipping IPC handler registration");
+}

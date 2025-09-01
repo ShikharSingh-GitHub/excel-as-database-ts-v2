@@ -153,17 +153,20 @@ if (require.main === module) {
   // write workbook back
   const ext = path.extname(copy).toLowerCase().replace(".", "");
   const bookType = ext === "xlsm" ? "xlsm" : "xlsx";
-  XLSX.writeFile(
-    wb,
-    copy,
-    Object.assign(
-      { bookType, cellStyles: true },
-      bookType === "xlsm" ? { bookVBA: true } : {}
-    )
-  );
+  // Safe write: if target is .xlsm, write a .data.xlsx sidecar instead of overwriting
+  const targetWrite = bookType === "xlsm" ? `${copy}.data.xlsx` : copy;
+  const writeArgs =
+    bookType === "xlsm"
+      ? { bookType: "xlsx", cellStyles: true }
+      : { bookType, cellStyles: true, bookVBA: true };
+  XLSX.writeFile(wb, targetWrite, writeArgs);
 
   // re-open and compare
-  const wb2 = XLSX.readFile(copy, { bookVBA: true, cellStyles: true });
+  const readBack = bookType === "xlsm" ? `${copy}.data.xlsx` : copy;
+  const wb2 = XLSX.readFile(readBack, {
+    bookVBA: bookType !== "xlsm",
+    cellStyles: true,
+  });
   const ws2 = wb2.Sheets[sheetName];
   const afterCells = rowCells(ws2, range, headers, dataStart + targetRowIdx);
 
