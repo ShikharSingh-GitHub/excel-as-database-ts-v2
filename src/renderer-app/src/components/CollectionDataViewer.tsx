@@ -72,7 +72,7 @@ const CollectionDataViewer: React.FC<CollectionDataViewerProps> = ({
       for (const collectionName of expectedCollections) {
         try {
           const meta = await window.api.collection.meta(collectionName);
-          if (meta.count > 0) {
+          if (meta && meta.count > 0 && Array.isArray(meta.columns)) {
             collectionList.push({
               name: collectionName,
               count: meta.count,
@@ -120,10 +120,17 @@ const CollectionDataViewer: React.FC<CollectionDataViewerProps> = ({
         collection: collectionName,
       });
 
-      setCollectionData(data);
+      // Ensure data is an array and filter out invalid rows
+      const validData = Array.isArray(data) 
+        ? data.filter(row => row && row.id && typeof row.id === 'string')
+        : [];
+
+      console.log(`Loaded ${validData.length} valid rows for ${collectionName}`);
+      setCollectionData(validData);
     } catch (err) {
       setError(`Failed to load ${collectionName}: ${err}`);
       console.error(`Error loading collection ${collectionName}:`, err);
+      setCollectionData([]); // Set empty array on error
     } finally {
       setLoading(false);
     }
@@ -383,8 +390,8 @@ const CollectionDataViewer: React.FC<CollectionDataViewerProps> = ({
       {activeCollection && (
         <div className="flex-1 overflow-auto">
           <CollectionTable
-            data={collectionData}
-            columns={displayColumns}
+            data={collectionData || []}
+            columns={displayColumns || []}
             onUpdate={handleUpdateRow}
             onDelete={handleDeleteRow}
             loading={loading}
@@ -416,6 +423,25 @@ const CollectionTable: React.FC<CollectionTableProps> = ({
     field: string;
   } | null>(null);
   const [editValue, setEditValue] = useState("");
+
+  // Safety checks
+  if (!Array.isArray(data)) {
+    console.warn("CollectionTable: data is not an array", data);
+    return (
+      <div className="p-4 text-center text-red-500">
+        Invalid data format
+      </div>
+    );
+  }
+
+  if (!Array.isArray(columns)) {
+    console.warn("CollectionTable: columns is not an array", columns);
+    return (
+      <div className="p-4 text-center text-red-500">
+        Invalid columns format
+      </div>
+    );
+  }
 
   const handleCellClick = (rowId: string, field: string, currentValue: any) => {
     setEditingCell({ rowId, field });
@@ -466,12 +492,17 @@ const CollectionTable: React.FC<CollectionTableProps> = ({
           </tr>
         </thead>
         <tbody>
-          {data.map((row) => (
-            <tr key={row.id} className="hover:bg-gray-50">
-              {columns.map((column) => (
-                <td key={column} className="border p-2">
-                  {editingCell?.rowId === row.id &&
-                  editingCell?.field === column ? (
+          {data.map((row, index) => {
+            if (!row || !row.id) {
+              console.warn(`Invalid row at index ${index}:`, row);
+              return null;
+            }
+            return (
+              <tr key={row.id} className="hover:bg-gray-50">
+                {columns.map((column) => (
+                  <td key={column} className="border p-2">
+                    {editingCell?.rowId === row.id &&
+                    editingCell?.field === column ? (
                     <input
                       type="text"
                       value={editValue}
@@ -500,10 +531,11 @@ const CollectionTable: React.FC<CollectionTableProps> = ({
                   className="text-red-600 hover:text-red-800 p-1"
                   title="Delete row">
                   <Trash2 className="w-4 h-4" />
-                </button>
-              </td>
-            </tr>
-          ))}
+                                  </button>
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
 
