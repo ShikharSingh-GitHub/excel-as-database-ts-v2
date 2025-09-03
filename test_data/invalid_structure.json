@@ -1,0 +1,17 @@
+{
+  "inconsistent": true,
+  "data": [
+    {
+      "id": 1,
+      "name": "Item 1"
+    },
+    {
+      "id": 2,
+      "name": "Item 2",
+      "extra_field": "This item has an extra field"
+    },
+    {
+      "id": 3
+    }
+  ]
+}

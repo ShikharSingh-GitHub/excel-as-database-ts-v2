@@ -2,6 +2,8 @@ const fs = require("fs").promises;
 const path = require("path");
 const { v4: uuidv4 } = require("uuid");
 const excelService = require("./excelService");
+const collectionStore = require("./collectionStore");
+const normalizationService = require("./normalizationService");
 
 // Use the same logging function as excelService
 const log = (level, message, ctx) => {
@@ -536,30 +538,37 @@ class JsonService {
       const content = await fs.readFile(filePath, "utf8");
       const jsonData = JSON.parse(content);
 
-      if (!Array.isArray(jsonData)) {
-        return { valid: false, error: "JSON file must contain an array" };
-      }
+      // Handle different JSON structures
+      if (Array.isArray(jsonData)) {
+        if (jsonData.length === 0) {
+          return { valid: true, warning: "JSON file is empty array" };
+        }
 
-      if (jsonData.length === 0) {
-        return { valid: true, warning: "JSON file is empty" };
-      }
+        // Check if all objects have consistent structure
+        const firstKeys = Object.keys(jsonData[0]);
+        const inconsistentRows = jsonData.filter(
+          (row) =>
+            Object.keys(row).length !== firstKeys.length ||
+            !firstKeys.every((key) => key in row)
+        );
 
-      // Check if all objects have consistent structure
-      const firstKeys = Object.keys(jsonData[0]);
-      const inconsistentRows = jsonData.filter(
-        (row) =>
-          Object.keys(row).length !== firstKeys.length ||
-          !firstKeys.every((key) => key in row)
-      );
+        if (inconsistentRows.length > 0) {
+          return {
+            valid: true,
+            warning: `${inconsistentRows.length} rows have inconsistent structure`,
+          };
+        }
 
-      if (inconsistentRows.length > 0) {
+        return { valid: true };
+      } else if (typeof jsonData === "object" && jsonData !== null) {
+        // Single object is also valid
+        return { valid: true, warning: "JSON file contains a single object" };
+      } else {
         return {
-          valid: true,
-          warning: `${inconsistentRows.length} rows have inconsistent structure`,
+          valid: false,
+          error: "JSON file must contain an array or object",
         };
       }
-
-      return { valid: true };
     } catch (error) {
       return { valid: false, error: error.message };
     }
@@ -1252,6 +1261,62 @@ class JsonService {
 
   async saveJsonData(filePath, jsonData) {
     await fs.writeFile(filePath, JSON.stringify(jsonData, null, 2));
+  }
+
+  /**
+   * Export JSON data to a file
+   */
+  async export(fileName, exportPath) {
+    try {
+      log("INFO", "Exporting JSON data", { fileName, exportPath });
+
+      // Get all collections for this dataset
+      const expectedCollections = [
+        "pages",
+        "page_elements",
+        "testsets",
+        "testcases",
+        "steps",
+        "application",
+      ];
+
+      const collections = {};
+      for (const collectionName of expectedCollections) {
+        try {
+          const data = await collectionStore.listRows({
+            collection: collectionName,
+          });
+          if (data.length > 0) {
+            collections[collectionName] = data;
+          }
+        } catch (e) {
+          // Collection might not exist, continue
+        }
+      }
+
+      // Recompose to JSON format
+      const recomposedJson = await normalizationService.recomposeJsonData(
+        collections
+      );
+
+      // Write to export path
+      await fs.writeFile(exportPath, JSON.stringify(recomposedJson, null, 2));
+
+      log("INFO", "JSON exported successfully", {
+        fileName,
+        exportPath,
+        collections: Object.keys(collections),
+      });
+
+      return { success: true, path: exportPath };
+    } catch (error) {
+      log("ERROR", "JSON export failed", {
+        fileName,
+        exportPath,
+        error: error.message,
+      });
+      throw new Error(`Failed to export JSON: ${error.message}`);
+    }
   }
 }
 

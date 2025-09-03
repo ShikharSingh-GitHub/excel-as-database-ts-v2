@@ -1,0 +1,41 @@
+[
+  {
+    "id": 1,
+    "name": "John Doe",
+    "email": "john@example.com",
+    "age": 30,
+    "active": true,
+    "tags": ["developer", "javascript"],
+    "address": {
+      "street": "123 Main St",
+      "city": "New York",
+      "zip": "10001"
+    }
+  },
+  {
+    "id": 2,
+    "name": "Jane Smith",
+    "email": "jane@example.com",
+    "age": 25,
+    "active": false,
+    "tags": ["designer", "ui"],
+    "address": {
+      "street": "456 Oak Ave",
+      "city": "Los Angeles",
+      "zip": "90210"
+    }
+  },
+  {
+    "id": 3,
+    "name": "Bob Johnson",
+    "email": "bob@example.com",
+    "age": 35,
+    "active": true,
+    "tags": ["manager", "leadership"],
+    "address": {
+      "street": "789 Pine Rd",
+      "city": "Chicago",
+      "zip": "60601"
+    }
+  }
+]

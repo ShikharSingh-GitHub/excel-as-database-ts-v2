@@ -1,0 +1,75 @@
+{
+  "data": {
+    "pageConfig": [
+      {
+        "id": "page1",
+        "name": "Home Page",
+        "elements": [
+          {
+            "id": "elem1",
+            "type": "button",
+            "text": "Click Me",
+            "position": {
+              "x": 100,
+              "y": 200
+            },
+            "styles": {
+              "color": "blue",
+              "size": "large"
+            }
+          },
+          {
+            "id": "elem2",
+            "type": "input",
+            "placeholder": "Enter text",
+            "position": {
+              "x": 150,
+              "y": 250
+            }
+          }
+        ]
+      }
+    ],
+    "testsetConfig": {
+      "testsets": [
+        {
+          "id": "testset1",
+          "name": "Login Tests",
+          "testcases": [
+            {
+              "id": "tc1",
+              "name": "Valid Login",
+              "steps": [
+                {
+                  "id": "step1",
+                  "action": "click",
+                  "target": "login_button",
+                  "expected": "redirect to dashboard"
+                },
+                {
+                  "id": "step2",
+                  "action": "type",
+                  "target": "username_field",
+                  "value": "testuser",
+                  "expected": "text appears in field"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "application": [
+      {
+        "id": "app1",
+        "name": "Test Application",
+        "version": "1.0.0",
+        "config": {
+          "debug": true,
+          "timeout": 30000,
+          "features": ["auth", "dashboard", "reports"]
+        }
+      }
+    ]
+  }
+}
