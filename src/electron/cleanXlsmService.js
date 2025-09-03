@@ -68,19 +68,25 @@ class CleanXlsmService {
   }
 
   /**
-   * Scan folder and handle XLSM files
+   * Scan folder and handle XLSM files and JSON files
    */
   async scanFolder(folderPath) {
     try {
-      log("INFO", "Scanning folder with clean XLSM handling", { folderPath });
+      log("INFO", "Scanning folder with clean XLSM and JSON handling", {
+        folderPath,
+      });
 
       // Get all files from original service
       const result = await originalExcelService.scanFolder(folderPath);
       const files = Array.isArray(result) ? result : result.files || [];
 
+      // Add JSON files to the list
+      const jsonFiles = await this.scanJsonFiles(folderPath);
+      const allFiles = [...files, ...jsonFiles];
+
       const processedFiles = [];
 
-      for (const file of files) {
+      for (const file of allFiles) {
         if (this.isXlsmFile(file.path)) {
           try {
             // Create working copy
@@ -108,16 +114,24 @@ class CleanXlsmService {
               error: error.message,
             });
           }
+        } else if (this.isJsonFile(file.path)) {
+          // JSON file handling
+          processedFiles.push({
+            ...file,
+            type: "json",
+            isJson: true,
+          });
         } else {
           // Regular XLSX/XLS file
           processedFiles.push(file);
         }
       }
 
-      log("INFO", "Folder scan completed with clean XLSM handling", {
+      log("INFO", "Folder scan completed with clean XLSM and JSON handling", {
         folderPath,
-        totalFiles: files.length,
+        totalFiles: allFiles.length,
         xlsmFiles: processedFiles.filter((f) => f.isXlsm).length,
+        jsonFiles: processedFiles.filter((f) => f.isJson).length,
         processedFiles: processedFiles.length,
       });
 
@@ -765,6 +779,48 @@ class CleanXlsmService {
   /**
    * Clean up working files
    */
+  /**
+   * Scan for JSON files in the folder
+   */
+  async scanJsonFiles(folderPath) {
+    try {
+      const files = fs.readdirSync(folderPath);
+      const jsonFiles = files
+        .filter((f) => f.toLowerCase().endsWith(".json"))
+        .map((f) => {
+          const filePath = path.join(folderPath, f);
+          const stat = fs.statSync(filePath);
+          return {
+            name: f,
+            path: filePath,
+            size: stat.size,
+            mtimeMs: stat.mtimeMs,
+            type: "json",
+            isJson: true,
+          };
+        });
+
+      log("DEBUG", "Found JSON files", {
+        folderPath,
+        jsonFiles: jsonFiles.length,
+      });
+      return jsonFiles;
+    } catch (error) {
+      log("ERROR", "Failed to scan JSON files", {
+        folderPath,
+        error: error.message,
+      });
+      return [];
+    }
+  }
+
+  /**
+   * Check if file is a JSON file
+   */
+  isJsonFile(filePath) {
+    return path.extname(filePath).toLowerCase() === ".json";
+  }
+
   cleanup() {
     for (const [xlsmPath, workingPath] of this.xlsmMappings) {
       try {

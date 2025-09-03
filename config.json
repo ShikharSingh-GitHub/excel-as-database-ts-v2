@@ -28,128 +28,45 @@
       "Test Set": 4,
       "Test Case": 4,
       "Test Case Step": 4,
-      "Playwright Configuration": 4,
-      "Tags": 4,
-      "Step_Template": 3,
-      "backlog": 0,
-      "Release": 1,
-      "masters": 0,
-      "API": 4,
-      "API Attribute": 4,
-      "Page": 4,
-      "UI Element": 4,
-      "Function": 4,
-      "Function Step": 4,
-      "Test Case Function Step": 4
-    },
-    "/Users/shikhar/Desktop/workbook/End_To_End_Globalsqa1 (1).xlsm": {
-      "Application": 4,
-      "Test Set": 4,
-      "Test Case": 4,
-      "Test Case Step": 4,
-      "Playwright Configuration": 4,
-      "Tags": 4,
-      "Step_Template": 3,
-      "backlog": 0,
-      "Release": 1,
-      "masters": 0,
-      "API": 4,
-      "API Attribute": 4,
-      "Page": 4,
-      "UI Element": 4,
-      "Function": 4,
-      "Function Step": 4,
-      "Test Case Function Step": 4
-    },
-    "End_To_End_Globalsqa1 (1).xlsx": {
-      "Application": 4
-    },
-    "/Users/shikhar/Desktop/workbook/End_To_End_Globalsqa1 (1).xlsx": {
-      "Application": 4
-    },
-    "End_To_End_Globalsqa1 (1).xlsm.data.xlsx": {
-      "Application": 4
-    },
-    "/Users/shikhar/Desktop/workbook/End_To_End_Globalsqa1 (1).xlsm.data.xlsx": {
-      "Application": 4
-    },
-    "End_To_End_Globalsqa1 (1).temp.xlsx": {
-      "Application": 4,
-      "Test Set": 4,
-      "Test Case": 4,
-      "Test Case Step": 4,
-      "Playwright Configuration": 4,
-      "Tags": 4,
-      "Step_Template": 3,
-      "backlog": 0,
-      "Release": 1,
-      "masters": 0,
-      "API": 4,
-      "API Attribute": 4,
-      "Page": 4,
-      "UI Element": 4,
-      "Function": 4,
-      "Function Step": 4,
-      "Test Case Function Step": 4
-    },
-    "/Users/shikhar/Developer/workbook/End_To_End_Globalsqa1 (1).temp.xlsx": {
-      "Application": 4,
-      "Test Set": 4,
-      "Test Case": 4,
-      "Test Case Step": 4,
-      "Playwright Configuration": 4,
-      "Tags": 4,
-      "Step_Template": 3,
-      "backlog": 0,
-      "Release": 1,
-      "masters": 0,
-      "API": 4,
-      "API Attribute": 4,
-      "Page": 4,
-      "UI Element": 4,
-      "Function": 4,
-      "Function Step": 4,
-      "Test Case Function Step": 4
+      "Playwright Configuration": 4
     },
     "End_To_End_Globalsqa1 (1).working.xlsx": {
       "Application": 4,
       "Test Set": 4,
       "Test Case": 4,
       "Test Case Step": 4,
-      "Playwright Configuration": 4,
-      "Tags": 4,
-      "Step_Template": 3,
-      "backlog": 0,
-      "Release": 1,
-      "masters": 0,
-      "API": 4,
-      "API Attribute": 4,
-      "Page": 4,
-      "UI Element": 4,
-      "Function": 4,
-      "Function Step": 4,
-      "Test Case Function Step": 4,
-      "_data": 0
+      "Playwright Configuration": 4
     },
     "/Users/shikhar/Developer/workbook/End_To_End_Globalsqa1 (1).working.xlsx": {
       "Application": 4,
       "Test Set": 4,
       "Test Case": 4,
       "Test Case Step": 4,
-      "Playwright Configuration": 4,
-      "Tags": 4,
-      "Step_Template": 3,
-      "backlog": 0,
-      "Release": 1,
-      "masters": 0,
-      "API": 4,
-      "API Attribute": 4,
-      "Page": 4,
-      "UI Element": 4,
-      "Function": 4,
-      "Function Step": 4,
-      "Test Case Function Step": 4,
-      "_data": 0
+      "Playwright Configuration": 4
+    },
+    "sample_hidden_sheets.working.xlsx": {
+      "VisibleData": 0
+    },
+    "/Users/shikhar/Developer/workbook/sample_hidden_sheets.working.xlsx": {
+      "VisibleData": 0
+    },
+    "sample_customers.xlsx": {
+      "Customers": 0
+    },
+    "/Users/shikhar/Developer/workbook/sample_customers.xlsx": {
+      "Customers": 0
+    },
+    "sample_customers_conflict.xlsx": {
+      "Customers": 0
+    },
+    "/Users/shikhar/Developer/workbook/sample_customers_conflict.xlsx": {
+      "Customers": 0
+    },
+    "sample_large.xlsx": {
+      "Data": 0
+    },
+    "/Users/shikhar/Developer/workbook/sample_large.xlsx": {
+      "Data": 0
     }
   },
   "ui": {
@@ -168,5 +85,12 @@
   },
   "dataSheetName": "_data",
   "useSidecarForXlsm": true,
-  "requireNativeBridgeForXlsm": true
+  "requireNativeBridgeForXlsm": true,
+  "jsonSettings": {
+    "enabled": true,
+    "cacheTtlMs": 300000,
+    "autoRefresh": false,
+    "maxFileSize": 10485760,
+    "validateStructure": true
+  }
 }

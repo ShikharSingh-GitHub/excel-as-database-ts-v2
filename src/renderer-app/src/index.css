@@ -19,6 +19,19 @@ body,
   font-size: 14px;
 }
 
+/* Improved text truncation for file names */
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Ensure proper flex behavior for file list items */
+.file-list-item {
+  min-width: 0;
+  flex: 1;
+}
+
 /* Make toolbar, formula-bar and statusbar tighter */
 .excel-toolbar,
 .formula-bar,

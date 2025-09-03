@@ -17,6 +17,7 @@
     "cleanup": "rm -rf node_modules dist archived_components/legacy_renderer/ui || true"
   },
   "dependencies": {
+    "@tanstack/react-table": "^8.21.3",
     "@tippyjs/react": "^4.2.6",
     "exceljs": "^4.4.0",
     "lucide-react": "^0.542.0",

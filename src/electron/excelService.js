@@ -1891,11 +1891,6 @@ async function createRow(filePath, sheetName, row, opts = {}) {
                 result: res && typeof res === "object" ? res.ok : String(res),
               });
               if (res && res.ok) {
-                invalidateCache(filePath);
-                log("INFO", "Data sheet created via native bridge", {
-                  filePath,
-                  dataSheetName: targetSheet,
-                });
               } else {
                 throw new Error("bridge-create-failed");
               }
@@ -2901,4 +2896,3 @@ module.exports = {
   ensureDataSheetExists,
 };
 
-// Note: Enhanced wrapper functions removed - using cleanXlsmService directly in main.js

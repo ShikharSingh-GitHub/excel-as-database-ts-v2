@@ -57,6 +57,49 @@ export default function ExcelGrid({
 
   const editInputRef = useRef<HTMLInputElement>(null);
 
+  // Debug: Log headers and rows for JSON debugging
+  React.useEffect(() => {
+    if (headers.length > 0) {
+      console.log("ExcelGrid Debug - Headers:", headers);
+      console.log(
+        "ExcelGrid Debug - Headers types:",
+        headers.map((h) => typeof h)
+      );
+      if (rows.length > 0) {
+        console.log("ExcelGrid Debug - First row:", rows[0]);
+        console.log(
+          "ExcelGrid Debug - First row keys:",
+          Object.keys(rows[0] || {})
+        );
+        console.log(
+          "ExcelGrid Debug - First row values types:",
+          Object.values(rows[0] || {}).map((v) => typeof v)
+        );
+      }
+    }
+  }, [headers, rows]);
+
+  // Render cell value safely for React
+  const renderCellValue = (value: any): string => {
+    if (value === null || value === undefined) {
+      return "";
+    }
+    if (
+      typeof value === "string" ||
+      typeof value === "number" ||
+      typeof value === "boolean"
+    ) {
+      return String(value);
+    }
+    if (Array.isArray(value)) {
+      return `[${value.length} items]`;
+    }
+    if (typeof value === "object") {
+      return `{${Object.keys(value).length} properties}`;
+    }
+    return String(value);
+  };
+
   // Handle cell click
   const handleCellClick = useCallback(
     (row: number, col: number) => {
@@ -331,7 +374,7 @@ export default function ExcelGrid({
                           />
                         ) : (
                           <span className="truncate block w-full text-gray-900 dark:text-gray-100">
-                            {String(cellValue)}
+                            {renderCellValue(cellValue)}
                           </span>
                         )}
                       </td>

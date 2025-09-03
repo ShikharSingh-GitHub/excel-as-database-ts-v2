@@ -9,6 +9,7 @@ import {
   Save,
   Scissors,
   Search,
+  Settings,
 } from "lucide-react";
 import React from "react";
 import Tooltip from "./Tooltip";
@@ -23,7 +24,9 @@ interface ExcelToolbarProps {
   onEditRow?: () => void;
   onSort?: (direction: "asc" | "desc" | "reset") => void;
   onFilter?: () => void;
+  onColumnChooser?: () => void;
   readOnly?: boolean;
+  isJsonFile?: boolean;
 }
 
 export default function ExcelToolbar({
@@ -36,7 +39,9 @@ export default function ExcelToolbar({
   onSort,
   onFilter,
   onEditRow,
+  onColumnChooser,
   readOnly = false,
+  isJsonFile = false,
 }: ExcelToolbarProps) {
   return (
     <div className="excel-toolbar bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-900 dark:to-gray-800 border-b border-blue-200 dark:border-gray-700 px-4 py-2">
@@ -142,6 +147,20 @@ export default function ExcelToolbar({
             </button>
           </Tooltip>
         </div>
+
+        {/* Column Configuration (JSON files only) */}
+        {isJsonFile && onColumnChooser && (
+          <div className="flex items-center gap-2 pl-4 border-l border-blue-200">
+            <Tooltip content="Configure columns and display options">
+              <button
+                onClick={onColumnChooser}
+                className="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-purple-500 to-purple-600 dark:from-purple-600 dark:to-purple-700 text-white rounded-md hover:from-purple-600 hover:to-purple-700 text-sm font-medium transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:ring-offset-1">
+                <Settings size={14} />
+                Columns
+              </button>
+            </Tooltip>
+          </div>
+        )}
       </div>
     </div>
   );

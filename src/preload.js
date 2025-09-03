@@ -83,6 +83,67 @@ contextBridge.exposeInMainWorld("api", {
     clearNotifications: () => ipcRenderer.invoke("xlsm:clearNotifications"),
   },
 
+  // JSON operations
+  json: {
+    fetch: (
+      url,
+      fileName,
+      displayName,
+      method = "GET",
+      payload = null,
+      headers = {}
+    ) =>
+      ipcRenderer.invoke(
+        "json:fetch",
+        url,
+        fileName,
+        displayName,
+        method,
+        payload,
+        headers
+      ),
+    read: (filePath, opts) => ipcRenderer.invoke("json:read", filePath, opts),
+    meta: (filePath) => ipcRenderer.invoke("json:meta", filePath),
+    create: (filePath, rowData) =>
+      ipcRenderer.invoke("json:create", filePath, rowData),
+    update: (filePath, rowNumber, updates) =>
+      ipcRenderer.invoke("json:update", filePath, rowNumber, updates),
+    delete: (filePath, rowNumber) =>
+      ipcRenderer.invoke("json:delete", filePath, rowNumber),
+    validate: (filePath) => ipcRenderer.invoke("json:validate", filePath),
+    getProfile: (filePath) => ipcRenderer.invoke("json:getProfile", filePath),
+    updateColumnConfig: (filePath, columnPath, config) =>
+      ipcRenderer.invoke(
+        "json:updateColumnConfig",
+        filePath,
+        columnPath,
+        config
+      ),
+    updateChildTableConfig: (filePath, childPath, config) =>
+      ipcRenderer.invoke(
+        "json:updateChildTableConfig",
+        filePath,
+        childPath,
+        config
+      ),
+  },
+  collection: {
+    list: (args) => ipcRenderer.invoke("collection:list", args),
+    create: (args) => ipcRenderer.invoke("collection:create", args),
+    update: (args) => ipcRenderer.invoke("collection:update", args),
+    delete: (args) => ipcRenderer.invoke("collection:delete", args),
+    meta: (collectionName) =>
+      ipcRenderer.invoke("collection:meta", collectionName),
+  },
+  normalize: {
+    json: (jsonData, datasetName) =>
+      ipcRenderer.invoke("normalize:json", jsonData, datasetName),
+    recompose: (collections) =>
+      ipcRenderer.invoke("normalize:recompose", collections),
+    hasCollections: (datasetName) =>
+      ipcRenderer.invoke("normalize:hasCollections", datasetName),
+  },
+
   // Utility
   ping: () => ipcRenderer.invoke("ping"),
 });

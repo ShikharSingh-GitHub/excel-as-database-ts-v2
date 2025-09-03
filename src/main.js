@@ -12,9 +12,13 @@ try {
   dialog = undefined;
 }
 const path = require("path");
-const fs = require("fs");
+const fs = require("fs").promises;
+const fsSync = require("fs");
 const excelService = require("./electron/excelService");
 const cleanXlsmService = require("./electron/cleanXlsmService");
+const jsonService = require("./electron/jsonService");
+const collectionStore = require("./electron/collectionStore");
+const normalizationService = require("./electron/normalizationService");
 
 // Simple logging function for main process
 function log(level, message, ctx) {
@@ -96,12 +100,12 @@ function createWindow() {
 function loadProductionRenderer() {
   // prefer src/renderer-app/dist/index.html if present, otherwise fall back to legacy renderer/index.html
   const builtIndex = path.join(__dirname, "renderer-app", "dist", "index.html");
-  if (fs.existsSync(builtIndex)) {
+  if (fsSync.existsSync(builtIndex)) {
     log("INFO", "Loading production renderer from dist", { path: builtIndex });
     mainWindow.loadFile(builtIndex);
   } else {
     const indexHtml = path.join(__dirname, "renderer", "index.html");
-    if (fs.existsSync(indexHtml)) {
+    if (fsSync.existsSync(indexHtml)) {
       log("INFO", "Loading legacy renderer", { path: indexHtml });
       mainWindow.loadFile(indexHtml);
     } else {
@@ -363,6 +367,255 @@ if (ipcMain) {
     } catch (e) {
       log("ERROR", "xlsm:clearNotifications failed", { message: e.message });
       return { success: false, error: e.message };
+    }
+  });
+
+  // JSON file handlers
+  ipcMain.handle(
+    "json:fetch",
+    async (
+      event,
+      url,
+      fileName,
+      displayName,
+      method = "GET",
+      payload = null,
+      headers = {}
+    ) => {
+      try {
+        return await jsonService.fetchAndSaveJson(
+          url,
+          fileName,
+          displayName,
+          method,
+          payload,
+          headers
+        );
+      } catch (e) {
+        log("ERROR", "json:fetch failed", {
+          url,
+          fileName,
+          method,
+          message: e.message,
+        });
+        return { error: "fetch-failed", message: e.message };
+      }
+    }
+  );
+
+  ipcMain.handle("json:read", async (event, filePath, opts) => {
+    try {
+      return await jsonService.readJsonFile(filePath, opts || {});
+    } catch (e) {
+      log("ERROR", "json:read failed", { filePath, message: e.message });
+      return { error: "read-failed", message: e.message };
+    }
+  });
+
+  ipcMain.handle("json:meta", async (event, filePath) => {
+    try {
+      return await jsonService.getJsonMeta(filePath);
+    } catch (e) {
+      log("ERROR", "json:meta failed", { filePath, message: e.message });
+      return { error: "meta-failed", message: e.message };
+    }
+  });
+
+  ipcMain.handle("json:create", async (event, filePath, rowData) => {
+    try {
+      return await jsonService.createRow(filePath, rowData);
+    } catch (e) {
+      log("ERROR", "json:create failed", { filePath, message: e.message });
+      return { error: "create-failed", message: e.message };
+    }
+  });
+
+  ipcMain.handle("json:update", async (event, filePath, rowNumber, updates) => {
+    try {
+      return await jsonService.updateRow(filePath, rowNumber, updates);
+    } catch (e) {
+      log("ERROR", "json:update failed", {
+        filePath,
+        rowNumber,
+        message: e.message,
+      });
+      return { error: "update-failed", message: e.message };
+    }
+  });
+
+  ipcMain.handle("json:delete", async (event, filePath, rowNumber) => {
+    try {
+      return await jsonService.deleteRow(filePath, rowNumber);
+    } catch (e) {
+      log("ERROR", "json:delete failed", {
+        filePath,
+        rowNumber,
+        message: e.message,
+      });
+      return { error: "delete-failed", message: e.message };
+    }
+  });
+
+  ipcMain.handle("json:validate", async (event, filePath) => {
+    try {
+      return await jsonService.validateJsonFile(filePath);
+    } catch (e) {
+      log("ERROR", "json:validate failed", { filePath, message: e.message });
+      return { error: "validate-failed", message: e.message };
+    }
+  });
+
+  // JSON column configuration handlers
+  ipcMain.handle("json:getProfile", async (event, filePath) => {
+    try {
+      const content = await fs.readFile(filePath, "utf8");
+      const jsonData = JSON.parse(content);
+      return await jsonService.getDatasetProfile(filePath, jsonData);
+    } catch (e) {
+      log("ERROR", "json:getProfile failed", { filePath, message: e.message });
+      return { error: "profile-failed", message: e.message };
+    }
+  });
+
+  ipcMain.handle(
+    "json:updateColumnConfig",
+    async (event, filePath, columnPath, config) => {
+      try {
+        return await jsonService.updateColumnConfig(
+          filePath,
+          columnPath,
+          config
+        );
+      } catch (e) {
+        log("ERROR", "json:updateColumnConfig failed", {
+          filePath,
+          columnPath,
+          message: e.message,
+        });
+        return { error: "config-failed", message: e.message };
+      }
+    }
+  );
+
+  ipcMain.handle(
+    "json:updateChildTableConfig",
+    async (event, filePath, childPath, config) => {
+      try {
+        return await jsonService.updateChildTableConfig(
+          filePath,
+          childPath,
+          config
+        );
+      } catch (e) {
+        log("ERROR", "json:updateChildTableConfig failed", {
+          filePath,
+          childPath,
+          message: e.message,
+        });
+        return { error: "child-config-failed", message: e.message };
+      }
+    }
+  );
+
+  // Collection-based CRUD handlers
+  ipcMain.handle("collection:list", async (event, args) => {
+    try {
+      return await collectionStore.listRows(args);
+    } catch (e) {
+      log("ERROR", "collection:list failed", {
+        collection: args.collection,
+        message: e.message,
+      });
+      return { error: "list-failed", message: e.message };
+    }
+  });
+
+  ipcMain.handle("collection:create", async (event, args) => {
+    try {
+      return await collectionStore.createRow(args);
+    } catch (e) {
+      log("ERROR", "collection:create failed", {
+        collection: args.collection,
+        message: e.message,
+      });
+      return { error: "create-failed", message: e.message };
+    }
+  });
+
+  ipcMain.handle("collection:update", async (event, args) => {
+    try {
+      return await collectionStore.updateRow(args);
+    } catch (e) {
+      log("ERROR", "collection:update failed", {
+        collection: args.collection,
+        id: args.id,
+        message: e.message,
+      });
+      return { error: "update-failed", message: e.message };
+    }
+  });
+
+  ipcMain.handle("collection:delete", async (event, args) => {
+    try {
+      return await collectionStore.deleteRow(args);
+    } catch (e) {
+      log("ERROR", "collection:delete failed", {
+        collection: args.collection,
+        id: args.id,
+        message: e.message,
+      });
+      return { error: "delete-failed", message: e.message };
+    }
+  });
+
+  ipcMain.handle("collection:meta", async (event, collectionName) => {
+    try {
+      return await collectionStore.getCollectionMeta(collectionName);
+    } catch (e) {
+      log("ERROR", "collection:meta failed", {
+        collection: collectionName,
+        message: e.message,
+      });
+      return { error: "meta-failed", message: e.message };
+    }
+  });
+
+  // Normalization handlers
+  ipcMain.handle("normalize:json", async (event, jsonData, datasetName) => {
+    try {
+      return await normalizationService.normalizeJsonData(
+        jsonData,
+        datasetName
+      );
+    } catch (e) {
+      log("ERROR", "normalize:json failed", {
+        datasetName,
+        message: e.message,
+      });
+      return { error: "normalize-failed", message: e.message };
+    }
+  });
+
+  ipcMain.handle("normalize:recompose", async (event, collections) => {
+    try {
+      return await normalizationService.recomposeJsonData(collections);
+    } catch (e) {
+      log("ERROR", "normalize:recompose failed", {
+        message: e.message,
+      });
+      return { error: "recompose-failed", message: e.message };
+    }
+  });
+
+  ipcMain.handle("normalize:hasCollections", async (event, datasetName) => {
+    try {
+      return await normalizationService.hasCollections(datasetName);
+    } catch (e) {
+      log("ERROR", "normalize:hasCollections failed", {
+        datasetName,
+        message: e.message,
+      });
+      return { error: "check-failed", message: e.message };
     }
   });
 

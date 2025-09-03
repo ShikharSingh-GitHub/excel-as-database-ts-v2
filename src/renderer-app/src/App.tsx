@@ -1,10 +1,14 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import CollectionDataViewer from "./components/CollectionDataViewer";
+import ColumnChooser from "./components/ColumnChooser";
 import ContextMenu from "./components/ContextMenu";
 import CrudModal from "./components/CrudModal";
 import ExcelGrid from "./components/ExcelGrid";
 import ExcelToolbar from "./components/ExcelToolbar";
 import FilterModal from "./components/FilterModal";
 import FormulaBar from "./components/FormulaBar";
+import JsonDataViewer from "./components/JsonDataViewer";
+import JsonModal from "./components/JsonModal";
 import SheetTabs from "./components/SheetTabs";
 import Sidebar, { Workbook } from "./components/Sidebar";
 import StatusBar from "./components/StatusBar";
@@ -52,7 +56,16 @@ export default function App() {
     errors: null,
     conflict: null,
   });
+  const [jsonModalOpen, setJsonModalOpen] = useState(false);
+  const [columnChooserOpen, setColumnChooserOpen] = useState(false);
+  const [datasetProfile, setDatasetProfile] = useState<any>(null);
+  const [rawJsonData, setRawJsonData] = useState<any>(null);
   const [toast, setToast] = useState<string | null>(null);
+
+  // Helper function to check if file is JSON
+  const isJsonFile = (filePath: string) => {
+    return filePath && filePath.toLowerCase().endsWith(".json");
+  };
 
   // Excel-like UI state
   const [selectedCell, setSelectedCell] = useState<{
@@ -249,10 +262,28 @@ export default function App() {
     async (file: FileEntry) => {
       try {
         setActiveFile(file.path);
-        const m = await (window as any).api.invoke("workbook:meta", file.path);
+        setRawJsonData(null); // Clear raw JSON data when switching files
+
+        let m;
+        if (isJsonFile(file.path)) {
+          // Handle JSON files
+          m = await (window as any).api.invoke("json:meta", file.path);
+        } else {
+          // Handle Excel files
+          m = await (window as any).api.invoke("workbook:meta", file.path);
+        }
         if (m && !m.error) {
           setMeta(m);
-          setActiveSheet(null);
+
+          // For JSON files, automatically load the data sheet
+          if (isJsonFile(file.path)) {
+            setActiveSheet("data");
+            // Load the JSON data immediately
+            setTimeout(() => loadSheet("data", 1), 100);
+          } else {
+            setActiveSheet(null);
+          }
+
           setSheetRows({
             rows: [],
             total: 0,
@@ -292,22 +323,47 @@ export default function App() {
     async (sheetName: string, page = 1, sortArg?: any) => {
       if (!activeFile || !sheetName) return;
       try {
-        const res = await (window as any).api.invoke(
-          "sheet:read",
-          activeFile,
-          sheetName,
-          {
+        let res;
+
+        // Handle JSON files differently
+        if (isJsonFile(activeFile)) {
+          console.log("Loading JSON sheet with forceRefresh:", {
+            activeFile,
             page,
             pageSize:
               sheetRows.pageSize || (config && config.pageSizeDefault) || 25,
-            filter: filterText,
-            columnFilters: columnFilters,
-            sort: sortArg ?? sortState ?? null,
-          }
-        );
+            forceRefresh: true,
+          });
+          res = await (window as any).api.invoke("json:read", activeFile, {
+            page,
+            pageSize:
+              sheetRows.pageSize || (config && config.pageSizeDefault) || 25,
+            forceRefresh: true, // Force fresh read after updates
+          });
+        } else {
+          // Handle Excel files
+          res = await (window as any).api.invoke(
+            "sheet:read",
+            activeFile,
+            sheetName,
+            {
+              page,
+              pageSize:
+                sheetRows.pageSize || (config && config.pageSizeDefault) || 25,
+              filter: filterText,
+              columnFilters: columnFilters,
+              sort: sortArg ?? sortState ?? null,
+            }
+          );
+        }
         if (res && !res.error) {
           setSheetRows(res);
           setActiveSheet(sheetName);
+
+          // Set raw JSON data for AutoTable if available
+          if (res.rawData) {
+            setRawJsonData(res.rawData);
+          }
         } else {
           // If sheet is unavailable (no headers), refresh workbook metadata and retry once
           const lowerMessage =
@@ -480,18 +536,45 @@ export default function App() {
   const submitAdd = async (row: any) => {
     if (!activeFile || !activeSheet) return setToast("No active sheet");
     try {
-      const res = await (window as any).api.invoke(
-        "sheet:create",
-        activeFile,
-        activeSheet,
-        row
-      );
+      let res;
+      if (isJsonFile(activeFile)) {
+        // Handle JSON files
+        res = await (window as any).api.invoke("json:create", activeFile, row);
+      } else {
+        // Handle Excel files
+        res = await (window as any).api.invoke(
+          "sheet:create",
+          activeFile,
+          activeSheet,
+          row
+        );
+      }
       if (res && res.error) {
         setToast(res.message || "Add failed");
         return;
       }
       setModal({ open: false, mode: null, data: null });
-      await loadSheet(activeSheet, sheetRows.page, sortState);
+
+      // For JSON files, after adding a row, go to the last page to see the new row
+      let targetPage = sheetRows.page;
+      if (isJsonFile(activeFile)) {
+        // Get the current total to calculate the last page
+        const currentTotal = sheetRows.total || 0;
+        const pageSize =
+          sheetRows.pageSize || (config && config.pageSizeDefault) || 25;
+        const newTotal = currentTotal + 1; // We just added one row
+        const lastPage = Math.ceil(newTotal / pageSize);
+        targetPage = lastPage; // Go to the last page to see the new row
+      }
+
+      console.log("Refreshing sheet after add:", {
+        activeSheet,
+        currentPage: sheetRows.page,
+        targetPage,
+        sortState,
+        isJsonFile: isJsonFile(activeFile),
+      });
+      await loadSheet(activeSheet, targetPage, sortState);
       setToast("✅ Row added");
     } catch (err) {
       const e = err as any;
@@ -509,13 +592,24 @@ export default function App() {
     const rowNumber = rowIndex + 1;
 
     try {
-      const res = await (window as any).api.invoke(
-        "sheet:delete",
-        activeFile,
-        activeSheet,
-        rowNumber,
-        null // No version check needed for row number-based operations
-      );
+      let res;
+      if (isJsonFile(activeFile)) {
+        // Handle JSON files
+        res = await (window as any).api.invoke(
+          "json:delete",
+          activeFile,
+          rowNumber
+        );
+      } else {
+        // Handle Excel files
+        res = await (window as any).api.invoke(
+          "sheet:delete",
+          activeFile,
+          activeSheet,
+          rowNumber,
+          null // No version check needed for row number-based operations
+        );
+      }
 
       if (res && res.error) {
         setToast("❌ " + (res.message || "Delete failed"));
@@ -528,6 +622,175 @@ export default function App() {
     } catch (error) {
       console.error("Delete error:", error);
       setToast("❌ Delete failed");
+    }
+  };
+
+  // JSON handling functions
+  const handleAddJson = async (
+    url: string,
+    name: string,
+    method: string = "GET",
+    payload: any = null,
+    headers: any = {}
+  ) => {
+    try {
+      const result = await (window as any).api.invoke(
+        "json:fetch",
+        url,
+        name, // fileName
+        name, // displayName (using same name for both)
+        method,
+        payload,
+        headers
+      );
+      if (result.error) {
+        throw new Error(result.message);
+      }
+
+      const methodText = method === "POST" ? " (POST with payload)" : "";
+      setToast(
+        `✅ JSON file added: ${result.displayName} (${result.rowCount} rows)${methodText}`
+      );
+
+      // Refresh the file list
+      const res = await (window as any).api.invoke(
+        "folder:scan",
+        config.folderPath
+      );
+      if (!res.error) {
+        setFiles(res.files || []);
+      }
+    } catch (error: any) {
+      throw error;
+    }
+  };
+
+  // Column chooser handlers
+  const handleOpenColumnChooser = async () => {
+    if (!activeFile || !isJsonFile(activeFile)) return;
+
+    try {
+      const profile = await (window as any).api.json.getProfile(activeFile);
+      if (profile.error) {
+        throw new Error(profile.message);
+      }
+      setDatasetProfile(profile);
+      setColumnChooserOpen(true);
+    } catch (error: any) {
+      setToast(`❌ Failed to load column configuration: ${error.message}`);
+    }
+  };
+
+  const handleColumnToggle = async (path: string, visible: boolean) => {
+    if (!activeFile || !datasetProfile) return;
+
+    try {
+      await (window as any).api.json.updateColumnConfig(activeFile, path, {
+        visible,
+      });
+
+      // Update local profile
+      setDatasetProfile((prev) => ({
+        ...prev,
+        columns: {
+          ...prev.columns,
+          [path]: { ...prev.columns[path], visible },
+        },
+      }));
+
+      // Reload the sheet to reflect changes
+      await loadSheet(activeSheet, { page: currentPage, pageSize });
+    } catch (error: any) {
+      setToast(`❌ Failed to update column: ${error.message}`);
+    }
+  };
+
+  const handleRenderStrategyChange = async (path: string, render: string) => {
+    if (!activeFile || !datasetProfile) return;
+
+    try {
+      await (window as any).api.json.updateColumnConfig(activeFile, path, {
+        render,
+      });
+
+      // Update local profile
+      setDatasetProfile((prev) => ({
+        ...prev,
+        columns: {
+          ...prev.columns,
+          [path]: { ...prev.columns[path], render },
+        },
+      }));
+
+      // Reload the sheet to reflect changes
+      await loadSheet(activeSheet, { page: currentPage, pageSize });
+    } catch (error: any) {
+      setToast(`❌ Failed to update render strategy: ${error.message}`);
+    }
+  };
+
+  const handleChildTableToggle = async (path: string, visible: boolean) => {
+    if (!activeFile || !datasetProfile) return;
+
+    try {
+      await (window as any).api.json.updateChildTableConfig(activeFile, path, {
+        visible,
+      });
+
+      // Update local profile
+      setDatasetProfile((prev) => ({
+        ...prev,
+        children: {
+          ...prev.children,
+          [path]: { ...prev.children[path], visible },
+        },
+      }));
+
+      // Reload the sheet to reflect changes
+      await loadSheet(activeSheet, { page: currentPage, pageSize });
+    } catch (error: any) {
+      setToast(`❌ Failed to update child table: ${error.message}`);
+    }
+  };
+
+  const handleChildColumnToggle = async (
+    childPath: string,
+    column: string,
+    visible: boolean
+  ) => {
+    if (!activeFile || !datasetProfile) return;
+
+    try {
+      const currentVisibleColumns =
+        datasetProfile.children[childPath]?.visibleColumns || [];
+      const newVisibleColumns = visible
+        ? [...currentVisibleColumns, column]
+        : currentVisibleColumns.filter((c: string) => c !== column);
+
+      await (window as any).api.json.updateChildTableConfig(
+        activeFile,
+        childPath,
+        {
+          visibleColumns: newVisibleColumns,
+        }
+      );
+
+      // Update local profile
+      setDatasetProfile((prev) => ({
+        ...prev,
+        children: {
+          ...prev.children,
+          [childPath]: {
+            ...prev.children[childPath],
+            visibleColumns: newVisibleColumns,
+          },
+        },
+      }));
+
+      // Reload the sheet to reflect changes
+      await loadSheet(activeSheet, { page: currentPage, pageSize });
+    } catch (error: any) {
+      setToast(`❌ Failed to update child column: ${error.message}`);
     }
   };
 
@@ -552,14 +815,26 @@ export default function App() {
       const rowNumber = rowIndex + 1;
       const updates = { [colKey]: value };
 
-      const res = await (window as any).api.invoke(
-        "sheet:update",
-        activeFile,
-        activeSheet,
-        rowNumber,
-        updates,
-        null // No version check needed for row number-based operations
-      );
+      let res;
+      if (isJsonFile(activeFile)) {
+        // Handle JSON files
+        res = await (window as any).api.invoke(
+          "json:update",
+          activeFile,
+          rowNumber,
+          updates
+        );
+      } else {
+        // Handle Excel files
+        res = await (window as any).api.invoke(
+          "sheet:update",
+          activeFile,
+          activeSheet,
+          rowNumber,
+          updates,
+          null // No version check needed for row number-based operations
+        );
+      }
 
       if (res && res.error) {
         setToast(res.message || "Update failed");
@@ -780,7 +1055,9 @@ export default function App() {
                 setFilterModalInitial(filterText || "");
                 setFilterModalOpen(true);
               }}
+              onColumnChooser={handleOpenColumnChooser}
               readOnly={false}
+              isJsonFile={activeFile ? isJsonFile(activeFile) : false}
             />
           </div>
 
@@ -807,6 +1084,7 @@ export default function App() {
             onOpen={(f: any) => openWorkbook(f)}
             onRefresh={refreshFiles}
             onPickFolder={pickFolder}
+            onAddJson={() => setJsonModalOpen(true)}
           />
           <div className="flex flex-1 flex-col overflow-hidden min-h-0">
             {meta && (
@@ -839,60 +1117,67 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Excel Grid */}
+              {/* Data Grid */}
               {activeSheet && (
                 <div
                   className="flex-1 overflow-hidden min-h-0"
                   onContextMenu={handleContextMenu}>
-                  <ExcelGrid
-                    headers={sheetRows.headers || []}
-                    rows={sheetRows.rows || []}
-                    hiddenColumns={hiddenColumns}
-                    onCellEdit={handleCellEdit}
-                    onRowAdd={openAddModal}
-                    onRowDelete={(rowIndex) => {
-                      deleteRow(rowIndex);
-                    }}
-                    readOnly={(
-                      (config && config.readOnlySheets) ||
-                      []
-                    ).includes(activeSheet || "")}
-                    selectedCell={selectedCell}
-                    onCellSelect={setSelectedCell}
-                    startIndex={
-                      ((sheetRows.page || 1) - 1) *
-                      (sheetRows.pageSize ||
-                        (config && config.pageSizeDefault) ||
-                        25)
-                    }
-                    sortState={
-                      sortState
-                        ? {
-                            column: sortState.key || "",
-                            direction: sortState.dir,
-                          }
-                        : undefined
-                    }
-                    onRequestContextMenu={handleGridContextRequest}
-                    onSort={(column) => {
-                      // cycle: none -> asc -> desc -> reset (none)
-                      if (!sortState || sortState.key !== column) {
-                        const newSort = { key: column, dir: "asc" } as any;
-                        setSortState(newSort);
-                        if (activeSheet) loadSheet(activeSheet, 1, newSort);
-                        return;
+                  {isJsonFile(activeFile) ? (
+                    <CollectionDataViewer fileName={activeFile} />
+                  ) : (
+                    <ExcelGrid
+                      headers={sheetRows.headers || []}
+                      rows={sheetRows.rows || []}
+                      hiddenColumns={hiddenColumns}
+                      onCellEdit={handleCellEdit}
+                      onRowAdd={openAddModal}
+                      onRowDelete={(rowIndex) => {
+                        deleteRow(rowIndex);
+                      }}
+                      readOnly={(
+                        (config && config.readOnlySheets) ||
+                        []
+                      ).includes(activeSheet || "")}
+                      selectedCell={selectedCell}
+                      onCellSelect={setSelectedCell}
+                      startIndex={
+                        ((sheetRows.page || 1) - 1) *
+                        (sheetRows.pageSize ||
+                          (config && config.pageSizeDefault) ||
+                          25)
                       }
-                      if (sortState.key === column && sortState.dir === "asc") {
-                        const newSort = { key: column, dir: "desc" } as any;
-                        setSortState(newSort);
-                        if (activeSheet) loadSheet(activeSheet, 1, newSort);
-                        return;
+                      sortState={
+                        sortState
+                          ? {
+                              column: sortState.key || "",
+                              direction: sortState.dir,
+                            }
+                          : undefined
                       }
-                      // currently desc, so reset
-                      setSortState(null);
-                      if (activeSheet) loadSheet(activeSheet, 1, undefined);
-                    }}
-                  />
+                      onRequestContextMenu={handleGridContextRequest}
+                      onSort={(column) => {
+                        // cycle: none -> asc -> desc -> reset (none)
+                        if (!sortState || sortState.key !== column) {
+                          const newSort = { key: column, dir: "asc" } as any;
+                          setSortState(newSort);
+                          if (activeSheet) loadSheet(activeSheet, 1, newSort);
+                          return;
+                        }
+                        if (
+                          sortState.key === column &&
+                          sortState.dir === "asc"
+                        ) {
+                          const newSort = { key: column, dir: "desc" } as any;
+                          setSortState(newSort);
+                          if (activeSheet) loadSheet(activeSheet, 1, newSort);
+                          return;
+                        }
+                        // currently desc, so reset
+                        setSortState(null);
+                        if (activeSheet) loadSheet(activeSheet, 1, undefined);
+                      }}
+                    />
+                  )}
                 </div>
               )}
 
@@ -965,6 +1250,41 @@ export default function App() {
               setModal({ open: false, mode: null, data: null });
             }
           }}
+        />
+
+        <JsonModal
+          open={jsonModalOpen}
+          onClose={() => setJsonModalOpen(false)}
+          onAddJson={handleAddJson}
+        />
+
+        <ColumnChooser
+          isOpen={columnChooserOpen}
+          onClose={() => setColumnChooserOpen(false)}
+          columns={
+            datasetProfile
+              ? Object.entries(datasetProfile.columns || {}).map(
+                  ([path, config]) => ({
+                    path,
+                    ...config,
+                  })
+                )
+              : []
+          }
+          childTables={
+            datasetProfile
+              ? Object.entries(datasetProfile.children || {}).map(
+                  ([path, config]) => ({
+                    path,
+                    ...config,
+                  })
+                )
+              : []
+          }
+          onColumnToggle={handleColumnToggle}
+          onRenderStrategyChange={handleRenderStrategyChange}
+          onChildTableToggle={handleChildTableToggle}
+          onChildColumnToggle={handleChildColumnToggle}
         />
 
         <FilterModal
