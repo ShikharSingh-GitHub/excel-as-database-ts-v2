@@ -619,6 +619,55 @@ if (ipcMain) {
     }
   });
 
+  // JSON export handler
+  ipcMain.handle("json:export", async (event, fileName, exportPath) => {
+    try {
+      // Get all collections for this dataset
+      const expectedCollections = [
+        "pages",
+        "page_elements",
+        "testsets",
+        "testcases",
+        "steps",
+        "application",
+      ];
+
+      const collections = {};
+      for (const collectionName of expectedCollections) {
+        try {
+          const data = await collectionStore.listRows({ collection: collectionName });
+          if (data.length > 0) {
+            collections[collectionName] = data;
+          }
+        } catch (e) {
+          // Collection might not exist, continue
+        }
+      }
+
+      // Recompose to JSON format
+      const recomposedJson = await normalizationService.recomposeJsonData(collections);
+
+      // Write to export path
+      const fs = require("fs").promises;
+      await fs.writeFile(exportPath, JSON.stringify(recomposedJson, null, 2));
+
+      log("INFO", "JSON exported successfully", {
+        fileName,
+        exportPath,
+        collections: Object.keys(collections),
+      });
+
+      return { success: true, path: exportPath };
+    } catch (e) {
+      log("ERROR", "json:export failed", {
+        fileName,
+        exportPath,
+        message: e.message,
+      });
+      return { error: "export-failed", message: e.message };
+    }
+  });
+
   // simple ping
   ipcMain.handle("ping", async () => "pong");
 

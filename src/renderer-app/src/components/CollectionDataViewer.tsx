@@ -1,5 +1,5 @@
 import { flexRender, getCoreRowModel, useTable } from "@tanstack/react-table";
-import { ChevronDown, ChevronRight, Edit, Plus, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronRight, Edit, Plus, Trash2, Download } from "lucide-react";
 import React, { useEffect, useMemo, useState } from "react";
 
 interface CollectionDataViewerProps {
@@ -29,6 +29,7 @@ const CollectionDataViewer: React.FC<CollectionDataViewerProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const [exporting, setExporting] = useState(false);
 
   // Load available collections
   useEffect(() => {
@@ -218,6 +219,40 @@ const CollectionDataViewer: React.FC<CollectionDataViewerProps> = ({
     }
   };
 
+  const handleExport = async () => {
+    try {
+      setExporting(true);
+      setError(null);
+
+      // Generate export filename
+      const baseName = fileName.split('/').pop()?.replace('.json', '') || 'export';
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const exportFileName = `${baseName}_export_${timestamp}.json`;
+
+      // Get the folder path from config
+      const config = await window.api.config.get();
+      const folderPath = config.folderPath || '/Users/shikhar/Developer/workbook';
+      const exportPath = `${folderPath}/${exportFileName}`;
+
+      // Export the JSON
+      const result = await window.api.json.export(fileName, exportPath);
+
+      if (result.error) {
+        setError(`Export failed: ${result.message}`);
+        return;
+      }
+
+      // Show success message
+      setError(null);
+      alert(`JSON exported successfully to:\n${result.path}`);
+    } catch (err) {
+      setError(`Export failed: ${err}`);
+      console.error("Error exporting JSON:", err);
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const getDefaultRowForCollection = (collectionName: string): any => {
     const defaults: Record<string, any> = {
       pages: {
@@ -310,13 +345,22 @@ const CollectionDataViewer: React.FC<CollectionDataViewerProps> = ({
       <div className="border-b bg-gray-50 p-4">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold">Collections</h2>
-          <button
-            onClick={handleAddRow}
-            disabled={!activeCollection || loading}
-            className="flex items-center gap-2 px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50">
-            <Plus className="w-4 h-4" />
-            Add Row
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={handleExport}
+              disabled={exporting || collections.length === 0}
+              className="flex items-center gap-2 px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50">
+              <Download className="w-4 h-4" />
+              {exporting ? "Exporting..." : "Export JSON"}
+            </button>
+            <button
+              onClick={handleAddRow}
+              disabled={!activeCollection || loading}
+              className="flex items-center gap-2 px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50">
+              <Plus className="w-4 h-4" />
+              Add Row
+            </button>
+          </div>
         </div>
 
         <div className="flex gap-2 flex-wrap">

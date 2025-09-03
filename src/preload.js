@@ -126,6 +126,8 @@ contextBridge.exposeInMainWorld("api", {
         childPath,
         config
       ),
+    export: (fileName, exportPath) =>
+      ipcRenderer.invoke("json:export", fileName, exportPath),
   },
   collection: {
     list: (args) => ipcRenderer.invoke("collection:list", args),
