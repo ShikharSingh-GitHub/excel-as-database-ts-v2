@@ -936,146 +936,150 @@ export default function App() {
             </div>
           </div>
 
-          {/* Excel Toolbar */}
-          <div className="z-0">
-            <ExcelToolbar
-              onSave={async () => {
-                try {
-                  if (activeFile && activeSheet) {
-                    await (window as any).api.invoke(
-                      "workbook:save",
-                      activeFile
-                    );
-                    setToast("✅ Saved successfully");
-                  } else {
-                    setToast("❌ No file to save");
+          {/* Excel Toolbar - Hide for JSON files */}
+          {!isJsonFile(activeFile) && (
+            <div className="z-0">
+              <ExcelToolbar
+                onSave={async () => {
+                  try {
+                    if (activeFile && activeSheet) {
+                      await (window as any).api.invoke(
+                        "workbook:save",
+                        activeFile
+                      );
+                      setToast("✅ Saved successfully");
+                    } else {
+                      setToast("❌ No file to save");
+                    }
+                  } catch (error) {
+                    setToast("❌ Save failed");
                   }
-                } catch (error) {
-                  setToast("❌ Save failed");
-                }
-              }}
-              onCopy={() => {
-                if (selectedCell) {
-                  const cellValue =
-                    sheetRows.rows[selectedCell.row]?.[
-                      sheetRows.headers[selectedCell.col]
-                    ] || "";
-                  navigator.clipboard.writeText(String(cellValue));
-                  setToast("✅ Copied to clipboard");
-                } else {
-                  setToast("❌ No cell selected");
-                }
-              }}
-              onPaste={() => {
-                if (selectedCell) {
-                  navigator.clipboard.readText().then((text) => {
+                }}
+                onCopy={() => {
+                  if (selectedCell) {
+                    const cellValue =
+                      sheetRows.rows[selectedCell.row]?.[
+                        sheetRows.headers[selectedCell.col]
+                      ] || "";
+                    navigator.clipboard.writeText(String(cellValue));
+                    setToast("✅ Copied to clipboard");
+                  } else {
+                    setToast("❌ No cell selected");
+                  }
+                }}
+                onPaste={() => {
+                  if (selectedCell) {
+                    navigator.clipboard.readText().then((text) => {
+                      const header = sheetRows.headers[selectedCell.col];
+                      if (header) {
+                        handleCellEdit(selectedCell.row, header, text);
+                        setToast("✅ Pasted from clipboard");
+                      }
+                    });
+                  } else {
+                    setToast("❌ No cell selected");
+                  }
+                }}
+                onCut={() => {
+                  if (selectedCell) {
+                    const cellValue =
+                      sheetRows.rows[selectedCell.row]?.[
+                        sheetRows.headers[selectedCell.col]
+                      ] || "";
+                    navigator.clipboard.writeText(String(cellValue));
                     const header = sheetRows.headers[selectedCell.col];
                     if (header) {
-                      handleCellEdit(selectedCell.row, header, text);
-                      setToast("✅ Pasted from clipboard");
+                      handleCellEdit(selectedCell.row, header, "");
                     }
-                  });
-                } else {
-                  setToast("❌ No cell selected");
-                }
-              }}
-              onCut={() => {
-                if (selectedCell) {
-                  const cellValue =
-                    sheetRows.rows[selectedCell.row]?.[
-                      sheetRows.headers[selectedCell.col]
-                    ] || "";
-                  navigator.clipboard.writeText(String(cellValue));
-                  const header = sheetRows.headers[selectedCell.col];
-                  if (header) {
-                    handleCellEdit(selectedCell.row, header, "");
+                    setToast("✅ Cut to clipboard");
+                  } else {
+                    setToast("❌ No cell selected");
                   }
-                  setToast("✅ Cut to clipboard");
-                } else {
-                  setToast("❌ No cell selected");
-                }
-              }}
-              onAddRow={() =>
-                setModal({
-                  open: true,
-                  mode: "add",
-                  data: {},
-                  errors: {},
-                  conflict: null,
-                })
-              }
-              onEditRow={() => {
-                if (selectedCell && selectedCell.row >= 0) {
-                  const rowData = sheetRows.rows[selectedCell.row] || {};
+                }}
+                onAddRow={() =>
                   setModal({
                     open: true,
-                    mode: "edit",
-                    data: { ...(rowData || {}) },
+                    mode: "add",
+                    data: {},
                     errors: {},
                     conflict: null,
-                  });
-                } else {
-                  setToast("❌ No row selected to edit");
+                  })
                 }
-              }}
-              onDeleteRow={() => {
-                if (selectedCell && selectedCell.row >= 0) {
-                  const confirmDelete = window.confirm(
-                    "Are you sure you want to delete this row?"
-                  );
-                  if (confirmDelete) {
-                    deleteRow(selectedCell.row);
+                onEditRow={() => {
+                  if (selectedCell && selectedCell.row >= 0) {
+                    const rowData = sheetRows.rows[selectedCell.row] || {};
+                    setModal({
+                      open: true,
+                      mode: "edit",
+                      data: { ...(rowData || {}) },
+                      errors: {},
+                      conflict: null,
+                    });
+                  } else {
+                    setToast("❌ No row selected to edit");
                   }
-                } else {
-                  setToast("❌ No row selected");
+                }}
+                onDeleteRow={() => {
+                  if (selectedCell && selectedCell.row >= 0) {
+                    const confirmDelete = window.confirm(
+                      "Are you sure you want to delete this row?"
+                    );
+                    if (confirmDelete) {
+                      deleteRow(selectedCell.row);
+                    }
+                  } else {
+                    setToast("❌ No row selected");
+                  }
+                }}
+                onSort={(direction) => {
+                  // toolbar sorts act on the currently selected column
+                  if (!selectedCell)
+                    return setToast("❌ Select a column header first to sort");
+                  const header = sheetRows.headers[selectedCell.col];
+                  if (!header) return setToast("❌ No column selected");
+
+                  if (direction === "reset") {
+                    setSortState(null);
+                    if (activeSheet) loadSheet(activeSheet, 1, undefined);
+                    setToast(`✅ Reset sort on ${header}`);
+                    return;
+                  }
+
+                  const newSort = { key: header, dir: direction } as any;
+                  setSortState(newSort);
+                  if (activeSheet) loadSheet(activeSheet, 1, newSort);
+                  setToast(`✅ Sorted ${header} ${direction}`);
+                }}
+                onFilter={() => {
+                  // open filter modal for global filter
+                  setFilterModalHeader(null);
+                  setFilterModalInitial(filterText || "");
+                  setFilterModalOpen(true);
+                }}
+                onColumnChooser={handleOpenColumnChooser}
+                readOnly={false}
+                isJsonFile={activeFile ? isJsonFile(activeFile) : false}
+              />
+            </div>
+          )}
+
+          {/* Formula Bar - Hide for JSON files */}
+          {!isJsonFile(activeFile) && (
+            <div className="z-0">
+              <FormulaBar
+                selectedCell={selectedCell}
+                cellValue={
+                  selectedCell
+                    ? sheetRows.rows[selectedCell.row]?.[
+                        sheetRows.headers[selectedCell.col]
+                      ] || ""
+                    : ""
                 }
-              }}
-              onSort={(direction) => {
-                // toolbar sorts act on the currently selected column
-                if (!selectedCell)
-                  return setToast("❌ Select a column header first to sort");
-                const header = sheetRows.headers[selectedCell.col];
-                if (!header) return setToast("❌ No column selected");
-
-                if (direction === "reset") {
-                  setSortState(null);
-                  if (activeSheet) loadSheet(activeSheet, 1, undefined);
-                  setToast(`✅ Reset sort on ${header}`);
-                  return;
-                }
-
-                const newSort = { key: header, dir: direction } as any;
-                setSortState(newSort);
-                if (activeSheet) loadSheet(activeSheet, 1, newSort);
-                setToast(`✅ Sorted ${header} ${direction}`);
-              }}
-              onFilter={() => {
-                // open filter modal for global filter
-                setFilterModalHeader(null);
-                setFilterModalInitial(filterText || "");
-                setFilterModalOpen(true);
-              }}
-              onColumnChooser={handleOpenColumnChooser}
-              readOnly={false}
-              isJsonFile={activeFile ? isJsonFile(activeFile) : false}
-            />
-          </div>
-
-          {/* Formula Bar */}
-          <div className="z-0">
-            <FormulaBar
-              selectedCell={selectedCell}
-              cellValue={
-                selectedCell
-                  ? sheetRows.rows[selectedCell.row]?.[
-                      sheetRows.headers[selectedCell.col]
-                    ] || ""
-                  : ""
-              }
-              onCellValueChange={handleFormulaBarChange}
-              headers={sheetRows.headers}
-            />
-          </div>
+                onCellValueChange={handleFormulaBarChange}
+                headers={sheetRows.headers}
+              />
+            </div>
+          )}
         </header>
 
         <div className="flex flex-1 overflow-hidden min-h-0">

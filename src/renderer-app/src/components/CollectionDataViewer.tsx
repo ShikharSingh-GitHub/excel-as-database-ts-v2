@@ -1,6 +1,12 @@
-import { flexRender, getCoreRowModel, useTable } from "@tanstack/react-table";
-import { ChevronDown, ChevronRight, Edit, Plus, Trash2, Download } from "lucide-react";
-import React, { useEffect, useMemo, useState } from "react";
+import {
+  ChevronDown,
+  ChevronRight,
+  Download,
+  Edit,
+  Plus,
+  Trash2,
+} from "lucide-react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 interface CollectionDataViewerProps {
   fileName: string;
@@ -49,7 +55,7 @@ const CollectionDataViewer: React.FC<CollectionDataViewerProps> = ({
       setError(null);
 
       // Check if collections exist for this dataset
-      const hasCollections = await window.api.normalize.hasCollections(
+      const hasCollections = await (window as any).api.normalize.hasCollections(
         fileName
       );
 
@@ -71,7 +77,9 @@ const CollectionDataViewer: React.FC<CollectionDataViewerProps> = ({
       const collectionList: Collection[] = [];
       for (const collectionName of expectedCollections) {
         try {
-          const meta = await window.api.collection.meta(collectionName);
+          const meta = await (window as any).api.collection.meta(
+            collectionName
+          );
           if (meta && meta.count > 0 && Array.isArray(meta.columns)) {
             collectionList.push({
               name: collectionName,
@@ -101,9 +109,9 @@ const CollectionDataViewer: React.FC<CollectionDataViewerProps> = ({
   const normalizeJsonFile = async () => {
     try {
       // Read the JSON file and normalize it
-      const jsonData = await window.api.json.read(fileName, "default");
+      const jsonData = await (window as any).api.json.read(fileName, "default");
       if (jsonData.rawData) {
-        await window.api.normalize.json(jsonData.rawData, fileName);
+        await (window as any).api.normalize.json(jsonData.rawData, fileName);
       }
     } catch (err) {
       console.error("Failed to normalize JSON file:", err);
@@ -116,16 +124,18 @@ const CollectionDataViewer: React.FC<CollectionDataViewerProps> = ({
       setLoading(true);
       setError(null);
 
-      const data = await window.api.collection.list({
+      const data = await (window as any).api.collection.list({
         collection: collectionName,
       });
 
       // Ensure data is an array and filter out invalid rows
-      const validData = Array.isArray(data) 
-        ? data.filter(row => row && row.id && typeof row.id === 'string')
+      const validData = Array.isArray(data)
+        ? data.filter((row) => row && row.id && typeof row.id === "string")
         : [];
 
-      console.log(`Loaded ${validData.length} valid rows for ${collectionName}`);
+      console.log(
+        `Loaded ${validData.length} valid rows for ${collectionName}`
+      );
       setCollectionData(validData);
     } catch (err) {
       setError(`Failed to load ${collectionName}: ${err}`);
@@ -145,7 +155,7 @@ const CollectionDataViewer: React.FC<CollectionDataViewerProps> = ({
         ...getDefaultRowForCollection(activeCollection),
       };
 
-      const result = await window.api.collection.create({
+      const result = await (window as any).api.collection.create({
         collection: activeCollection,
         row: newRow,
       });
@@ -170,7 +180,7 @@ const CollectionDataViewer: React.FC<CollectionDataViewerProps> = ({
       const row = collectionData.find((r) => r.id === rowId);
       if (!row) return;
 
-      const result = await window.api.collection.update({
+      const result = await (window as any).api.collection.update({
         collection: activeCollection,
         id: rowId,
         expectedVersion: row._version,
@@ -203,7 +213,7 @@ const CollectionDataViewer: React.FC<CollectionDataViewerProps> = ({
       const row = collectionData.find((r) => r.id === rowId);
       if (!row) return;
 
-      const result = await window.api.collection.delete({
+      const result = await (window as any).api.collection.delete({
         collection: activeCollection,
         id: rowId,
         expectedVersion: row._version,
@@ -232,17 +242,22 @@ const CollectionDataViewer: React.FC<CollectionDataViewerProps> = ({
       setError(null);
 
       // Generate export filename
-      const baseName = fileName.split('/').pop()?.replace('.json', '') || 'export';
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const baseName =
+        fileName.split("/").pop()?.replace(".json", "") || "export";
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
       const exportFileName = `${baseName}_export_${timestamp}.json`;
 
       // Get the folder path from config
-      const config = await window.api.config.get();
-      const folderPath = config.folderPath || '/Users/shikhar/Developer/workbook';
+      const config = await (window as any).api.config.get();
+      const folderPath =
+        config.folderPath || "/Users/shikhar/Developer/workbook";
       const exportPath = `${folderPath}/${exportFileName}`;
 
       // Export the JSON
-      const result = await window.api.json.export(fileName, exportPath);
+      const result = await (window as any).api.json.export(
+        fileName,
+        exportPath
+      );
 
       if (result.error) {
         setError(`Export failed: ${result.message}`);
@@ -318,15 +333,18 @@ const CollectionDataViewer: React.FC<CollectionDataViewerProps> = ({
   const activeCollectionMeta = collections.find(
     (c) => c.name === activeCollection
   );
-  const displayColumns = activeCollectionMeta
-    ? getDisplayColumns(activeCollection, activeCollectionMeta.columns)
-    : [];
+  const displayColumns =
+    activeCollectionMeta && activeCollection
+      ? getDisplayColumns(activeCollection, activeCollectionMeta.columns)
+      : [];
 
   if (loading && collections.length === 0) {
     return (
       <div className="p-4 text-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-        <p className="mt-2 text-gray-600">Loading collections...</p>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 dark:border-blue-400 mx-auto"></div>
+        <p className="mt-2 text-gray-600 dark:text-gray-400">
+          Loading collections...
+        </p>
       </div>
     );
   }
@@ -334,11 +352,11 @@ const CollectionDataViewer: React.FC<CollectionDataViewerProps> = ({
   if (error) {
     return (
       <div className="p-4">
-        <div className="bg-red-50 border border-red-200 rounded-md p-4">
-          <p className="text-red-800">{error}</p>
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md p-4">
+          <p className="text-red-800 dark:text-red-200">{error}</p>
           <button
             onClick={() => setError(null)}
-            className="mt-2 text-red-600 hover:text-red-800">
+            className="mt-2 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300">
             Dismiss
           </button>
         </div>
@@ -349,21 +367,23 @@ const CollectionDataViewer: React.FC<CollectionDataViewerProps> = ({
   return (
     <div className="h-full flex flex-col">
       {/* Collection Selector */}
-      <div className="border-b bg-gray-50 p-4">
+      <div className="border-b bg-gray-50 dark:bg-gray-800 p-4">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold">Collections</h2>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+            Collections
+          </h2>
           <div className="flex gap-2">
             <button
               onClick={handleExport}
               disabled={exporting || collections.length === 0}
-              className="flex items-center gap-2 px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50">
+              className="flex items-center gap-2 px-3 py-1 bg-green-600 dark:bg-green-700 text-white rounded hover:bg-green-700 dark:hover:bg-green-600 disabled:opacity-50 transition-colors">
               <Download className="w-4 h-4" />
               {exporting ? "Exporting..." : "Export JSON"}
             </button>
             <button
               onClick={handleAddRow}
               disabled={!activeCollection || loading}
-              className="flex items-center gap-2 px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50">
+              className="flex items-center gap-2 px-3 py-1 bg-blue-600 dark:bg-blue-700 text-white rounded hover:bg-blue-700 dark:hover:bg-blue-600 disabled:opacity-50 transition-colors">
               <Plus className="w-4 h-4" />
               Add Row
             </button>
@@ -377,8 +397,8 @@ const CollectionDataViewer: React.FC<CollectionDataViewerProps> = ({
               onClick={() => setActiveCollection(collection.name)}
               className={`px-3 py-2 rounded text-sm font-medium transition-colors ${
                 activeCollection === collection.name
-                  ? "bg-blue-600 text-white"
-                  : "bg-white text-gray-700 hover:bg-gray-100 border"
+                  ? "bg-blue-600 dark:bg-blue-700 text-white"
+                  : "bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 border border-gray-300 dark:border-gray-600"
               }`}>
               {collection.name} ({collection.count})
             </button>
@@ -423,23 +443,107 @@ const CollectionTable: React.FC<CollectionTableProps> = ({
     field: string;
   } | null>(null);
   const [editValue, setEditValue] = useState("");
+  const [columnWidths, setColumnWidths] = useState<Record<number, number>>({});
+  const [resizingColumn, setResizingColumn] = useState<number | null>(null);
+  const [resizeStartX, setResizeStartX] = useState(0);
+  const [resizeStartWidth, setResizeStartWidth] = useState(0);
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    rowId?: string;
+  } | null>(null);
+
+  const DEFAULT_COLUMN_WIDTH = 120;
+  const MIN_COLUMN_WIDTH = 60;
+
+  // Column resizing functionality
+  const handleMouseDown = (e: React.MouseEvent, columnIndex: number) => {
+    e.preventDefault();
+    setResizingColumn(columnIndex);
+    setResizeStartX(e.clientX);
+    setResizeStartWidth(columnWidths[columnIndex] || DEFAULT_COLUMN_WIDTH);
+  };
+
+  const handleMouseMove = useCallback(
+    (e: MouseEvent) => {
+      if (resizingColumn !== null) {
+        const newWidth = Math.max(
+          MIN_COLUMN_WIDTH,
+          resizeStartWidth + (e.clientX - resizeStartX)
+        );
+        setColumnWidths((prev) => ({
+          ...prev,
+          [resizingColumn]: newWidth,
+        }));
+      }
+    },
+    [resizingColumn, resizeStartX, resizeStartWidth]
+  );
+
+  const handleMouseUp = useCallback(() => {
+    setResizingColumn(null);
+  }, []);
+
+  useEffect(() => {
+    if (resizingColumn !== null) {
+      document.addEventListener("mousemove", handleMouseMove);
+      document.addEventListener("mouseup", handleMouseUp);
+      return () => {
+        document.removeEventListener("mousemove", handleMouseMove);
+        document.removeEventListener("mouseup", handleMouseUp);
+      };
+    }
+  }, [resizingColumn, handleMouseMove, handleMouseUp]);
+
+  // Context menu functionality
+  const handleContextMenu = (e: React.MouseEvent, rowId?: string) => {
+    e.preventDefault();
+    setContextMenu({ x: e.clientX, y: e.clientY, rowId });
+  };
+
+  const handleAddRow = () => {
+    // This will be handled by the parent component
+    setContextMenu(null);
+  };
+
+  const handleDeleteRow = (rowId: string) => {
+    onDelete(rowId);
+    setContextMenu(null);
+  };
+
+  // Render cell value safely
+  const renderCellValue = (value: any): string => {
+    if (value === null || value === undefined) {
+      return "";
+    }
+    if (
+      typeof value === "string" ||
+      typeof value === "number" ||
+      typeof value === "boolean"
+    ) {
+      return String(value);
+    }
+    if (Array.isArray(value)) {
+      return `[${value.length} items]`;
+    }
+    if (typeof value === "object") {
+      return `{${Object.keys(value).length} properties}`;
+    }
+    return String(value);
+  };
 
   // Safety checks
   if (!Array.isArray(data)) {
     console.warn("CollectionTable: data is not an array", data);
     return (
-      <div className="p-4 text-center text-red-500">
-        Invalid data format
-      </div>
+      <div className="p-4 text-center text-red-500">Invalid data format</div>
     );
   }
 
   if (!Array.isArray(columns)) {
     console.warn("CollectionTable: columns is not an array", columns);
     return (
-      <div className="p-4 text-center text-red-500">
-        Invalid columns format
-      </div>
+      <div className="p-4 text-center text-red-500">Invalid columns format</div>
     );
   }
 
@@ -472,75 +576,138 @@ const CollectionTable: React.FC<CollectionTableProps> = ({
   if (loading) {
     return (
       <div className="p-4 text-center">
-        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto"></div>
-        <p className="mt-2 text-gray-600">Loading data...</p>
+        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 dark:border-blue-400 mx-auto"></div>
+        <p className="mt-2 text-gray-600 dark:text-gray-400">Loading data...</p>
       </div>
     );
   }
 
   return (
-    <div className="overflow-auto">
-      <table className="w-full border-collapse">
-        <thead>
-          <tr className="bg-gray-100">
-            {columns.map((column) => (
-              <th key={column} className="border p-2 text-left font-medium">
-                {column}
+    <div className="collection-table h-full flex-1 min-h-0 flex flex-col overflow-hidden bg-gradient-to-br from-green-50/30 to-emerald-50/30 dark:from-gray-800 dark:to-gray-900">
+      <div
+        className="flex-1 min-h-0 overflow-y-auto pb-16 custom-scrollbar h-full"
+        style={{
+          height: "100%",
+          scrollbarWidth: "thin",
+          scrollbarColor: "#10b981 #d1fae5",
+        }}>
+        <table className="w-full table-fixed border-collapse">
+          <thead className="sticky top-0 z-20">
+            <tr className="bg-gradient-to-r from-green-100 to-emerald-100 dark:bg-gradient-to-r dark:from-green-900 dark:to-emerald-800 dark:border-b dark:border-gray-700 border-b border-green-300 shadow-sm">
+              <th className="w-12 px-2 py-3 text-center text-xs font-semibold text-green-800 dark:text-green-200 bg-gradient-to-b from-green-100 to-green-200 dark:bg-gradient-to-b dark:from-green-900 dark:to-green-800 border-r border-green-300 dark:border-gray-700 select-none transition-all duration-200">
+                <span title="Row number">#</span>
               </th>
-            ))}
-            <th className="border p-2 text-left font-medium">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {data.map((row, index) => {
-            if (!row || !row.id) {
-              console.warn(`Invalid row at index ${index}:`, row);
-              return null;
-            }
-            return (
-              <tr key={row.id} className="hover:bg-gray-50">
-                {columns.map((column) => (
-                  <td key={column} className="border p-2">
-                    {editingCell?.rowId === row.id &&
-                    editingCell?.field === column ? (
-                    <input
-                      type="text"
-                      value={editValue}
-                      onChange={(e) => setEditValue(e.target.value)}
-                      onBlur={handleCellSave}
-                      onKeyDown={handleKeyDown}
-                      className="w-full px-2 py-1 border rounded"
-                      autoFocus
-                    />
-                  ) : (
-                    <div
-                      onClick={() =>
-                        handleCellClick(row.id, column, row[column])
-                      }
-                      className="cursor-pointer hover:bg-blue-50 p-1 rounded">
-                      {row[column] !== null && row[column] !== undefined
-                        ? String(row[column])
-                        : ""}
-                    </div>
-                  )}
-                </td>
-              ))}
-              <td className="border p-2">
-                <button
-                  onClick={() => onDelete(row.id)}
-                  className="text-red-600 hover:text-red-800 p-1"
-                  title="Delete row">
-                  <Trash2 className="w-4 h-4" />
-                                  </button>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+              {columns.map((column, index) => (
+                <th
+                  key={column}
+                  className="relative px-3 py-3 text-left text-xs font-semibold text-green-800 dark:text-green-200 bg-gradient-to-b from-green-100 to-green-200 dark:bg-gradient-to-b dark:from-green-900 dark:to-green-800 border-r border-green-300 dark:border-gray-700 select-none transition-all duration-200"
+                  style={{
+                    width: columnWidths[index] || DEFAULT_COLUMN_WIDTH,
+                  }}>
+                  <div className="flex items-center justify-between">
+                    <span className="truncate font-medium">{column}</span>
+                  </div>
 
-      {data.length === 0 && (
-        <div className="p-8 text-center text-gray-500">No data available</div>
+                  {/* Resize handle */}
+                  <div
+                    className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-green-500 dark:hover:bg-green-400 opacity-0 hover:opacity-100 transition-opacity duration-200"
+                    onMouseDown={(e) => handleMouseDown(e, index)}
+                    style={{ zIndex: 1000 }}
+                  />
+                </th>
+              ))}
+              <th className="w-16 px-2 py-3 text-center text-xs font-semibold text-green-800 dark:text-green-200 bg-gradient-to-b from-green-100 to-green-200 dark:bg-gradient-to-b dark:from-green-900 dark:to-green-800 border-r border-green-300 dark:border-gray-700 select-none transition-all duration-200">
+                Actions
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.map((row, index) => {
+              if (!row || !row.id) {
+                console.warn(`Invalid row at index ${index}:`, row);
+                return null;
+              }
+              return (
+                <tr
+                  key={row.id}
+                  className="hover:bg-green-50/30 dark:hover:bg-green-800 transition-colors"
+                  onContextMenu={(e) => handleContextMenu(e, row.id)}>
+                  <td className="w-12 px-2 py-2 text-center text-xs font-medium text-gray-700 dark:text-green-100 bg-gray-50 dark:bg-green-900/10 border-r border-gray-300 dark:border-gray-700">
+                    {index + 1}
+                  </td>
+                  {columns.map((column, colIndex) => (
+                    <td
+                      key={column}
+                      className="relative px-3 py-2.5 text-sm border-r border-green-200/50 border-b border-green-200/50 dark:border-gray-700 cursor-cell transition-all duration-200 hover:bg-green-50/50 dark:hover:bg-green-800"
+                      style={{
+                        width: columnWidths[colIndex] || DEFAULT_COLUMN_WIDTH,
+                      }}>
+                      {editingCell?.rowId === row.id &&
+                      editingCell?.field === column ? (
+                        <input
+                          type="text"
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          onBlur={handleCellSave}
+                          onKeyDown={handleKeyDown}
+                          className="w-full h-full border-none outline-none bg-transparent text-sm"
+                          autoFocus
+                        />
+                      ) : (
+                        <div
+                          onClick={() =>
+                            handleCellClick(row.id, column, row[column])
+                          }
+                          className="cursor-pointer hover:bg-green-100/50 dark:hover:bg-green-700/50 p-1 rounded transition-colors">
+                          <span className="truncate block w-full text-gray-900 dark:text-gray-100">
+                            {renderCellValue(row[column])}
+                          </span>
+                        </div>
+                      )}
+                    </td>
+                  ))}
+                  <td className="w-16 px-2 py-2 text-center border-r border-green-200/50 border-b border-green-200/50 dark:border-gray-700">
+                    <button
+                      onClick={() => onDelete(row.id)}
+                      className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 p-1 transition-colors"
+                      title="Delete row">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+
+        {data.length === 0 && (
+          <div className="p-8 text-center text-gray-500 dark:text-gray-400">
+            No data available
+          </div>
+        )}
+      </div>
+
+      {/* Context Menu */}
+      {contextMenu && (
+        <div
+          className="fixed bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg py-2 z-50 text-gray-900 dark:text-gray-100"
+          style={{
+            left: contextMenu.x,
+            top: contextMenu.y,
+          }}>
+          <button
+            onClick={handleAddRow}
+            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2">
+            ➕ Add Row
+          </button>
+          {contextMenu.rowId && (
+            <button
+              onClick={() => handleDeleteRow(contextMenu.rowId!)}
+              className="w-full px-4 py-2 text-left text-sm hover:bg-red-50 dark:hover:bg-red-900 hover:text-red-700 dark:hover:text-red-300 flex items-center gap-2">
+              🗑️ Delete Row
+            </button>
+          )}
+        </div>
       )}
     </div>
   );

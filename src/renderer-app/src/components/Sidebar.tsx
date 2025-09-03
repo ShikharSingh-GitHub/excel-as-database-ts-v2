@@ -78,7 +78,7 @@ export default function Sidebar({
           <button
             onClick={onAddJson}
             disabled={!onAddJson}
-            className="w-full flex items-center gap-2 px-3 py-2 text-sm bg-green-100 hover:bg-green-200 text-green-800 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-1">
+            className="w-full flex items-center gap-2 px-3 py-2 text-sm bg-green-100 dark:bg-green-900/30 hover:bg-green-200 dark:hover:bg-green-800/40 text-green-800 dark:text-green-300 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-1">
             <Plus size={16} />
             Add JSON File
           </button>
@@ -199,18 +199,18 @@ export default function Sidebar({
                     </span>
                     <div className="flex items-center gap-1 flex-shrink-0">
                       {f.isJson && (
-                        <span className="px-1.5 py-0.5 text-xs bg-green-100 text-green-800 rounded whitespace-nowrap">
+                        <span className="px-1.5 py-0.5 text-xs bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 rounded whitespace-nowrap">
                           JSON
                         </span>
                       )}
                       {f.macro && (
-                        <span className="px-1.5 py-0.5 text-xs bg-orange-100 text-orange-800 rounded whitespace-nowrap">
+                        <span className="px-1.5 py-0.5 text-xs bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300 rounded whitespace-nowrap">
                           XLSM
                         </span>
                       )}
                     </div>
                   </div>
-                  <div className="text-xs text-blue-600 truncate">
+                  <div className="text-xs text-blue-600 dark:text-gray-300 truncate">
                     {Math.round((f.size || 0) / 1024)} KB •{" "}
                     {f.mtimeMs ? new Date(f.mtimeMs).toLocaleDateString() : ""}
                   </div>
