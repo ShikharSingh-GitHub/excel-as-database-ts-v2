@@ -7,6 +7,7 @@ import {
   Trash2,
 } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import Toast from "./Toast";
 
 interface CollectionDataViewerProps {
   fileName: string;
@@ -36,6 +37,7 @@ const CollectionDataViewer: React.FC<CollectionDataViewerProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [exporting, setExporting] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
 
   // Load available collections
   useEffect(() => {
@@ -97,9 +99,13 @@ const CollectionDataViewer: React.FC<CollectionDataViewerProps> = ({
       // Set first collection as active
       if (collectionList.length > 0) {
         setActiveCollection(collectionList[0].name);
+        setToast(`✅ Loaded ${collectionList.length} collections`);
+      } else {
+        setToast("ℹ️ No collections found in this JSON file");
       }
     } catch (err) {
       setError(`Failed to load collections: ${err}`);
+      setToast(`❌ Failed to load collections: ${err}`);
       console.error("Error loading collections:", err);
     } finally {
       setLoading(false);
@@ -137,8 +143,15 @@ const CollectionDataViewer: React.FC<CollectionDataViewerProps> = ({
         `Loaded ${validData.length} valid rows for ${collectionName}`
       );
       setCollectionData(validData);
+
+      if (validData.length === 0) {
+        setToast(`ℹ️ No data found in ${collectionName} collection`);
+      } else {
+        setToast(`✅ Loaded ${validData.length} rows from ${collectionName}`);
+      }
     } catch (err) {
       setError(`Failed to load ${collectionName}: ${err}`);
+      setToast(`❌ Failed to load ${collectionName}: ${err}`);
       console.error(`Error loading collection ${collectionName}:`, err);
       setCollectionData([]); // Set empty array on error
     } finally {
@@ -162,13 +175,16 @@ const CollectionDataViewer: React.FC<CollectionDataViewerProps> = ({
 
       if (result.error) {
         setError(`Failed to add row: ${result.message}`);
+        setToast(`❌ Failed to add row: ${result.message}`);
         return;
       }
 
+      setToast("✅ Row added successfully");
       // Reload collection data
       await loadCollectionData(activeCollection);
     } catch (err) {
       setError(`Failed to add row: ${err}`);
+      setToast(`❌ Failed to add row: ${err}`);
       console.error("Error adding row:", err);
     }
   };
@@ -190,18 +206,22 @@ const CollectionDataViewer: React.FC<CollectionDataViewerProps> = ({
       if (result.error) {
         if (result.conflict) {
           setError("Conflict detected. Please refresh and try again.");
+          setToast("❌ Conflict detected. Please refresh and try again.");
         } else {
           setError(`Failed to update row: ${result.message}`);
+          setToast(`❌ Failed to update row: ${result.message}`);
         }
         return;
       }
 
+      setToast("✅ Row updated successfully");
       // Update local data
       setCollectionData((prev) =>
         prev.map((r) => (r.id === rowId ? result.row : r))
       );
     } catch (err) {
       setError(`Failed to update row: ${err}`);
+      setToast(`❌ Failed to update row: ${err}`);
       console.error("Error updating row:", err);
     }
   };
@@ -222,16 +242,20 @@ const CollectionDataViewer: React.FC<CollectionDataViewerProps> = ({
       if (result.error) {
         if (result.conflict) {
           setError("Conflict detected. Please refresh and try again.");
+          setToast("❌ Conflict detected. Please refresh and try again.");
         } else {
           setError(`Failed to delete row: ${result.message}`);
+          setToast(`❌ Failed to delete row: ${result.message}`);
         }
         return;
       }
 
+      setToast("✅ Row deleted successfully");
       // Update local data
       setCollectionData((prev) => prev.filter((r) => r.id !== rowId));
     } catch (err) {
       setError(`Failed to delete row: ${err}`);
+      setToast(`❌ Failed to delete row: ${err}`);
       console.error("Error deleting row:", err);
     }
   };
@@ -261,14 +285,16 @@ const CollectionDataViewer: React.FC<CollectionDataViewerProps> = ({
 
       if (result.error) {
         setError(`Export failed: ${result.message}`);
+        setToast(`❌ Export failed: ${result.message}`);
         return;
       }
 
       // Show success message
       setError(null);
-      alert(`JSON exported successfully to:\n${result.path}`);
+      setToast(`✅ JSON exported successfully to: ${result.path}`);
     } catch (err) {
       setError(`Export failed: ${err}`);
+      setToast(`❌ Export failed: ${err}`);
       console.error("Error exporting JSON:", err);
     } finally {
       setExporting(false);
@@ -417,6 +443,23 @@ const CollectionDataViewer: React.FC<CollectionDataViewerProps> = ({
             loading={loading}
           />
         </div>
+      )}
+
+      {/* Toast Notifications */}
+      {toast && (
+        <Toast
+          message={toast}
+          type={
+            toast.includes("❌") ||
+            toast.includes("Failed") ||
+            toast.includes("Error")
+              ? "error"
+              : toast.includes("✅") || toast.includes("successfully")
+              ? "success"
+              : "info"
+          }
+          onClose={() => setToast(null)}
+        />
       )}
     </div>
   );

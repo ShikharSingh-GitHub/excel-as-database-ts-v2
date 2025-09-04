@@ -70,7 +70,7 @@
     }
   },
   "ui": {
-    "theme": "dark"
+    "theme": "light"
   },
   "xlsmConversion": {
     "enabled": true,
