@@ -5,6 +5,7 @@ import ExcelGrid from "./components/ExcelGrid";
 import ExcelToolbar from "./components/ExcelToolbar";
 import FilterModal from "./components/FilterModal";
 import FormulaBar from "./components/FormulaBar";
+import JsonTabularViewer from "./components/JsonTabularViewer";
 import SheetTabs from "./components/SheetTabs";
 import Sidebar, { Workbook } from "./components/Sidebar";
 import StatusBar from "./components/StatusBar";
@@ -249,37 +250,59 @@ export default function App() {
     async (file: FileEntry) => {
       try {
         setActiveFile(file.path);
-        const m = await (window as any).api.invoke("workbook:meta", file.path);
-        if (m && !m.error) {
-          setMeta(m);
-          setActiveSheet(null);
-          setSheetRows({
-            rows: [],
-            total: 0,
-            page: 1,
-            pageSize: config?.pageSizeDefault || 25,
-            headers: [],
-          });
-          // load persisted sort state for this workbook
-          try {
-            const sort = await (window as any).api.invoke(
-              "sort:get",
-              file.path
-            );
-            // store into state if needed; for now we just set columnFilters to empty
-            // DataGrid will reflect sort via server-side ordering when implemented
-            // Optionally trigger load of first sheet later when selected
-            // We can store in config state if needed
-            setTimeout(() => {}, 0);
-          } catch (e) {}
+        
+        // Check if it's a JSON file
+        if (file.path.endsWith('.json')) {
+          // For JSON files, we'll load the data directly
+          const jsonData = await (window as any).api.invoke("json:read", file.path);
+          if (jsonData && !jsonData.error) {
+            setMeta({ isJson: true, data: jsonData });
+            setActiveSheet(null);
+            setSheetRows({
+              rows: [],
+              total: 0,
+              page: 1,
+              pageSize: config?.pageSizeDefault || 25,
+              headers: [],
+            });
+          } else {
+            setToast("❌ " + (jsonData.message || "Failed to load JSON file"));
+            setActiveFile(null);
+          }
         } else {
-          setToast("❌ " + (m.message || "Failed to load workbook metadata"));
-          setActiveFile(null);
+          // Handle Excel files as before
+          const m = await (window as any).api.invoke("workbook:meta", file.path);
+          if (m && !m.error) {
+            setMeta(m);
+            setActiveSheet(null);
+            setSheetRows({
+              rows: [],
+              total: 0,
+              page: 1,
+              pageSize: config?.pageSizeDefault || 25,
+              headers: [],
+            });
+            // load persisted sort state for this workbook
+            try {
+              const sort = await (window as any).api.invoke(
+                "sort:get",
+                file.path
+              );
+              // store into state if needed; for now we just set columnFilters to empty
+              // DataGrid will reflect sort via server-side ordering when implemented
+              // Optionally trigger load of first sheet later when selected
+              // We can store in config state if needed
+              setTimeout(() => {}, 0);
+            } catch (e) {}
+          } else {
+            setToast("❌ " + (m.message || "Failed to load workbook metadata"));
+            setActiveFile(null);
+          }
         }
       } catch (err) {
         const e = err as any;
         setToast(
-          "❌ Error opening workbook: " +
+          "❌ Error opening file: " +
             (e && e.message ? e.message : String(e))
         );
         setActiveFile(null);
@@ -840,7 +863,7 @@ export default function App() {
               </div>
 
               {/* Excel Grid */}
-              {activeSheet && (
+              {activeSheet && !meta?.isJson && (
                 <div
                   className="flex-1 overflow-hidden min-h-0"
                   onContextMenu={handleContextMenu}>
@@ -892,6 +915,29 @@ export default function App() {
                       setSortState(null);
                       if (activeSheet) loadSheet(activeSheet, 1, undefined);
                     }}
+                  />
+                </div>
+              )}
+
+              {/* JSON Tabular Viewer */}
+              {meta?.isJson && activeFile && (
+                <div className="flex-1 overflow-hidden min-h-0">
+                  <JsonTabularViewer
+                    fileName={activeFile}
+                    data={meta.data}
+                    onDataChange={(newData) => {
+                      setMeta((prev: any) => ({ ...prev, data: newData }));
+                    }}
+                    onSave={async (data) => {
+                      // Save JSON data back to file
+                      const result = await (window as any).api.invoke("json:write", activeFile, data);
+                      if (result.error) {
+                        throw new Error(result.message);
+                      }
+                    }}
+                    readOnly={false}
+                    maxDepth={6}
+                    autoDetectPrimaryKeys={true}
                   />
                 </div>
               )}
