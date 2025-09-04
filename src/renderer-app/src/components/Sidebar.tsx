@@ -1,4 +1,4 @@
-import { File, FileSpreadsheet, FolderOpen, RefreshCw } from "lucide-react";
+import { File, FileSpreadsheet, FolderOpen, RefreshCw, Plus } from "lucide-react";
 import React from "react";
 import Tooltip from "./Tooltip";
 
@@ -17,6 +17,7 @@ export default function Sidebar({
   onOpen,
   onRefresh,
   onPickFolder,
+  onAddJson,
 }: {
   files?: Workbook[];
   recentWorkbooks?: string[];
@@ -24,6 +25,7 @@ export default function Sidebar({
   onOpen?: (f: Workbook) => void;
   onRefresh?: () => void;
   onPickFolder?: () => void;
+  onAddJson?: () => void;
 }) {
   // Filter recent workbooks to only show those that still exist
   const validRecentWorkbooks = recentWorkbooks
@@ -39,11 +41,21 @@ export default function Sidebar({
             Workbooks
           </h2>
           <div className="flex items-center gap-2">
+            <Tooltip content="Add JSON file from API">
+              <button
+                onClick={onAddJson}
+                aria-label="Add JSON File"
+                className="inline-flex items-center gap-2 px-2 py-1 bg-green-600 dark:bg-green-700 text-white text-xs font-medium rounded-md hover:bg-green-700 dark:hover:bg-green-600 transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-1"
+                disabled={!onAddJson}>
+                <Plus size={12} />
+                Add JSON
+              </button>
+            </Tooltip>
             <Tooltip content="Select a folder containing Excel files">
               <button
                 onClick={onPickFolder}
                 aria-label="Choose Folder"
-                className="inline-flex items-center gap-2 px-2 py-1 bg-blue-600 text-white text-xs font-medium rounded-md hover:bg-blue-700 transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 ml-2"
+                className="inline-flex items-center gap-2 px-2 py-1 bg-blue-600 text-white text-xs font-medium rounded-md hover:bg-blue-700 transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
                 disabled={!onPickFolder}>
                 <FolderOpen size={12} />
                 Choose Folder
@@ -53,7 +65,7 @@ export default function Sidebar({
               <button
                 onClick={onRefresh}
                 aria-label="Refresh"
-                className="p-1.5 rounded-md hover:bg-blue-100 text-blue-700 hover:text-blue-800 transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1">
+                className="p-1.5 rounded-md hover:bg-blue-100 dark:hover:bg-gray-700 text-blue-700 dark:text-gray-300 hover:text-blue-800 dark:hover:text-gray-200 transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1">
                 <RefreshCw size={14} />
               </button>
             </Tooltip>

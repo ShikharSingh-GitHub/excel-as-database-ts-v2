@@ -83,6 +83,14 @@ contextBridge.exposeInMainWorld("api", {
     clearNotifications: () => ipcRenderer.invoke("xlsm:clearNotifications"),
   },
 
+  // JSON operations
+  json: {
+    read: (filePath) => ipcRenderer.invoke("json:read", filePath),
+    write: (filePath, data) => ipcRenderer.invoke("json:write", filePath, data),
+    fetch: (url, method, payload) => ipcRenderer.invoke("json:fetch", url, method, payload),
+    save: (fileName, data) => ipcRenderer.invoke("json:save", fileName, data),
+  },
+
   // Utility
   ping: () => ipcRenderer.invoke("ping"),
 });

@@ -5,6 +5,7 @@ import ExcelGrid from "./components/ExcelGrid";
 import ExcelToolbar from "./components/ExcelToolbar";
 import FilterModal from "./components/FilterModal";
 import FormulaBar from "./components/FormulaBar";
+import JsonModal from "./components/JsonModal";
 import JsonTabularViewer from "./components/JsonTabularViewer";
 import SheetTabs from "./components/SheetTabs";
 import Sidebar, { Workbook } from "./components/Sidebar";
@@ -24,6 +25,7 @@ export default function App() {
   const [activeFile, setActiveFile] = useState<string | null>(null);
   const [meta, setMeta] = useState<any>(null);
   const [activeSheet, setActiveSheet] = useState<string | null>(null);
+  const [showJsonModal, setShowJsonModal] = useState(false);
 
   const [sheetRows, setSheetRows] = useState<any>({
     rows: [],
@@ -245,6 +247,21 @@ export default function App() {
       setToast("❌ Failed to pick folder");
     }
   }, []);
+
+  const handleAddJson = useCallback(() => {
+    setShowJsonModal(true);
+  }, []);
+
+  const handleJsonModalClose = useCallback(() => {
+    setShowJsonModal(false);
+  }, []);
+
+  const handleJsonModalSuccess = useCallback(async (fileName: string) => {
+    setShowJsonModal(false);
+    setToast(`✅ JSON file created: ${fileName}`);
+    // Refresh files to include the new JSON file
+    await refreshFiles();
+  }, [refreshFiles]);
 
   const openWorkbook = useCallback(
     async (file: FileEntry) => {
@@ -830,6 +847,7 @@ export default function App() {
             onOpen={(f: any) => openWorkbook(f)}
             onRefresh={refreshFiles}
             onPickFolder={pickFolder}
+            onAddJson={handleAddJson}
           />
           <div className="flex flex-1 flex-col overflow-hidden min-h-0">
             {meta && (
@@ -1049,6 +1067,12 @@ export default function App() {
             if (activeSheet) await loadSheet(activeSheet, 1);
             setFilterModalOpen(false);
           }}
+        />
+
+        <JsonModal
+          isOpen={showJsonModal}
+          onClose={handleJsonModalClose}
+          onSuccess={handleJsonModalSuccess}
         />
 
         {/* Status Bar */}
