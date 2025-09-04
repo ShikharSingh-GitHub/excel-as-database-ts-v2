@@ -372,7 +372,7 @@ if (ipcMain) {
   // JSON operations
   ipcMain.handle("json:read", async (event, filePath) => {
     try {
-      const data = fs.readFileSync(filePath, 'utf8');
+      const data = fs.readFileSync(filePath, "utf8");
       return JSON.parse(data);
     } catch (e) {
       log("ERROR", "Failed to read JSON file", { filePath, error: e.message });
@@ -390,46 +390,56 @@ if (ipcMain) {
     }
   });
 
-  ipcMain.handle("json:fetch", async (event, url, method = 'GET', payload = null) => {
-    try {
-      const { default: fetch } = await import("node-fetch");
-      
-      const options = {
-        method: method.toUpperCase(),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      };
+  ipcMain.handle(
+    "json:fetch",
+    async (event, url, method = "GET", payload = null) => {
+      try {
+        const { default: fetch } = await import("node-fetch");
 
-      if (payload && (method.toUpperCase() === 'POST' || method.toUpperCase() === 'PUT')) {
-        options.body = JSON.stringify(payload);
+        const options = {
+          method: method.toUpperCase(),
+          headers: {
+            "Content-Type": "application/json",
+          },
+        };
+
+        if (
+          payload &&
+          (method.toUpperCase() === "POST" || method.toUpperCase() === "PUT")
+        ) {
+          options.body = JSON.stringify(payload);
+        }
+
+        const response = await fetch(url, options);
+        const data = await response.json();
+
+        return { success: true, data };
+      } catch (e) {
+        log("ERROR", "Failed to fetch JSON from API", {
+          url,
+          method,
+          error: e.message,
+        });
+        return { error: true, message: e.message };
       }
-
-      const response = await fetch(url, options);
-      const data = await response.json();
-      
-      return { success: true, data };
-    } catch (e) {
-      log("ERROR", "Failed to fetch JSON from API", { url, method, error: e.message });
-      return { error: true, message: e.message };
     }
-  });
+  );
 
   ipcMain.handle("json:save", async (event, fileName, data) => {
     try {
       const config = excelService.readConfig();
       const folderPath = config.folderPath;
-      
+
       if (!folderPath) {
         return { error: true, message: "No folder selected" };
       }
 
       const filePath = path.join(folderPath, fileName);
       fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
-      
+
       // Refresh the folder to include the new file
       await cleanXlsmService.scanFolder(folderPath);
-      
+
       return { success: true, filePath };
     } catch (e) {
       log("ERROR", "Failed to save JSON file", { fileName, error: e.message });

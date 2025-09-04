@@ -1,0 +1,159 @@
+{
+  "pageConfig": [
+    {
+      "uuid": "page-001",
+      "PageElements": {
+        "header": {
+          "title": "Welcome Page",
+          "logo": "logo.png"
+        },
+        "content": {
+          "sections": [
+            {
+              "id": "section-1",
+              "type": "hero",
+              "text": "Welcome to our platform"
+            }
+          ]
+        }
+      },
+      "status": "active",
+      "pageId": "welcome-page",
+      "pageName": "Welcome Page",
+      "navigation": {
+        "menu": ["Home", "About", "Contact"],
+        "breadcrumbs": true
+      }
+    },
+    {
+      "uuid": "page-002",
+      "PageElements": {
+        "header": {
+          "title": "About Us",
+          "logo": "about-logo.png"
+        },
+        "content": {
+          "sections": [
+            {
+              "id": "section-1",
+              "type": "text",
+              "text": "Learn more about our company"
+            }
+          ]
+        }
+      },
+      "status": "draft",
+      "pageId": "about-page",
+      "pageName": "About Us",
+      "navigation": {
+        "menu": ["Home", "About", "Services"],
+        "breadcrumbs": false
+      }
+    },
+    {
+      "uuid": "page-003",
+      "PageElements": {
+        "header": {
+          "title": "Contact",
+          "logo": "contact-logo.png"
+        },
+        "content": {
+          "sections": [
+            {
+              "id": "section-1",
+              "type": "form",
+              "text": "Get in touch with us"
+            }
+          ]
+        }
+      },
+      "status": "active",
+      "pageId": "contact-page",
+      "pageName": "Contact Us",
+      "navigation": {
+        "menu": ["Home", "About", "Contact"],
+        "breadcrumbs": true
+      }
+    }
+  ],
+  "testsetConfig": {
+    "testSuite1": {
+      "name": "Login Tests",
+      "tests": [
+        {
+          "id": "test-001",
+          "name": "Valid Login",
+          "steps": ["Enter username", "Enter password", "Click login"],
+          "expected": "Success message"
+        }
+      ]
+    },
+    "testSuite2": {
+      "name": "Registration Tests",
+      "tests": [
+        {
+          "id": "test-002",
+          "name": "Valid Registration",
+          "steps": ["Fill form", "Submit", "Verify email"],
+          "expected": "Account created"
+        }
+      ]
+    }
+  },
+  "testsetConfigFlattened": {
+    "login": {
+      "valid": {
+        "username": "test@example.com",
+        "password": "password123",
+        "expected": "success"
+      },
+      "invalid": {
+        "username": "wrong@example.com",
+        "password": "wrongpass",
+        "expected": "error"
+      }
+    },
+    "registration": {
+      "valid": {
+        "email": "new@example.com",
+        "password": "newpass123",
+        "expected": "account_created"
+      }
+    }
+  },
+  "apiconfig": {
+    "baseUrl": "https://api.example.com",
+    "endpoints": {
+      "auth": {
+        "login": "/auth/login",
+        "logout": "/auth/logout",
+        "refresh": "/auth/refresh"
+      },
+      "users": {
+        "list": "/users",
+        "create": "/users",
+        "update": "/users/{id}",
+        "delete": "/users/{id}"
+      }
+    },
+    "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {token}"
+    }
+  },
+  "application": {
+    "name": "MyApp",
+    "version": "1.0.0",
+    "environment": "production",
+    "features": {
+      "authentication": true,
+      "notifications": true,
+      "analytics": false
+    },
+    "database": {
+      "host": "localhost",
+      "port": 5432,
+      "name": "myapp_db"
+    }
+  }
+}

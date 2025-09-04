@@ -5,8 +5,8 @@ import ExcelGrid from "./components/ExcelGrid";
 import ExcelToolbar from "./components/ExcelToolbar";
 import FilterModal from "./components/FilterModal";
 import FormulaBar from "./components/FormulaBar";
+import JsonHierarchicalViewer from "./components/JsonHierarchicalViewer";
 import JsonModal from "./components/JsonModal";
-import JsonTabularViewer from "./components/JsonTabularViewer";
 import SheetTabs from "./components/SheetTabs";
 import Sidebar, { Workbook } from "./components/Sidebar";
 import StatusBar from "./components/StatusBar";
@@ -256,22 +256,28 @@ export default function App() {
     setShowJsonModal(false);
   }, []);
 
-  const handleJsonModalSuccess = useCallback(async (fileName: string) => {
-    setShowJsonModal(false);
-    setToast(`✅ JSON file created: ${fileName}`);
-    // Refresh files to include the new JSON file
-    await refreshFiles();
-  }, [refreshFiles]);
+  const handleJsonModalSuccess = useCallback(
+    async (fileName: string) => {
+      setShowJsonModal(false);
+      setToast(`✅ JSON file created: ${fileName}`);
+      // Refresh files to include the new JSON file
+      await refreshFiles();
+    },
+    [refreshFiles]
+  );
 
   const openWorkbook = useCallback(
     async (file: FileEntry) => {
       try {
         setActiveFile(file.path);
-        
+
         // Check if it's a JSON file
-        if (file.path.endsWith('.json')) {
+        if (file.path.endsWith(".json")) {
           // For JSON files, we'll load the data directly
-          const jsonData = await (window as any).api.invoke("json:read", file.path);
+          const jsonData = await (window as any).api.invoke(
+            "json:read",
+            file.path
+          );
           if (jsonData && !jsonData.error) {
             setMeta({ isJson: true, data: jsonData });
             setActiveSheet(null);
@@ -288,7 +294,10 @@ export default function App() {
           }
         } else {
           // Handle Excel files as before
-          const m = await (window as any).api.invoke("workbook:meta", file.path);
+          const m = await (window as any).api.invoke(
+            "workbook:meta",
+            file.path
+          );
           if (m && !m.error) {
             setMeta(m);
             setActiveSheet(null);
@@ -319,8 +328,7 @@ export default function App() {
       } catch (err) {
         const e = err as any;
         setToast(
-          "❌ Error opening file: " +
-            (e && e.message ? e.message : String(e))
+          "❌ Error opening file: " + (e && e.message ? e.message : String(e))
         );
         setActiveFile(null);
       }
@@ -937,25 +945,21 @@ export default function App() {
                 </div>
               )}
 
-              {/* JSON Tabular Viewer */}
+              {/* JSON Hierarchical Viewer */}
               {meta?.isJson && activeFile && (
                 <div className="flex-1 overflow-hidden min-h-0">
-                  <JsonTabularViewer
-                    fileName={activeFile}
+                  <JsonHierarchicalViewer
                     data={meta.data}
-                    onDataChange={(newData) => {
-                      setMeta((prev: any) => ({ ...prev, data: newData }));
-                    }}
-                    onSave={async (data) => {
-                      // Save JSON data back to file
-                      const result = await (window as any).api.invoke("json:write", activeFile, data);
-                      if (result.error) {
-                        throw new Error(result.message);
-                      }
-                    }}
-                    readOnly={false}
-                    maxDepth={6}
-                    autoDetectPrimaryKeys={true}
+                    rootKey="data"
+                    tabOrder={[
+                      "pageConfig",
+                      "testsetConfig",
+                      "testsetConfigFlattened",
+                      "apiconfig",
+                      "application",
+                    ]}
+                    maxTopCols={50}
+                    maxNestedCols={50}
                   />
                 </div>
               )}

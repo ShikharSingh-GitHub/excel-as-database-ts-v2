@@ -1,0 +1,59 @@
+{
+  "users": [
+    {
+      "id": 1,
+      "name": "John Doe",
+      "email": "john@example.com",
+      "age": 30,
+      "address": {
+        "street": "123 Main St",
+        "city": "New York",
+        "country": "USA"
+      },
+      "hobbies": ["reading", "gaming", "cooking"]
+    },
+    {
+      "id": 2,
+      "name": "Jane Smith",
+      "email": "jane@example.com",
+      "age": 25,
+      "address": {
+        "street": "456 Oak Ave",
+        "city": "Los Angeles",
+        "country": "USA"
+      },
+      "hobbies": ["swimming", "hiking"]
+    }
+  ],
+  "products": [
+    {
+      "id": "prod-1",
+      "name": "Laptop",
+      "price": 999.99,
+      "category": "Electronics",
+      "inStock": true,
+      "specifications": {
+        "ram": "16GB",
+        "storage": "512GB SSD",
+        "processor": "Intel i7"
+      }
+    },
+    {
+      "id": "prod-2",
+      "name": "Mouse",
+      "price": 29.99,
+      "category": "Electronics",
+      "inStock": false,
+      "specifications": {
+        "type": "Wireless",
+        "dpi": 1600
+      }
+    }
+  ],
+  "settings": {
+    "theme": "dark",
+    "language": "en",
+    "notifications": true,
+    "features": ["search", "filter", "export"]
+  }
+}

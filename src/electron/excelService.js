@@ -118,7 +118,9 @@ function setSortState(filePath, state) {
 function isVisibleExcel(filename) {
   const lower = String(filename || "").toLowerCase();
   return (
-    (lower.endsWith(".xlsx") || lower.endsWith(".xlsm")) &&
+    (lower.endsWith(".xlsx") ||
+      lower.endsWith(".xlsm") ||
+      lower.endsWith(".json")) &&
     !String(filename).startsWith(".")
   );
 }

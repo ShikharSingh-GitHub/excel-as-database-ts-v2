@@ -1,0 +1,100 @@
+{
+  "company": {
+    "name": "TechCorp Inc.",
+    "founded": 2010,
+    "headquarters": {
+      "address": "123 Tech Street",
+      "city": "San Francisco",
+      "country": "USA",
+      "coordinates": {
+        "latitude": 37.7749,
+        "longitude": -122.4194
+      }
+    },
+    "departments": [
+      {
+        "id": "eng",
+        "name": "Engineering",
+        "head": "John Smith",
+        "employees": [
+          {
+            "id": 1,
+            "name": "Alice Johnson",
+            "role": "Senior Developer",
+            "skills": ["JavaScript", "React", "Node.js"],
+            "contact": {
+              "email": "alice@techcorp.com",
+              "phone": "+1-555-0101"
+            }
+          },
+          {
+            "id": 2,
+            "name": "Bob Wilson",
+            "role": "DevOps Engineer",
+            "skills": ["Docker", "Kubernetes", "AWS"],
+            "contact": {
+              "email": "bob@techcorp.com",
+              "phone": "+1-555-0102"
+            }
+          }
+        ]
+      },
+      {
+        "id": "sales",
+        "name": "Sales",
+        "head": "Jane Doe",
+        "employees": [
+          {
+            "id": 3,
+            "name": "Charlie Brown",
+            "role": "Sales Manager",
+            "skills": ["CRM", "Negotiation", "Analytics"],
+            "contact": {
+              "email": "charlie@techcorp.com",
+              "phone": "+1-555-0103"
+            }
+          }
+        ]
+      }
+    ],
+    "products": [
+      {
+        "id": "prod-1",
+        "name": "TechApp Pro",
+        "version": "2.1.0",
+        "features": {
+          "core": ["Authentication", "Database", "API"],
+          "premium": ["Analytics", "Reporting", "Integrations"]
+        },
+        "pricing": {
+          "basic": 29.99,
+          "pro": 99.99,
+          "enterprise": 299.99
+        }
+      },
+      {
+        "id": "prod-2",
+        "name": "DataSync",
+        "version": "1.5.2",
+        "features": {
+          "core": ["Data Import", "Data Export", "Scheduling"],
+          "premium": ["Real-time Sync", "Custom Connectors"]
+        },
+        "pricing": {
+          "basic": 19.99,
+          "pro": 79.99,
+          "enterprise": 199.99
+        }
+      }
+    ],
+    "settings": {
+      "theme": "dark",
+      "language": "en",
+      "notifications": true,
+      "features": {
+        "enabled": ["search", "filter", "export", "analytics"],
+        "disabled": ["beta_features", "experimental"]
+      }
+    }
+  }
+}
