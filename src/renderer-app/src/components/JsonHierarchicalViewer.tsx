@@ -28,23 +28,16 @@ function Tabs({
   onChange: (v: string) => void;
 }) {
   return (
-    <div
-      style={{
-        display: "flex",
-        gap: 8,
-        borderBottom: "1px solid #e5e7eb",
-        marginBottom: 12,
-      }}>
+    <div className="flex gap-1 border-b border-gray-200 dark:border-gray-700 mb-4 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 px-2 py-1 rounded-t-lg">
       {tabs.map((t) => (
         <button
           key={t}
           onClick={() => onChange(t)}
-          style={{
-            padding: "8px 12px",
-            borderBottom:
-              value === t ? "2px solid #111827" : "2px solid transparent",
-            fontWeight: value === t ? 600 : 500,
-          }}>
+          className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-all duration-200 ${
+            value === t
+              ? "bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 border-b-2 border-blue-500 shadow-sm"
+              : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-white/50 dark:hover:bg-gray-700/50"
+          }`}>
           {t}
         </button>
       ))}
@@ -89,15 +82,48 @@ export default function JsonColumnExpand({
     [root, tabs, active]
   );
 
+  // Loading state
+  if (!data) {
+    return (
+      <div className="h-full flex items-center justify-center bg-gradient-to-br from-blue-50/30 to-indigo-50/30 dark:from-gray-800 dark:to-gray-900 rounded-lg">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400">
+            Loading JSON data...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Empty state
+  if (!root || (typeof root === "object" && Object.keys(root).length === 0)) {
+    return (
+      <div className="h-full flex items-center justify-center bg-gradient-to-br from-blue-50/30 to-indigo-50/30 dark:from-gray-800 dark:to-gray-900 rounded-lg">
+        <div className="text-center">
+          <div className="text-4xl mb-4">📄</div>
+          <p className="text-gray-600 dark:text-gray-400 mb-2">
+            No data available
+          </p>
+          <p className="text-sm text-gray-500 dark:text-gray-500">
+            The JSON file appears to be empty or invalid
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div>
+    <div className="h-full flex flex-col bg-gradient-to-br from-blue-50/30 to-indigo-50/30 dark:from-gray-800 dark:to-gray-900 rounded-lg overflow-hidden">
       <Tabs tabs={tabs} value={active} onChange={setActive} />
-      <ColumnExpandableTable
-        value={current}
-        level={0}
-        colCap={maxTopCols}
-        nestedColCap={maxNestedCols}
-      />
+      <div className="flex-1 min-h-0 overflow-hidden">
+        <ColumnExpandableTable
+          value={current}
+          level={0}
+          colCap={maxTopCols}
+          nestedColCap={maxNestedCols}
+        />
+      </div>
     </div>
   );
 }
@@ -136,9 +162,9 @@ function ColumnExpandableTable({
               title={indexStr}
               summary={preview(nestedVal)}
               open={!!openCols[headerId]}
-              toggle={() =>
-                setOpenCols((s) => ({ ...s, [headerId]: !s[headerId] }))
-              }
+              toggle={() => {
+                setOpenCols((s) => ({ ...s, [headerId]: !s[headerId] }));
+              }}
             />
           ),
           cell: () =>
@@ -152,7 +178,9 @@ function ColumnExpandableTable({
                 />
               </CellNest>
             ) : (
-              <span style={{ color: "#374151" }}>{/* collapsed */}</span>
+              <span className="text-gray-400 dark:text-gray-500 italic text-sm">
+                {/* collapsed */}
+              </span>
             ),
         });
       });
@@ -181,8 +209,9 @@ function ColumnExpandableTable({
               open={!!openCols[headerId]}
               toggle={
                 canExpand
-                  ? () =>
-                      setOpenCols((s) => ({ ...s, [headerId]: !s[headerId] }))
+                  ? () => {
+                      setOpenCols((s) => ({ ...s, [headerId]: !s[headerId] }));
+                    }
                   : undefined
               }
               disabled={!canExpand}
@@ -199,7 +228,7 @@ function ColumnExpandableTable({
                 />
               </CellNest>
             ) : (
-              <span style={{ color: "#374151" }}>
+              <span className="text-gray-700 dark:text-gray-300 text-sm font-mono">
                 {isScalar(v) ? preview(v) : ""}
               </span>
             ),
@@ -218,7 +247,11 @@ function ColumnExpandableTable({
     cols.push({
       id: "value",
       header: "value",
-      cell: () => <span>{preview(value)}</span>,
+      cell: () => (
+        <span className="text-gray-700 dark:text-gray-300 text-sm font-mono bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">
+          {preview(value)}
+        </span>
+      ),
     });
     return { columns: cols, singleRow: [{}], restBadge: "" };
   }, [value, colCap, nestedColCap, openCols, level]);
@@ -229,68 +262,93 @@ function ColumnExpandableTable({
     getCoreRowModel: getCoreRowModel(),
   });
 
+  // Empty state for no columns
+  if (columns.length === 0) {
+    return (
+      <div className="flex items-center justify-center p-8 bg-white dark:bg-gray-800 rounded-lg">
+        <div className="text-center">
+          <div className="text-3xl mb-3">🔍</div>
+          <p className="text-gray-600 dark:text-gray-400 mb-1">
+            No data to display
+          </p>
+          <p className="text-sm text-gray-500 dark:text-gray-500">
+            This section appears to be empty
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
-      style={{
-        border: level === 0 ? "1px solid #e5e7eb" : "1px dashed #d1d5db",
-        borderRadius: 8,
-        overflow: "auto",
-      }}>
-      <table style={{ width: "100%", fontSize: 14 }}>
-        <thead
-          style={{
-            background: "#f9fafb",
-            position: "sticky",
-            top: 0,
-            zIndex: 1,
-          }}>
-          {table.getHeaderGroups().map((hg) => (
-            <tr key={hg.id}>
-              {hg.headers.map((h) => (
-                <th
-                  key={h.id}
-                  style={{
-                    textAlign: "left",
-                    padding: "8px 12px",
-                    borderBottom: "1px solid #e5e7eb",
-                    whiteSpace: "nowrap",
-                  }}>
-                  {flexRender(h.column.columnDef.header, h.getContext())}
-                </th>
-              ))}
-              {restBadge && (
-                <th
-                  style={{
-                    textAlign: "right",
-                    padding: "8px 12px",
-                    borderBottom: "1px solid #e5e7eb",
-                    color: "#6b7280",
-                  }}>
-                  {restBadge}
-                </th>
-              )}
-            </tr>
-          ))}
-        </thead>
-        <tbody>
-          {table.getRowModel().rows.map((r) => (
-            <tr key={r.id} className="even:bg-gray-50">
-              {r.getVisibleCells().map((c) => (
-                <td
-                  key={c.id}
-                  style={{
-                    padding: "8px 12px",
-                    borderBottom: "1px solid #f3f4f6",
-                    verticalAlign: "top",
-                  }}>
-                  {flexRender(c.column.columnDef.cell, c.getContext())}
-                </td>
-              ))}
-              {restBadge && <td />}
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      className={`${
+        level === 0
+          ? "border border-gray-200 dark:border-gray-700 shadow-sm"
+          : "border border-dashed border-gray-300 dark:border-gray-600"
+      } rounded-lg overflow-hidden bg-white dark:bg-gray-800`}>
+      <div
+        className="overflow-auto max-h-full custom-scrollbar"
+        style={{
+          scrollbarWidth: "thin",
+          scrollbarColor: "#3b82f6 #dbeafe",
+          maxHeight: level === 0 ? "60vh" : "40vh",
+        }}>
+        <table
+          className="w-full border-collapse"
+          style={{ tableLayout: "auto" }}>
+          <thead className="sticky top-0 z-20">
+            {table.getHeaderGroups().map((hg) => (
+              <tr
+                key={hg.id}
+                className="bg-gradient-to-r from-blue-100 to-indigo-100 dark:bg-gradient-to-r dark:from-blue-900 dark:to-blue-800 dark:border-b dark:border-gray-700 border-b border-blue-300 shadow-sm">
+                {hg.headers.map((h) => (
+                  <th
+                    key={h.id}
+                    className="px-3 py-2 text-left text-xs font-semibold text-blue-800 dark:text-blue-200 bg-gradient-to-b from-blue-100 to-blue-200 dark:bg-gradient-to-b dark:from-blue-900 dark:to-blue-800 border-r border-blue-300 dark:border-gray-700 transition-all duration-200"
+                    style={{
+                      whiteSpace: "nowrap",
+                      minWidth: "120px",
+                      width: "auto",
+                    }}>
+                    <div className="pointer-events-auto w-full">
+                      {flexRender(h.column.columnDef.header, h.getContext())}
+                    </div>
+                  </th>
+                ))}
+                {restBadge && (
+                  <th className="px-3 py-2 text-right text-xs font-medium text-gray-600 dark:text-gray-400 bg-gradient-to-b from-blue-100 to-blue-200 dark:bg-gradient-to-b dark:from-blue-900 dark:to-blue-800 border-r border-blue-300 dark:border-gray-700">
+                    {restBadge}
+                  </th>
+                )}
+              </tr>
+            ))}
+          </thead>
+          <tbody className="bg-white dark:bg-gray-900">
+            {table.getRowModel().rows.map((r, index) => (
+              <tr
+                key={r.id}
+                className="hover:bg-blue-50/30 dark:hover:bg-blue-800/20 transition-all duration-200 animate-in fade-in-0 slide-in-from-top-1"
+                style={{ animationDelay: `${index * 50}ms` }}>
+                {r.getVisibleCells().map((c) => (
+                  <td
+                    key={c.id}
+                    className="px-3 py-2 text-sm text-gray-900 dark:text-gray-100 border-r border-blue-200/50 border-b border-blue-200/50 dark:border-gray-700 transition-all duration-200 hover:bg-blue-50/50 dark:hover:bg-blue-800/30"
+                    style={{
+                      verticalAlign: "top",
+                      width: "auto",
+                      minWidth: "120px",
+                    }}>
+                    <div className="w-full">
+                      {flexRender(c.column.columnDef.cell, c.getContext())}
+                    </div>
+                  </td>
+                ))}
+                {restBadge && <td className="px-3 py-2" />}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -318,7 +376,11 @@ function RenderNested({
       />
     );
   }
-  return <span>{preview(value)}</span>;
+  return (
+    <span className="text-gray-700 dark:text-gray-300 text-sm font-mono bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">
+      {preview(value)}
+    </span>
+  );
 }
 
 /* ---------- header & cell wrappers ---------- */
@@ -335,37 +397,45 @@ function HeaderExpander({
   toggle?: () => void;
   disabled?: boolean;
 }) {
-  const btn = (
-    <button
-      onClick={toggle}
-      disabled={!toggle || disabled}
-      style={{
-        textDecoration: toggle && !disabled ? "underline" : "none",
-        opacity: disabled ? 0.6 : 1,
-        cursor: toggle && !disabled ? "pointer" : "default",
-      }}
-      title={summary}>
-      {title} {toggle && !disabled ? (open ? "▾" : "▸") : null}
-    </button>
-  );
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-      {btn}
-      <span style={{ fontSize: 12, color: "#6b7280" }}>{summary}</span>
+    <div className="flex flex-col gap-1">
+      <button
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          toggle?.();
+        }}
+        disabled={!toggle || disabled}
+        className={`group flex items-center gap-1 px-2 py-1 rounded-md transition-all duration-200 w-full text-left pointer-events-auto ${
+          toggle && !disabled
+            ? "hover:bg-blue-200/50 dark:hover:bg-blue-700/50 cursor-pointer"
+            : "cursor-default opacity-60"
+        }`}
+        title={summary}
+        style={{ minHeight: "24px" }}>
+        <span className="font-medium text-gray-900 dark:text-gray-100 group-hover:text-blue-700 dark:group-hover:text-blue-300 transition-colors">
+          {title}
+        </span>
+        {toggle && !disabled && (
+          <span
+            className={`text-blue-600 dark:text-blue-400 transition-transform duration-200 ${
+              open ? "rotate-0" : "-rotate-90"
+            }`}>
+            ▼
+          </span>
+        )}
+      </button>
+      <span className="text-xs text-gray-500 dark:text-gray-400 truncate">
+        {summary}
+      </span>
     </div>
   );
 }
 
 function CellNest({ children }: { children: React.ReactNode }) {
   return (
-    <div
-      style={{
-        marginTop: 6,
-        padding: 8,
-        border: "1px dashed #d1d5db",
-        borderRadius: 6,
-      }}>
-      {children}
+    <div className="mt-1 p-2 border border-dashed border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50/50 dark:bg-gray-700/30 transition-all duration-200 hover:bg-gray-100/50 dark:hover:bg-gray-700/50 w-full min-w-0 overflow-hidden">
+      <div className="w-full min-w-0">{children}</div>
     </div>
   );
 }
