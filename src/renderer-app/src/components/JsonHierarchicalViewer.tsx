@@ -194,51 +194,69 @@ function ColumnExpandableTable({
       };
     }
 
-    if (value && typeof value === "object") {
-      const keys = Object.keys(value).slice(0, colCap);
-      keys.forEach((k) => {
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      // Render objects as individual key-value pairs, not as table rows
+      const keys = Object.keys(value);
+      const scalarKeys = keys.filter((k) => {
+        const v = (value as any)[k];
+        return v == null || typeof v !== "object";
+      });
+      const nestedKeys = keys.filter((k) => !scalarKeys.includes(k));
+
+      const headers = [...scalarKeys, ...nestedKeys].slice(0, colCap);
+
+      headers.forEach((k) => {
         const v = (value as any)[k];
         const headerId = k;
-        const canExpand = !isScalar(v);
+        const isNested = !(v == null || typeof v !== "object");
+
         cols.push({
           id: headerId,
           header: () => (
-            <HeaderExpander
-              title={k}
-              summary={preview(v)}
-              open={!!openCols[headerId]}
-              toggle={
-                canExpand
-                  ? () => {
-                      setOpenCols((s) => ({ ...s, [headerId]: !s[headerId] }));
-                    }
-                  : undefined
-              }
-              disabled={!canExpand}
-            />
+            <div className="font-medium text-gray-700 dark:text-gray-300 text-sm">
+              {k}
+            </div>
           ),
-          cell: () =>
-            openCols[headerId] && canExpand ? (
-              <CellNest>
-                <RenderNested
-                  value={v}
-                  level={level + 1}
-                  colCap={nestedColCap}
-                  nestedColCap={nestedColCap}
-                />
-              </CellNest>
-            ) : (
-              <span className="text-gray-700 dark:text-gray-300 text-sm font-mono">
-                {isScalar(v) ? preview(v) : ""}
-              </span>
-            ),
+          cell: () => {
+            if (!isNested) {
+              // scalar → plain value
+              return (
+                <span className="text-gray-700 dark:text-gray-300 text-sm font-mono">
+                  {v == null ? "" : String(v)}
+                </span>
+              );
+            }
+            // nested → render nested value with expand/collapse
+            return (
+              <div>
+                <button
+                  onClick={() =>
+                    setOpenCols((s) => ({ ...s, [headerId]: !s[headerId] }))
+                  }
+                  className="flex items-center gap-2 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">
+                  {openCols[headerId] ? "▼" : "▶"}
+                  {Array.isArray(v) ? `[${v.length}]` : "{…}"}
+                </button>
+                {openCols[headerId] && (
+                  <div className="mt-2">
+                    <RenderNested
+                      value={v}
+                      level={level + 1}
+                      colCap={nestedColCap}
+                      nestedColCap={nestedColCap}
+                    />
+                  </div>
+                )}
+              </div>
+            );
+          },
         });
       });
 
-      const overflow = Object.keys(value).length - keys.length;
+      const overflow = keys.length - headers.length;
       return {
         columns: cols,
-        singleRow: [value],
+        singleRow: [{}], // Empty row - data is in columns only
         restBadge: overflow > 0 ? `+${overflow}` : "",
       };
     }
