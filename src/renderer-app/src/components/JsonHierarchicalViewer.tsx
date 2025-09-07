@@ -148,7 +148,6 @@ function ColumnExpandableTable({
   // 1) Build columns for ARRAY (indices) or OBJECT (keys)
   const { columns, singleRow, restBadge } = useMemo(() => {
     const cols: ColumnDef<any>[] = [];
-    let row: any = {}; // single logical row for the outer table
 
     if (Array.isArray(value)) {
       const indices = value.map((_, i) => String(i)).slice(0, colCap);

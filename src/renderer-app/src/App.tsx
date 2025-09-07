@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import ContextMenu from "./components/ContextMenu";
 import CrudModal from "./components/CrudModal";
 import ExcelGrid from "./components/ExcelGrid";
@@ -15,8 +15,6 @@ import Tooltip from "./components/Tooltip";
 import "./index.css";
 
 type FileEntry = { name: string; path: string; size: number; mtimeMs: number };
-
-// Note: XlsmConversionStatus component removed - using toast notifications instead
 
 export default function App() {
   const [dark, setDark] = useState(false);
@@ -56,6 +54,25 @@ export default function App() {
     conflict: null,
   });
   const [toast, setToast] = useState<string | null>(null);
+
+  // Helper function to check for new XLSM files
+  const checkXlsmFiles = useCallback(async () => {
+    try {
+      const newXlsmFiles = await (window as any).api.invoke("xlsm:getNewFiles");
+      if (newXlsmFiles.length > 0) {
+        const fileNames = newXlsmFiles
+          .map((f: string) => f.split("/").pop())
+          .join(", ");
+        setToast(
+          `📋 XLSM files detected: ${fileNames}. Macros have been removed; formulas and formatting preserved.`
+        );
+        // Clear the notifications
+        await (window as any).api.invoke("xlsm:clearNotifications");
+      }
+    } catch (e) {
+      console.error("Failed to check XLSM notifications:", e);
+    }
+  }, []);
 
   // Excel-like UI state
   const [selectedCell, setSelectedCell] = useState<{
@@ -110,23 +127,7 @@ export default function App() {
               setFiles(res.files || []);
 
               // Check for new XLSM files that had macros stripped
-              try {
-                const newXlsmFiles = await (window as any).api.invoke(
-                  "xlsm:getNewFiles"
-                );
-                if (newXlsmFiles.length > 0) {
-                  const fileNames = newXlsmFiles
-                    .map((f: string) => f.split("/").pop())
-                    .join(", ");
-                  setToast(
-                    `📋 XLSM files detected: ${fileNames}. Macros have been removed; formulas and formatting preserved.`
-                  );
-                  // Clear the notifications
-                  await (window as any).api.invoke("xlsm:clearNotifications");
-                }
-              } catch (e) {
-                console.error("Failed to check XLSM notifications:", e);
-              }
+              await checkXlsmFiles();
             }
           } else {
             setToast("❌ No folder selected");
@@ -137,23 +138,7 @@ export default function App() {
             setFiles(res.files || []);
 
             // Check for new XLSM files that had macros stripped
-            try {
-              const newXlsmFiles = await (window as any).api.invoke(
-                "xlsm:getNewFiles"
-              );
-              if (newXlsmFiles.length > 0) {
-                const fileNames = newXlsmFiles
-                  .map((f: string) => f.split("/").pop())
-                  .join(", ");
-                setToast(
-                  `📋 XLSM files detected: ${fileNames}. Macros have been removed; formulas and formatting preserved.`
-                );
-                // Clear the notifications
-                await (window as any).api.invoke("xlsm:clearNotifications");
-              }
-            } catch (e) {
-              console.error("Failed to check XLSM notifications:", e);
-            }
+            await checkXlsmFiles();
           }
         }
       } catch (err) {
@@ -187,23 +172,7 @@ export default function App() {
         setFiles(res.files || []);
 
         // Check for new XLSM files that had macros stripped
-        try {
-          const newXlsmFiles = await (window as any).api.invoke(
-            "xlsm:getNewFiles"
-          );
-          if (newXlsmFiles.length > 0) {
-            const fileNames = newXlsmFiles
-              .map((f: string) => f.split("/").pop())
-              .join(", ");
-            setToast(
-              `📋 XLSM files detected: ${fileNames}. Macros have been removed; formulas and formatting preserved.`
-            );
-            // Clear the notifications
-            await (window as any).api.invoke("xlsm:clearNotifications");
-          }
-        } catch (e) {
-          console.error("Failed to check XLSM notifications:", e);
-        }
+        await checkXlsmFiles();
       }
     } catch (e) {
       console.error(e);
@@ -221,23 +190,7 @@ export default function App() {
           setFiles(res.files || []);
 
           // Check for new XLSM files that had macros stripped
-          try {
-            const newXlsmFiles = await (window as any).api.invoke(
-              "xlsm:getNewFiles"
-            );
-            if (newXlsmFiles.length > 0) {
-              const fileNames = newXlsmFiles
-                .map((f: string) => f.split("/").pop())
-                .join(", ");
-              setToast(
-                `📋 XLSM files detected: ${fileNames}. Macros have been removed; formulas and formatting preserved.`
-              );
-              // Clear the notifications
-              await (window as any).api.invoke("xlsm:clearNotifications");
-            }
-          } catch (e) {
-            console.error("Failed to check XLSM notifications:", e);
-          }
+          await checkXlsmFiles();
         }
       } else {
         setToast("❌ No folder selected");
@@ -316,9 +269,6 @@ export default function App() {
               );
               // store into state if needed; for now we just set columnFilters to empty
               // DataGrid will reflect sort via server-side ordering when implemented
-              // Optionally trigger load of first sheet later when selected
-              // We can store in config state if needed
-              setTimeout(() => {}, 0);
             } catch (e) {}
           } else {
             setToast("❌ " + (m.message || "Failed to load workbook metadata"));
@@ -954,7 +904,7 @@ export default function App() {
                     tabOrder={[
                       "pageConfig",
                       "testsetConfig",
-                      "testsetConfigFlattened",
+                      "testsetConfigFlattend",
                       "apiconfig",
                       "application",
                     ]}
