@@ -1,0 +1,29 @@
+{
+  "employees": [
+    {
+      "id": 1,
+      "name": "John Doe",
+      "email": "john@company.com",
+      "department": "Engineering",
+      "salary": 75000
+    },
+    {
+      "id": 2,
+      "name": "Jane Smith",
+      "email": "jane@company.com",
+      "department": "Marketing",
+      "salary": 65000
+    },
+    {
+      "id": 3,
+      "name": "Bob Johnson",
+      "email": "bob@company.com",
+      "department": "Sales",
+      "salary": 55000
+    }
+  ],
+  "metadata": {
+    "created": "2024-01-01",
+    "version": "1.0"
+  }
+}

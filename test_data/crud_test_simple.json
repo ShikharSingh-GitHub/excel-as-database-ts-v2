@@ -1,0 +1,32 @@
+{
+  "data": {
+    "users": [
+      {
+        "id": 1,
+        "name": "Alice",
+        "email": "alice@test.com",
+        "active": true
+      },
+      {
+        "id": 2,
+        "name": "Bob",
+        "email": "bob@test.com",
+        "active": false
+      }
+    ],
+    "products": [
+      {
+        "#": 10,
+        "title": "Widget A",
+        "price": 25.99,
+        "stock": 100
+      },
+      {
+        "#": 20,
+        "title": "Widget B",
+        "price": 35.99,
+        "stock": 50
+      }
+    ]
+  }
+}

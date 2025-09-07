@@ -87,8 +87,34 @@ contextBridge.exposeInMainWorld("api", {
   json: {
     read: (filePath) => ipcRenderer.invoke("json:read", filePath),
     write: (filePath, data) => ipcRenderer.invoke("json:write", filePath, data),
-    fetch: (url, method, payload) => ipcRenderer.invoke("json:fetch", url, method, payload),
+    fetch: (url, method, payload) =>
+      ipcRenderer.invoke("json:fetch", url, method, payload),
     save: (fileName, data) => ipcRenderer.invoke("json:save", fileName, data),
+
+    // JSON CRUD operations
+    updateScalar: (filePath, path, newValue, oldValue) =>
+      ipcRenderer.invoke(
+        "json:updateScalar",
+        filePath,
+        path,
+        newValue,
+        oldValue
+      ),
+    updateFieldById: (filePath, path, recordId, field, newValue, oldValue) =>
+      ipcRenderer.invoke(
+        "json:updateFieldById",
+        filePath,
+        path,
+        recordId,
+        field,
+        newValue,
+        oldValue
+      ),
+    createRow: (filePath, path, newRow) =>
+      ipcRenderer.invoke("json:createRow", filePath, path, newRow),
+    deleteRow: (filePath, path, recordId) =>
+      ipcRenderer.invoke("json:deleteRow", filePath, path, recordId),
+    getSchema: (filePath) => ipcRenderer.invoke("json:getSchema", filePath),
   },
 
   // Utility

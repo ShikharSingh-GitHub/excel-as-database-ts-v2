@@ -58,6 +58,20 @@ export default function App() {
   });
   const [toast, setToast] = useState<string | null>(null);
 
+  // Helper function for better toast messages
+  const showToast = useCallback(
+    (type: "success" | "error" | "info" | "loading", message: string) => {
+      const icons = {
+        success: "✅",
+        error: "❌",
+        info: "ℹ️",
+        loading: "⏳",
+      };
+      setToast(`${icons[type]} ${message}`);
+    },
+    []
+  );
+
   // Helper function to check for new XLSM files
   const checkXlsmFiles = useCallback(async () => {
     try {
@@ -235,7 +249,7 @@ export default function App() {
             file.path
           );
           if (jsonData && !jsonData.error) {
-            setMeta({ isJson: true, data: jsonData });
+            setMeta({ isJson: true, data: jsonData, path: file.path });
             setActiveSheet(null);
             setSheetRows({
               rows: [],
@@ -244,8 +258,9 @@ export default function App() {
               pageSize: config?.pageSizeDefault || 25,
               headers: [],
             });
+            showToast("success", `JSON file loaded: ${file.name}`);
           } else {
-            setToast("❌ " + (jsonData.message || "Failed to load JSON file"));
+            showToast("error", jsonData.message || "Failed to load JSON file");
             setActiveFile(null);
           }
         } else {
@@ -923,22 +938,289 @@ export default function App() {
                     <CollapsibleJsonView
                       data={meta.data}
                       rootKey="data"
+                      filePath={activeFile}
                       tabOrder={[
                         "pageConfig",
                         "testsetConfig",
                         "testsetConfigFlattend",
                         "apiconfig",
                         "application",
+                        "employees",
                       ]}
                       maxCols={50}
                       maxRows={500}
                       canEditScalar={(path, value) => {
-                        // For now, read-only everywhere
-                        return false;
+                        // Enable editing for scalar values
+                        return typeof value !== "object" || value === null;
                       }}
-                      onEditScalar={(path, next) => {
-                        // TODO: Implement CRUD operations
-                        console.log("Edit scalar:", path, next);
+                      onEditScalar={async (path, newValue) => {
+                        try {
+                          console.log("Edit scalar:", path, newValue);
+
+                          // Show immediate feedback
+                          showToast("loading", "Updating value...");
+
+                          // Get the old value for conflict detection
+                          const getValueAtPath = (obj: any, path: string) => {
+                            const parts = path
+                              .split(/[\.\[\]]/)
+                              .filter(Boolean);
+                            let current = obj;
+                            for (const part of parts) {
+                              if (current == null) return undefined;
+                              current = current[part];
+                            }
+                            return current;
+                          };
+
+                          const oldValue = getValueAtPath(meta.data, path);
+
+                          // Call the backend API to update the scalar value
+                          const result = await (window as any).api.invoke(
+                            "json:updateScalar",
+                            activeFile,
+                            path,
+                            newValue,
+                            oldValue
+                          );
+                          if (result.error) {
+                            showToast("error", result.error);
+                            return;
+                          }
+
+                          // Refresh the JSON data after edit
+                          if (activeFile) {
+                            const updatedData = await (
+                              window as any
+                            ).api.invoke("json:read", activeFile);
+                            if (updatedData && !updatedData.error) {
+                              setMeta({
+                                isJson: true,
+                                data: updatedData,
+                                path: activeFile,
+                              });
+                              showToast(
+                                "success",
+                                "Value updated successfully"
+                              );
+                            } else {
+                              showToast(
+                                "error",
+                                "Failed to refresh data after edit"
+                              );
+                            }
+                          }
+                        } catch (error) {
+                          console.error("Failed to update scalar:", error);
+                          showToast("error", "Failed to update value");
+                        }
+                      }}
+                      onCreateRow={async (tablePath) => {
+                        try {
+                          console.log("🔥 FRONTEND CREATE ROW:");
+                          console.log("  - tablePath:", tablePath);
+                          console.log("  - activeFile:", activeFile);
+
+                          // Show immediate feedback
+                          showToast("loading", "Adding new row...");
+
+                          // Call the backend API directly with empty row data
+                          // Backend will auto-generate PK and fill in default values
+                          const result = await (window as any).api.invoke(
+                            "json:createRow",
+                            activeFile,
+                            tablePath,
+                            {}
+                          );
+
+                          console.log("Create row result:", result);
+
+                          if (result.error) {
+                            showToast("error", result.error);
+                            return;
+                          }
+
+                          // Refresh the JSON data after row creation
+                          if (activeFile) {
+                            const updatedData = await (
+                              window as any
+                            ).api.invoke("json:read", activeFile);
+                            if (updatedData && !updatedData.error) {
+                              setMeta({
+                                isJson: true,
+                                data: updatedData,
+                                path: activeFile,
+                              });
+                              const pkField =
+                                result.newRow &&
+                                Object.keys(result.newRow).length > 0
+                                  ? Object.keys(result.newRow)[0]
+                                  : "#";
+                              const pkDisplayValue =
+                                pkField === "#"
+                                  ? `index ${result.pkValue}`
+                                  : `${pkField}: ${
+                                      result.pkValue || result.newRow?.[pkField]
+                                    }`;
+                              showToast(
+                                "success",
+                                `Row added successfully with ${pkDisplayValue}`
+                              );
+                            } else {
+                              showToast(
+                                "error",
+                                "Failed to refresh data after row creation"
+                              );
+                            }
+                          }
+                        } catch (error) {
+                          console.error("Failed to create row:", error);
+                          showToast("error", "Failed to add row");
+                        }
+                      }}
+                      onDeleteRow={async (tablePath, pkValue) => {
+                        try {
+                          console.log("🔥 FRONTEND DELETE ROW:");
+                          console.log("  - tablePath:", tablePath);
+                          console.log("  - pkValue:", pkValue);
+                          console.log("  - activeFile:", activeFile);
+
+                          // Ask for confirmation
+                          if (
+                            !confirm(
+                              `Are you sure you want to delete row with ID ${pkValue}?`
+                            )
+                          ) {
+                            return;
+                          }
+
+                          // Show immediate feedback
+                          showToast("loading", "Deleting row...");
+
+                          // Call the backend API to delete the row (backend determines pkField from schema)
+                          const result = await (window as any).api.invoke(
+                            "json:deleteRow",
+                            activeFile,
+                            tablePath,
+                            pkValue
+                          );
+
+                          console.log("Delete row result:", result);
+
+                          if (result.error) {
+                            showToast("error", result.error);
+                            return;
+                          }
+
+                          // Check for success response
+                          if (result.success) {
+                            // Refresh the JSON data after row deletion
+                            if (activeFile) {
+                              const updatedData = await (
+                                window as any
+                              ).api.invoke("json:read", activeFile);
+                              if (updatedData && !updatedData.error) {
+                                setMeta({
+                                  isJson: true,
+                                  data: updatedData,
+                                  path: activeFile,
+                                });
+                                showToast(
+                                  "success",
+                                  result.message || "Row deleted successfully"
+                                );
+                              } else {
+                                showToast(
+                                  "error",
+                                  "Failed to refresh data after row deletion"
+                                );
+                              }
+                            }
+                          } else {
+                            showToast(
+                              "error",
+                              "Unexpected response format from server"
+                            );
+                          }
+                        } catch (error) {
+                          console.error("Failed to delete row:", error);
+                          showToast("error", "Failed to delete row");
+                        }
+                      }}
+                      onEditRow={async (
+                        path,
+                        field,
+                        newValue,
+                        oldValue,
+                        pkValue
+                      ) => {
+                        try {
+                          console.log(
+                            "Edit field:",
+                            field,
+                            "to:",
+                            newValue,
+                            "for row:",
+                            pkValue,
+                            "at:",
+                            path
+                          );
+
+                          // Show immediate feedback
+                          showToast("loading", "Updating field...");
+
+                          // Call the backend API to update the field (backend determines pkField from schema)
+                          const result = await (window as any).api.invoke(
+                            "json:updateFieldById",
+                            activeFile,
+                            path,
+                            pkValue,
+                            field,
+                            newValue,
+                            oldValue
+                          );
+
+                          console.log("Edit field result:", result);
+
+                          if (result.error) {
+                            showToast("error", result.error);
+                            return;
+                          }
+
+                          // Check for success response
+                          if (result.success) {
+                            // Refresh the JSON data after field update
+                            if (activeFile) {
+                              const updatedData = await (
+                                window as any
+                              ).api.invoke("json:read", activeFile);
+                              if (updatedData && !updatedData.error) {
+                                setMeta({
+                                  isJson: true,
+                                  data: updatedData,
+                                  path: activeFile,
+                                });
+                                showToast(
+                                  "success",
+                                  result.message || "Field updated successfully"
+                                );
+                              } else {
+                                showToast(
+                                  "error",
+                                  "Failed to refresh data after field update"
+                                );
+                              }
+                            }
+                          } else {
+                            showToast(
+                              "error",
+                              "Unexpected response format from server"
+                            );
+                          }
+                        } catch (error) {
+                          console.error("Failed to edit field:", error);
+                          showToast("error", "Failed to update field");
+                        }
                       }}
                     />
                   )}
@@ -1161,8 +1443,12 @@ export default function App() {
           <Toast
             message={toast}
             type={
-              toast.includes("error") || toast.includes("failed")
+              toast.includes("❌") ||
+              toast.includes("error") ||
+              toast.includes("failed")
                 ? "error"
+                : toast.includes("⏳")
+                ? "info"
                 : "success"
             }
             onClose={() => setToast(null)}

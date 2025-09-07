@@ -1,0 +1,16 @@
+{
+  "data": {
+    "simple_table": [
+      {
+        "name": "Item A",
+        "value": 100,
+        "active": true
+      },
+      {
+        "name": "Item B",
+        "value": 200,
+        "active": false
+      }
+    ]
+  }
+}

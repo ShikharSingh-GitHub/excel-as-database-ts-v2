@@ -425,25 +425,384 @@ if (ipcMain) {
     }
   );
 
-  ipcMain.handle("json:save", async (event, fileName, data) => {
+  ipcMain.handle("json:save", async (event, folderPath, fileName, data) => {
     try {
-      const config = excelService.readConfig();
-      const folderPath = config.folderPath;
-
-      if (!folderPath) {
-        return { error: true, message: "No folder selected" };
-      }
-
       const filePath = path.join(folderPath, fileName);
       fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
-
-      // Refresh the folder to include the new file
-      await cleanXlsmService.scanFolder(folderPath);
-
       return { success: true, filePath };
     } catch (e) {
       log("ERROR", "Failed to save JSON file", { fileName, error: e.message });
-      return { error: true, message: e.message };
+      return { error: "save-error", message: e.message };
+    }
+  });
+
+  // JSON CRUD operations
+  ipcMain.handle(
+    "json:updateScalar",
+    async (event, filePath, path, newValue, oldValue) => {
+      try {
+        const abs = require("path").resolve(filePath);
+
+        // Read current JSON
+        const jsonData = JSON.parse(fs.readFileSync(abs, "utf8"));
+
+        // Get current value at path for conflict detection
+        const current = getAtPath(jsonData, path);
+        if (
+          typeof oldValue !== "undefined" &&
+          JSON.stringify(current) !== JSON.stringify(oldValue)
+        ) {
+          return { conflict: true, current };
+        }
+
+        // Set new value
+        setAtPath(jsonData, path, newValue);
+
+        // Atomic write
+        const tempPath = abs + ".tmp";
+        fs.writeFileSync(tempPath, JSON.stringify(jsonData, null, 2));
+        fs.renameSync(tempPath, abs);
+
+        log("INFO", "JSON scalar updated", { filePath, path, newValue });
+        return { success: true, message: "Value updated successfully" };
+      } catch (e) {
+        log("ERROR", "Failed to update JSON scalar", {
+          filePath,
+          path,
+          error: e.message,
+        });
+        return { error: e.message };
+      }
+    }
+  );
+
+  ipcMain.handle(
+    "json:updateFieldById",
+    async (event, filePath, tablePath, id, field, newValue, oldValue) => {
+      try {
+        const abs = require("path").resolve(filePath);
+
+        // Get schema to validate table is CRUD-enabled
+        const schema = getJsonSchema(abs);
+        const meta = schema.byPath[tablePath];
+        if (!meta?.allowCrud) {
+          throw new Error("Read-only table");
+        }
+
+        const pk = meta.pkField;
+        const jsonData = JSON.parse(fs.readFileSync(abs, "utf8"));
+        const arr = getAtPath(jsonData, tablePath);
+
+        if (!Array.isArray(arr)) {
+          throw new Error("Table path does not point to an array");
+        }
+
+        // Handle # column (row index) as primary key
+        let rowIndex;
+        if (pk === "#") {
+          // Use id directly as array index
+          rowIndex = parseInt(id);
+          if (rowIndex < 0 || rowIndex >= arr.length) {
+            throw new Error(
+              `Row index ${id} out of bounds (array length: ${arr.length})`
+            );
+          }
+        } else {
+          // Use normal field-based lookup
+          rowIndex = arr.findIndex((row) => row?.[pk] === id);
+          if (rowIndex < 0) {
+            throw new Error("Row not found");
+          }
+        }
+
+        // Conflict detection
+        const currentValue = arr[rowIndex][field];
+        if (
+          typeof oldValue !== "undefined" &&
+          JSON.stringify(currentValue) !== JSON.stringify(oldValue)
+        ) {
+          return { conflict: true, current: currentValue };
+        }
+
+        // Update the field
+        arr[rowIndex][field] = newValue;
+
+        // Atomic write
+        const tempPath = abs + ".tmp";
+        fs.writeFileSync(tempPath, JSON.stringify(jsonData, null, 2));
+        fs.renameSync(tempPath, abs);
+
+        log("INFO", "JSON field updated by ID", {
+          filePath,
+          tablePath,
+          id,
+          field,
+          newValue,
+        });
+        return { success: true, message: "Field updated successfully" };
+      } catch (e) {
+        log("ERROR", "Failed to update JSON field by ID", {
+          filePath,
+          tablePath,
+          id,
+          field,
+          error: e.message,
+        });
+        return { error: e.message };
+      }
+    }
+  );
+
+  ipcMain.handle(
+    "json:createRow",
+    async (event, filePath, tablePath, newRow) => {
+      try {
+        console.log("🆕 Creating new row:", { filePath, tablePath, newRow });
+
+        const abs = require("path").resolve(filePath);
+
+        // Get schema to validate table is CRUD-enabled
+        const schema = getJsonSchema(abs);
+        console.log(
+          "📋 Full schema for createRow:",
+          JSON.stringify(schema, null, 2)
+        );
+
+        const meta = schema.byPath[tablePath];
+
+        console.log("📋 Table metadata for path '" + tablePath + "':", meta);
+        console.log("📋 Available schema paths:", Object.keys(schema.byPath));
+
+        if (!meta?.allowCrud) {
+          console.error("❌ Table not CRUD enabled:", {
+            meta,
+            availablePaths: Object.keys(schema.byPath),
+          });
+          throw new Error("Read-only table");
+        }
+
+        const jsonData = JSON.parse(fs.readFileSync(abs, "utf8"));
+        const arr = getAtPath(jsonData, tablePath);
+
+        if (!Array.isArray(arr)) {
+          throw new Error("Table path does not point to an array");
+        }
+
+        const pk = meta.pkField;
+        let finalRow = { ...newRow };
+
+        // Handle # column (row index) as primary key - no need to set it, it's the index
+        if (pk === "#") {
+          // For # column, we don't need to store the PK in the row data
+          // The PK is the row index itself
+          console.log(`🔑 Using row index (#) as PK - will be ${arr.length}`);
+        } else {
+          // Auto-generate primary key if not provided for other PK types
+          if (finalRow?.[pk] == null) {
+            console.log(`🔑 Auto-generating PK for field: ${pk}`);
+
+            if (pk === "id" || pk === "rowId") {
+              // Find next available numeric ID
+              const existingIds = arr
+                .map((item) => item[pk])
+                .filter((id) => typeof id === "number");
+              const maxId =
+                existingIds.length > 0 ? Math.max(...existingIds) : 0;
+              finalRow[pk] = maxId + 1;
+              console.log(`🔑 Generated numeric ID: ${finalRow[pk]}`);
+            } else if (pk === "uuid") {
+              // Generate simple UUID-like string
+              finalRow[pk] =
+                "uuid-" +
+                Date.now() +
+                "-" +
+                Math.random().toString(36).substr(2, 9);
+              console.log(`🔑 Generated UUID: ${finalRow[pk]}`);
+            } else {
+              // For other fields, use a timestamp-based value
+              finalRow[pk] = `item-${Date.now()}`;
+              console.log(`🔑 Generated string ID: ${finalRow[pk]}`);
+            }
+          }
+
+          // Check for duplicate PK (only for non-# columns)
+          if (arr.some((r) => r?.[pk] === finalRow[pk])) {
+            throw new Error(`Duplicate PK ${finalRow[pk]}`);
+          }
+        }
+
+        // Add default values for missing fields based on existing data structure
+        if (arr.length > 0) {
+          const sampleItem = arr[0];
+          Object.keys(sampleItem).forEach((key) => {
+            if (!(key in finalRow)) {
+              const sampleValue = sampleItem[key];
+              if (typeof sampleValue === "string") finalRow[key] = `New ${key}`;
+              else if (typeof sampleValue === "number") finalRow[key] = 0;
+              else if (typeof sampleValue === "boolean") finalRow[key] = false;
+              else if (Array.isArray(sampleValue)) finalRow[key] = [];
+              else if (typeof sampleValue === "object" && sampleValue !== null)
+                finalRow[key] = {};
+              else finalRow[key] = null;
+            }
+          });
+        } else {
+          // If no existing data, create minimal row
+          if (pk !== "#") {
+            // Only add PK field if it's not # column
+            finalRow[pk] = finalRow[pk] || "new-item";
+          }
+        }
+
+        console.log("✨ Final row to add:", finalRow);
+        console.log("📊 Current array length:", arr.length);
+        console.log(
+          "🎯 Effective PK will be:",
+          pk === "#" ? arr.length : finalRow[pk]
+        );
+
+        // Add new row at the end
+        const newIndex = arr.length;
+        arr.push(finalRow);
+
+        console.log("📈 New array length:", arr.length);
+
+        // Atomic write
+        const tempPath = abs + ".tmp";
+        fs.writeFileSync(tempPath, JSON.stringify(jsonData, null, 2));
+        fs.renameSync(tempPath, abs);
+
+        // Determine the effective PK value for response
+        const effectivePkValue = pk === "#" ? newIndex : finalRow[pk];
+
+        log("INFO", "JSON row created", {
+          filePath,
+          tablePath,
+          rowId: effectivePkValue,
+        });
+        console.log("✅ Row created successfully");
+        return {
+          success: true,
+          message: "Row created successfully",
+          newRow: finalRow,
+          pkValue: effectivePkValue,
+        };
+      } catch (e) {
+        console.error("❌ Failed to create row:", e);
+        log("ERROR", "Failed to create JSON row", {
+          filePath,
+          tablePath,
+          error: e.message,
+        });
+        return { error: e.message };
+      }
+    }
+  );
+
+  ipcMain.handle(
+    "json:deleteRow",
+    async (event, filePath, tablePath, recordId) => {
+      try {
+        console.log("🗑️ Deleting row:", { filePath, tablePath, recordId });
+
+        const abs = require("path").resolve(filePath);
+
+        // Get schema to validate table is CRUD-enabled
+        const schema = getJsonSchema(abs);
+        console.log(
+          "📋 Full schema for deleteRow:",
+          JSON.stringify(schema, null, 2)
+        );
+
+        const meta = schema.byPath[tablePath];
+
+        console.log(
+          "📋 Delete - table metadata for path '" + tablePath + "':",
+          meta
+        );
+        console.log("📋 Available schema paths:", Object.keys(schema.byPath));
+
+        if (!meta?.allowCrud) {
+          console.error("❌ Delete: Table not CRUD enabled:", {
+            meta,
+            availablePaths: Object.keys(schema.byPath),
+          });
+          throw new Error("Read-only table");
+        }
+
+        const pk = meta.pkField;
+        console.log(`🔑 Looking for row with ${pk} = ${recordId}`);
+
+        const jsonData = JSON.parse(fs.readFileSync(abs, "utf8"));
+        const arr = getAtPath(jsonData, tablePath);
+
+        if (!Array.isArray(arr)) {
+          throw new Error("Table path does not point to an array");
+        }
+
+        console.log(
+          "🔍 Current array contents:",
+          arr.map((item, idx) => ({
+            index: idx,
+            pkValue: pk === "#" ? idx : item[pk],
+            item: item,
+          }))
+        );
+
+        // Handle # column (row index) as primary key
+        let index;
+        if (pk === "#") {
+          // Use recordId directly as array index
+          index = parseInt(recordId);
+          if (index < 0 || index >= arr.length) {
+            throw new Error(
+              `Row index ${recordId} out of bounds (array length: ${arr.length})`
+            );
+          }
+        } else {
+          // Use normal field-based lookup
+          index = arr.findIndex((row) => row?.[pk] === recordId);
+        }
+
+        if (index === -1) {
+          console.error(`❌ Row not found with ${pk} = ${recordId}`);
+          throw new Error(`Row not found with ${pk} = ${recordId}`);
+        }
+
+        console.log(`✂️ Removing row at index ${index}:`, arr[index]);
+
+        // Remove the row
+        arr.splice(index, 1);
+
+        // Atomic write
+        const tempPath = abs + ".tmp";
+        fs.writeFileSync(tempPath, JSON.stringify(jsonData, null, 2));
+        fs.renameSync(tempPath, abs);
+
+        log("INFO", "JSON row deleted", { filePath, tablePath, recordId });
+        console.log("✅ Row deleted successfully");
+        return { success: true, message: "Row deleted successfully" };
+      } catch (e) {
+        console.error("❌ Failed to delete row:", e);
+        log("ERROR", "Failed to delete JSON row", {
+          filePath,
+          tablePath,
+          recordId,
+          error: e.message,
+        });
+        return { error: e.message };
+      }
+    }
+  );
+
+  ipcMain.handle("json:getSchema", async (event, filePath) => {
+    try {
+      const abs = require("path").resolve(filePath);
+      const schema = getJsonSchema(abs);
+      return schema;
+    } catch (e) {
+      log("ERROR", "Failed to get JSON schema", { filePath, error: e.message });
+      return { byPath: {} };
     }
   });
 
@@ -459,4 +818,238 @@ if (ipcMain) {
   });
 } else {
   log("INFO", "ipcMain not available; skipping IPC handler registration");
+}
+
+// Helper functions for JSON CRUD operations
+function getAtPath(obj, path) {
+  if (!path) return obj;
+
+  const parts = parsePath(path);
+  let current = obj;
+
+  for (const part of parts) {
+    if (current == null) return undefined;
+
+    if (typeof part === "number") {
+      current = current[part];
+    } else {
+      current = current[part];
+    }
+  }
+
+  return current;
+}
+
+function setAtPath(obj, path, value) {
+  if (!path) return;
+
+  const parts = parsePath(path);
+  let current = obj;
+
+  for (let i = 0; i < parts.length - 1; i++) {
+    const part = parts[i];
+    const nextPart = parts[i + 1];
+
+    if (current[part] == null) {
+      current[part] = typeof nextPart === "number" ? [] : {};
+    }
+    current = current[part];
+  }
+
+  const lastPart = parts[parts.length - 1];
+  current[lastPart] = value;
+}
+
+function parsePath(path) {
+  const parts = [];
+  let current = "";
+  let inBracket = false;
+
+  for (let i = 0; i < path.length; i++) {
+    const char = path[i];
+
+    if (char === "[") {
+      if (current) {
+        parts.push(current);
+        current = "";
+      }
+      inBracket = true;
+    } else if (char === "]") {
+      if (current) {
+        parts.push(parseInt(current));
+        current = "";
+      }
+      inBracket = false;
+    } else if (char === "." && !inBracket) {
+      if (current) {
+        parts.push(current);
+        current = "";
+      }
+    } else {
+      current += char;
+    }
+  }
+
+  if (current) {
+    parts.push(inBracket ? parseInt(current) : current);
+  }
+
+  return parts;
+}
+
+function getJsonSchema(filePath) {
+  try {
+    const data = JSON.parse(fs.readFileSync(filePath, "utf8"));
+    const schema = { byPath: {} };
+
+    function analyzeNode(node, currentPath) {
+      if (Array.isArray(node) && node.length > 0) {
+        const objectItems = node.filter(
+          (item) => item && typeof item === "object" && !Array.isArray(item)
+        );
+
+        if (objectItems.length === node.length && node.length > 0) {
+          // Array of objects - analyze for CRUD capability
+          const columns = new Set();
+          let isLeaf = true;
+
+          // Get union of all keys
+          objectItems.forEach((obj) => {
+            Object.keys(obj).forEach((key) => columns.add(key));
+          });
+
+          // Check if all values are scalar (leaf condition)
+          for (const obj of objectItems.slice(0, 10)) {
+            // Sample first 10
+            for (const key of columns) {
+              const val = obj[key];
+              if (val != null && typeof val === "object") {
+                isLeaf = false;
+                break;
+              }
+            }
+            if (!isLeaf) break;
+          }
+
+          // Detect primary key - improved detection with more candidates
+          const pkCandidates = [
+            "#",
+            "id",
+            "uuid",
+            "ID",
+            "key",
+            "name",
+            "_id",
+            "rowId",
+            "pk",
+            "primary_key",
+          ];
+          let pkField = null;
+
+          for (const candidate of pkCandidates) {
+            if (columns.has(candidate)) {
+              // Check if values are unique and non-null
+              const values = new Set();
+              let isUnique = true;
+
+              for (const obj of objectItems) {
+                const val = obj[candidate];
+                if (val == null || values.has(val)) {
+                  isUnique = false;
+                  break;
+                }
+                values.add(val);
+              }
+
+              if (isUnique) {
+                pkField = candidate;
+                break;
+              }
+            }
+          }
+
+          // If no explicit PK found, try to find any field with unique values
+          if (!pkField) {
+            for (const col of Array.from(columns)) {
+              const values = new Set();
+              let isUnique = true;
+              let hasValidValues = true;
+
+              for (const obj of objectItems) {
+                const val = obj[col];
+                if (val == null || val === "" || val === 0) {
+                  hasValidValues = false;
+                  break;
+                }
+                if (values.has(val)) {
+                  isUnique = false;
+                  break;
+                }
+                values.add(val);
+              }
+
+              if (isUnique && hasValidValues) {
+                pkField = col;
+                console.log(
+                  `Auto-detected PK field: ${col} for path: ${currentPath}`
+                );
+                break;
+              }
+            }
+          }
+
+          // If still no PK found, use row index as PK (# column)
+          if (!pkField) {
+            pkField = "#";
+            console.log(`Using row index (#) as PK for path: ${currentPath}`);
+          }
+
+          schema.byPath[currentPath] = {
+            type: "arrayOfObjects",
+            columns: Array.from(columns),
+            isLeaf,
+            pkField,
+            allowCrud: pkField != null, // Allow CRUD for any array with a primary key
+            itemCount: node.length,
+          };
+
+          // Continue analyzing nested objects within each array item
+          node.forEach((item, index) => {
+            if (item && typeof item === "object" && !Array.isArray(item)) {
+              Object.keys(item).forEach((key) => {
+                const nestedPath = `${currentPath}[${index}].${key}`;
+                analyzeNode(item[key], nestedPath);
+              });
+            }
+          });
+        }
+      }
+
+      if (node && typeof node === "object" && !Array.isArray(node)) {
+        Object.keys(node).forEach((key) => {
+          const childPath = currentPath ? `${currentPath}.${key}` : key;
+          analyzeNode(node[key], childPath);
+        });
+      }
+    }
+
+    analyzeNode(data, "");
+    return schema;
+  } catch (e) {
+    log("ERROR", "Failed to analyze JSON schema", {
+      filePath,
+      error: e.message,
+    });
+    return { byPath: {} };
+  }
+}
+
+// Export for testing
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = {
+    getAtPath,
+    setAtPath,
+    parsePath,
+    getJsonSchema,
+  };
 }

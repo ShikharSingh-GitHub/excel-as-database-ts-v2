@@ -1,0 +1,29 @@
+{
+  "users": [
+    {
+      "id": 1,
+      "name": "Alice Johnson",
+      "email": "alice@example.com",
+      "role": "Developer",
+      "active": true
+    },
+    {
+      "id": 2,
+      "name": "Bob Smith",
+      "email": "bob@example.com",
+      "role": "Designer",
+      "active": true
+    },
+    {
+      "id": 3,
+      "name": "Carol Brown",
+      "email": "carol@example.com",
+      "role": "Manager",
+      "active": false
+    }
+  ],
+  "settings": {
+    "theme": "dark",
+    "notifications": true
+  }
+}
