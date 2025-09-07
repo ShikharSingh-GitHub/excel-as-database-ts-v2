@@ -3,7 +3,7 @@
 export interface JsonNode {
   key: string;
   value: any;
-  type: 'object' | 'array' | 'primitive';
+  type: "object" | "array" | "primitive";
   path: string;
   parent?: JsonNode;
   children?: JsonNode[];
@@ -26,7 +26,7 @@ export interface JsonColumn {
   id: string;
   key: string;
   label: string;
-  type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'null';
+  type: "string" | "number" | "boolean" | "object" | "array" | "null";
   path: string;
   isExpandable: boolean;
   isEditable: boolean;
@@ -69,7 +69,7 @@ export interface JsonViewerState {
 }
 
 export interface CrudOperation {
-  type: 'create' | 'update' | 'delete';
+  type: "create" | "update" | "delete";
   tableId: string;
   rowId?: string;
   columnId?: string;
@@ -88,9 +88,7 @@ export interface JsonViewerProps {
   autoDetectPrimaryKeys?: boolean;
 }
 
-// Utility types for table operations
-export type TableAction = 'add' | 'edit' | 'delete' | 'expand' | 'collapse';
-export type CellEditMode = 'text' | 'number' | 'boolean' | 'select' | 'json';
+// (Removed unused TableAction and CellEditMode types)
 
 // Configuration for JSON parsing
 export interface JsonParserConfig {
@@ -105,7 +103,7 @@ export interface JsonParserConfig {
 export const DEFAULT_JSON_PARSER_CONFIG: JsonParserConfig = {
   maxDepth: 6,
   autoDetectPrimaryKeys: true,
-  primaryKeyCandidates: ['id', 'ID', 'key', 'name', 'title', 'uuid'],
-  excludeKeys: ['_version', '_created_at', '_updated_at'],
+  primaryKeyCandidates: ["id", "ID", "key", "name", "title", "uuid"],
+  excludeKeys: ["_version", "_created_at", "_updated_at"],
   arrayThreshold: 1,
 };

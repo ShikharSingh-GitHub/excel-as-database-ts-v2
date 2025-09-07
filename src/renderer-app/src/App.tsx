@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
+import CollapsibleJsonView from "./components/CollapsibleJsonView";
 import ContextMenu from "./components/ContextMenu";
 import CrudModal from "./components/CrudModal";
 import ExcelGrid from "./components/ExcelGrid";
@@ -7,7 +8,7 @@ import FilterModal from "./components/FilterModal";
 import FormulaBar from "./components/FormulaBar";
 import JsonHierarchicalViewer from "./components/JsonHierarchicalViewer";
 import JsonModal from "./components/JsonModal";
-import SheetTabs from "./components/SheetTabs";
+import SheetTabs, { JsonViewMode } from "./components/SheetTabs";
 import Sidebar, { Workbook } from "./components/Sidebar";
 import StatusBar from "./components/StatusBar";
 import Toast from "./components/Toast";
@@ -24,6 +25,8 @@ export default function App() {
   const [meta, setMeta] = useState<any>(null);
   const [activeSheet, setActiveSheet] = useState<string | null>(null);
   const [showJsonModal, setShowJsonModal] = useState(false);
+  const [jsonViewMode, setJsonViewMode] =
+    useState<JsonViewMode>("hierarchical");
 
   const [sheetRows, setSheetRows] = useState<any>({
     rows: [],
@@ -609,7 +612,7 @@ export default function App() {
       <div className="flex h-screen flex-col bg-gradient-to-br from-gray-50 to-blue-50 text-gray-900 dark:from-gray-900 dark:to-gray-800 dark:text-gray-100 relative">
         <header className="flex flex-col">
           {/* Title Bar */}
-          <div className="h-12 px-4 border-b border-gray-200/50 flex items-center gap-3 bg-white/80 dark:bg-gray-900/70 backdrop-blur-sm shadow-sm z-0">
+          <div className="h-12 px-4 border-b border-gray-200/50 dark:border-gray-700/50 flex items-center gap-3 bg-white/80 dark:bg-gray-900/70 backdrop-blur-sm shadow-sm z-0">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold text-sm">📊</span>
@@ -813,6 +816,10 @@ export default function App() {
                 sheets={meta.sheets || []}
                 active={activeSheet}
                 onSelect={(s: string) => loadSheet(s, 1)}
+                jsonViewMode={meta?.isJson ? jsonViewMode : undefined}
+                onJsonViewModeChange={
+                  meta?.isJson ? setJsonViewMode : undefined
+                }
               />
             )}
 
@@ -895,22 +902,46 @@ export default function App() {
                 </div>
               )}
 
-              {/* JSON Hierarchical Viewer */}
+              {/* JSON Viewer */}
               {meta?.isJson && activeFile && (
                 <div className="flex-1 overflow-hidden min-h-0">
-                  <JsonHierarchicalViewer
-                    data={meta.data}
-                    rootKey="data"
-                    tabOrder={[
-                      "pageConfig",
-                      "testsetConfig",
-                      "testsetConfigFlattend",
-                      "apiconfig",
-                      "application",
-                    ]}
-                    maxTopCols={50}
-                    maxNestedCols={50}
-                  />
+                  {jsonViewMode === "hierarchical" ? (
+                    <JsonHierarchicalViewer
+                      data={meta.data}
+                      rootKey="data"
+                      tabOrder={[
+                        "pageConfig",
+                        "testsetConfig",
+                        "testsetConfigFlattend",
+                        "apiconfig",
+                        "application",
+                      ]}
+                      maxTopCols={50}
+                      maxNestedCols={50}
+                    />
+                  ) : (
+                    <CollapsibleJsonView
+                      data={meta.data}
+                      rootKey="data"
+                      tabOrder={[
+                        "pageConfig",
+                        "testsetConfig",
+                        "testsetConfigFlattend",
+                        "apiconfig",
+                        "application",
+                      ]}
+                      maxCols={50}
+                      maxRows={500}
+                      canEditScalar={(path, value) => {
+                        // For now, read-only everywhere
+                        return false;
+                      }}
+                      onEditScalar={(path, next) => {
+                        // TODO: Implement CRUD operations
+                        console.log("Edit scalar:", path, next);
+                      }}
+                    />
+                  )}
                 </div>
               )}
 

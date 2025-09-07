@@ -186,7 +186,7 @@ export default function ContextMenu({
             `}>
             <span>{item.label}</span>
             {item.shortcut && (
-              <span className="text-xs text-gray-400 ml-4">
+              <span className="text-xs text-gray-400 dark:text-gray-500 ml-4">
                 {item.shortcut}
               </span>
             )}

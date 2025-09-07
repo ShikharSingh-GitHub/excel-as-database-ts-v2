@@ -1,12 +1,16 @@
-import { RefreshCw } from "lucide-react";
+import { LayoutGrid, RefreshCw, Table } from "lucide-react";
 import React from "react";
 import Tooltip from "./Tooltip";
+
+export type JsonViewMode = "hierarchical" | "collapsible";
 
 export default function SheetTabs({
   sheets = [],
   active,
   onSelect,
   readOnlySheets = [],
+  jsonViewMode,
+  onJsonViewModeChange,
 }: {
   sheets?: {
     name: string;
@@ -18,6 +22,8 @@ export default function SheetTabs({
   active?: string | null;
   onSelect?: (name: string) => void;
   readOnlySheets?: string[];
+  jsonViewMode?: JsonViewMode;
+  onJsonViewModeChange?: (mode: JsonViewMode) => void;
 }) {
   return (
     <div className="p-2 border-b border-blue-200/50 bg-slate-50 dark:bg-slate-900">
@@ -73,10 +79,35 @@ export default function SheetTabs({
           })}
         </div>
         <div className="ml-auto flex items-center gap-2">
+          {jsonViewMode && onJsonViewModeChange && (
+            <Tooltip
+              content={`Switch to ${
+                jsonViewMode === "hierarchical"
+                  ? "Collapsible Table"
+                  : "Hierarchical"
+              } view`}>
+              <button
+                onClick={() =>
+                  onJsonViewModeChange(
+                    jsonViewMode === "hierarchical"
+                      ? "collapsible"
+                      : "hierarchical"
+                  )
+                }
+                className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-200 transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-1"
+                aria-label="Toggle JSON view mode">
+                {jsonViewMode === "hierarchical" ? (
+                  <Table size={16} />
+                ) : (
+                  <LayoutGrid size={16} />
+                )}
+              </button>
+            </Tooltip>
+          )}
           <Tooltip content="Reload current sheet">
             <button
               onClick={() => onSelect && onSelect(active || "")}
-              className="p-1.5 rounded-md hover:bg-blue-100 text-blue-700 hover:text-blue-800 transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
+              className="p-1.5 rounded-md hover:bg-blue-100 dark:hover:bg-blue-800 text-blue-700 dark:text-blue-300 hover:text-blue-800 dark:hover:text-blue-200 transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
               aria-label="Reload sheet">
               <RefreshCw size={16} />
             </button>

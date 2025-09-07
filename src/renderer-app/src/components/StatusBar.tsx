@@ -65,12 +65,12 @@ export default function StatusBar({
         </div>
 
         {readOnly && (
-          <span className="px-3 py-1 bg-amber-100 text-amber-800 rounded-lg text-xs font-medium border border-amber-200">
+          <span className="px-3 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 rounded-lg text-xs font-medium border border-amber-200 dark:border-amber-700">
             READ ONLY
           </span>
         )}
 
-        <span className="text-blue-700">
+        <span className="text-blue-700 dark:text-gray-200">
           {totalRows} rows × {totalCols} columns
         </span>
       </div>
@@ -98,7 +98,7 @@ export default function StatusBar({
                 onClick={onNextPage}
                 disabled={!onNextPage || page >= totalPages}
                 title="Next page"
-                className="w-8 h-8 flex items-center justify-center rounded-lg bg-blue-100 hover:bg-blue-200 disabled:opacity-50 disabled:cursor-not-allowed text-blue-700 transition-all duration-200">
+                className="w-8 h-8 flex items-center justify-center rounded-lg bg-blue-100 dark:bg-gray-800 hover:bg-blue-200 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-blue-700 dark:text-gray-200 transition-all duration-200">
                 <ChevronRight size={16} />
               </button>
             </Tooltip>
@@ -141,7 +141,7 @@ export default function StatusBar({
           </div>
         )}
 
-        <div className="flex items-center gap-4 text-blue-700">
+        <div className="flex items-center gap-4 text-blue-700 dark:text-gray-200">
           {selectedRange && (
             <span className="font-medium">Selected: {selectedRange}</span>
           )}

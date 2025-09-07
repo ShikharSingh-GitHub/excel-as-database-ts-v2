@@ -25,17 +25,20 @@ export default function CrudModal({
         <div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl border border-blue-200 dark:border-gray-700 w-full max-w-4xl max-h-[90vh] overflow-hidden m-4">
           <div className="bg-gradient-to-r from-red-50 to-orange-50 dark:from-red-900 dark:to-orange-900 border-b border-red-200 dark:border-red-800 px-6 py-4">
             <div className="flex items-center gap-3">
-              <AlertTriangle className="text-red-600" size={24} />
-              <h2 className="text-lg font-bold text-red-800">
+              <AlertTriangle
+                className="text-red-600 dark:text-red-400"
+                size={24}
+              />
+              <h2 className="text-lg font-bold text-red-800 dark:text-red-200">
                 Conflict Detected
               </h2>
               <button
                 onClick={onClose}
-                className="ml-auto p-1 hover:bg-red-100 rounded-lg transition-colors">
-                <X size={20} className="text-red-600" />
+                className="ml-auto p-1 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors">
+                <X size={20} className="text-red-600 dark:text-red-400" />
               </button>
             </div>
-            <p className="text-sm text-red-700 mt-2">
+            <p className="text-sm text-red-700 dark:text-red-300 mt-2">
               The row was changed by another process. Choose how to resolve.
             </p>
           </div>
