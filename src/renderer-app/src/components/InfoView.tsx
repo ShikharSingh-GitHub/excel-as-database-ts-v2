@@ -4,7 +4,13 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 /** ---------- tiny utils ---------- */
 const isScalar = (v: any) => v == null || typeof v !== "object";
 const short = (v: any) =>
-  v == null ? "" : Array.isArray(v) ? `[${v.length}]` : typeof v === "object" ? "{…}" : String(v);
+  v == null
+    ? ""
+    : Array.isArray(v)
+    ? `[${v.length}]`
+    : typeof v === "object"
+    ? "{…}"
+    : String(v);
 
 function pathJoin(parent: string, key: string | number) {
   if (!parent) return String(key);
@@ -45,8 +51,7 @@ function Tabs({
             value === t
               ? "bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 border-b-2 border-blue-500 shadow-sm"
               : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-white/50 dark:hover:bg-gray-700/50"
-          }`}
-        >
+          }`}>
           {t}
         </button>
       ))}
@@ -72,7 +77,9 @@ function EditableScalar({
         {value == null || value === "" ? (
           <span className="text-gray-400 dark:text-gray-500 italic">—</span>
         ) : (
-          <span className="text-gray-900 dark:text-gray-100">{String(value)}</span>
+          <span className="text-gray-900 dark:text-gray-100">
+            {String(value)}
+          </span>
         )}
       </div>
     );
@@ -86,8 +93,7 @@ function EditableScalar({
           setEditing(true);
         }}
         title="Double-click to edit"
-        className="cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/20 px-2 py-1 rounded transition-colors duration-150 text-center min-h-[24px] flex items-center justify-center"
-      >
+        className="cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/20 px-2 py-1 rounded transition-colors duration-150 text-center min-h-[24px] flex items-center justify-center">
         {value == null || value === "" ? (
           <span className="text-gray-400 dark:text-gray-500 italic">—</span>
         ) : (
@@ -281,7 +287,8 @@ export default function InfoView({
   }
 
   const tabs = useMemo(() => {
-    if (!root || typeof root !== "object" || Array.isArray(root)) return ["(value)"];
+    if (!root || typeof root !== "object" || Array.isArray(root))
+      return ["(value)"];
     return Object.keys(root);
   }, [root]);
 
@@ -367,7 +374,9 @@ function InfoLevel({
   /** OBJECT — current-level table = scalar keys only */
   if (value && typeof value === "object" && !Array.isArray(value)) {
     const allKeys = Object.keys(value);
-    const scalarKeys = allKeys.filter((k) => isScalar((value as any)[k])).slice(0, maxCols);
+    const scalarKeys = allKeys
+      .filter((k) => isScalar((value as any)[k]))
+      .slice(0, maxCols);
     const nestedKeys = allKeys.filter((k) => !scalarKeys.includes(k)); // arrays/objects
 
     // If this object has only scalar keys, show it as a single-row table with keys as columns
@@ -380,16 +389,16 @@ function InfoLevel({
               scrollbarWidth: "thin",
               scrollbarColor: "#3b82f6 #dbeafe",
               maxHeight: "60vh",
-            }}
-          >
-            <table className="w-full border-collapse text-sm" style={{ tableLayout: "auto" }}>
+            }}>
+            <table
+              className="w-full border-collapse text-sm"
+              style={{ tableLayout: "auto" }}>
               <thead className="sticky top-0 z-20">
                 <tr className="bg-gradient-to-r from-blue-100 to-indigo-100 dark:bg-gradient-to-r dark:from-blue-900 dark:to-blue-800 dark:border-b dark:border-gray-700 border-b border-blue-300 shadow-sm">
                   {scalarKeys.map((k) => (
                     <th
                       key={k}
-                      className="px-2 py-2 text-center text-xs font-semibold text-blue-800 dark:text-blue-200 bg-gradient-to-b from-blue-100 to-blue-200 dark:bg-gradient-to-b dark:from-blue-900 dark:to-blue-800 border-r border-blue-300 dark:border-gray-700 select-none transition-all duration-200 whitespace-nowrap"
-                    >
+                      className="px-2 py-2 text-center text-xs font-semibold text-blue-800 dark:text-blue-200 bg-gradient-to-b from-blue-100 to-blue-200 dark:bg-gradient-to-b dark:from-blue-900 dark:to-blue-800 border-r border-blue-300 dark:border-gray-700 select-none transition-all duration-200 whitespace-nowrap">
                       {k}
                     </th>
                   ))}
@@ -404,13 +413,12 @@ function InfoLevel({
                       <td
                         key={k}
                         className="px-2 py-3 text-sm text-gray-900 dark:text-gray-100 border-r border-blue-200/50 border-b border-blue-200/50 dark:border-gray-700 transition-all duration-200 hover:bg-blue-50/50 dark:hover:bg-blue-800/30 text-center align-middle"
-                        style={{ 
-                          maxWidth: "150px", 
-                          wordWrap: "break-word", 
+                        style={{
+                          maxWidth: "150px",
+                          wordWrap: "break-word",
                           whiteSpace: "normal",
-                          lineHeight: "1.4"
-                        }}
-                      >
+                          lineHeight: "1.4",
+                        }}>
                         <div className="flex items-center justify-center min-h-[20px]">
                           <EditableScalar
                             value={v}
@@ -438,32 +446,28 @@ function InfoLevel({
             scrollbarWidth: "thin",
             scrollbarColor: "#3b82f6 #dbeafe",
             maxHeight: "60vh",
-          }}
-        >
-          <table className="w-full border-collapse text-sm" style={{ tableLayout: "auto" }}>
+          }}>
+          <table
+            className="w-full border-collapse text-sm"
+            style={{ tableLayout: "auto" }}>
             <thead className="sticky top-0 z-20">
               <tr className="bg-gradient-to-r from-blue-100 to-indigo-100 dark:bg-gradient-to-r dark:from-blue-900 dark:to-blue-800 dark:border-b dark:border-gray-700 border-b border-blue-300 shadow-sm">
                 <th
                   className="px-2 py-2 text-center text-xs font-semibold text-blue-800 dark:text-blue-200 bg-gradient-to-b from-blue-100 to-blue-200 dark:bg-gradient-to-b dark:from-blue-900 dark:to-blue-800 border-r border-blue-300 dark:border-gray-700 select-none transition-all duration-200"
-                  style={{ width: "140px" }}
-                >
+                  style={{ width: "140px" }}>
                   Key
                 </th>
-                <th
-                  className="px-2 py-2 text-center text-xs font-semibold text-blue-800 dark:text-blue-200 bg-gradient-to-b from-blue-100 to-blue-200 dark:bg-gradient-to-b dark:from-blue-900 dark:to-blue-800 border-r border-blue-300 dark:border-gray-700 select-none transition-all duration-200"
-                >
+                <th className="px-2 py-2 text-center text-xs font-semibold text-blue-800 dark:text-blue-200 bg-gradient-to-b from-blue-100 to-blue-200 dark:bg-gradient-to-b dark:from-blue-900 dark:to-blue-800 border-r border-blue-300 dark:border-gray-700 select-none transition-all duration-200">
                   Value
                 </th>
                 <th
                   className="px-1 py-2 text-center text-xs font-semibold text-blue-800 dark:text-blue-200 bg-gradient-to-b from-blue-100 to-blue-200 dark:bg-gradient-to-b dark:from-blue-900 dark:to-blue-800 border-r border-blue-300 dark:border-gray-700 select-none transition-all duration-200"
-                  style={{ width: "50px" }}
-                >
+                  style={{ width: "50px" }}>
                   Actions
                 </th>
                 <th
                   className="px-1 py-2 text-center text-xs font-semibold text-blue-800 dark:text-blue-200 bg-gradient-to-b from-blue-100 to-blue-200 dark:bg-gradient-to-b dark:from-blue-900 dark:to-blue-800 select-none transition-all duration-200"
-                  style={{ width: "40px" }}
-                >
+                  style={{ width: "40px" }}>
                   Expand
                 </th>
               </tr>
@@ -471,7 +475,9 @@ function InfoLevel({
             <tbody className="bg-white dark:bg-gray-900">
               {scalarKeys.length === 0 && nestedKeys.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-3 py-6 text-center text-gray-500 dark:text-gray-400 italic">
+                  <td
+                    colSpan={4}
+                    className="px-3 py-6 text-center text-gray-500 dark:text-gray-400 italic">
                     Empty object.
                   </td>
                 </tr>
@@ -483,24 +489,27 @@ function InfoLevel({
                   <tr
                     key={k}
                     className="hover:bg-blue-50/30 dark:hover:bg-blue-800/20 transition-all duration-200 animate-in fade-in-0 slide-in-from-top-1"
-                    style={{ animationDelay: `${index * 50}ms` }}
-                  >
-                    <td className="px-2 py-3 text-sm text-gray-900 dark:text-gray-100 border-r border-blue-200/50 border-b border-blue-200/50 dark:border-gray-700 transition-all duration-200 hover:bg-blue-50/50 dark:hover:bg-blue-800/30 text-center align-middle" style={{ 
-                      maxWidth: "140px", 
-                      wordWrap: "break-word", 
-                      whiteSpace: "normal",
-                      lineHeight: "1.4"
-                    }}>
+                    style={{ animationDelay: `${index * 50}ms` }}>
+                    <td
+                      className="px-2 py-3 text-sm text-gray-900 dark:text-gray-100 border-r border-blue-200/50 border-b border-blue-200/50 dark:border-gray-700 transition-all duration-200 hover:bg-blue-50/50 dark:hover:bg-blue-800/30 text-center align-middle"
+                      style={{
+                        maxWidth: "140px",
+                        wordWrap: "break-word",
+                        whiteSpace: "normal",
+                        lineHeight: "1.4",
+                      }}>
                       <div className="flex items-center justify-center min-h-[20px]">
                         <strong>{k}</strong>
                       </div>
                     </td>
-                    <td className="px-2 py-3 text-sm text-gray-900 dark:text-gray-100 border-r border-blue-200/50 border-b border-blue-200/50 dark:border-gray-700 transition-all duration-200 hover:bg-blue-50/50 dark:hover:bg-blue-800/30 text-center align-middle" style={{ 
-                      maxWidth: "150px", 
-                      wordWrap: "break-word", 
-                      whiteSpace: "normal",
-                      lineHeight: "1.4"
-                    }}>
+                    <td
+                      className="px-2 py-3 text-sm text-gray-900 dark:text-gray-100 border-r border-blue-200/50 border-b border-blue-200/50 dark:border-gray-700 transition-all duration-200 hover:bg-blue-50/50 dark:hover:bg-blue-800/30 text-center align-middle"
+                      style={{
+                        maxWidth: "150px",
+                        wordWrap: "break-word",
+                        whiteSpace: "normal",
+                        lineHeight: "1.4",
+                      }}>
                       <div className="flex items-center justify-center min-h-[20px]">
                         <EditableScalar
                           value={v}
@@ -526,24 +535,29 @@ function InfoLevel({
                   <React.Fragment key={rowKey}>
                     <tr
                       className="hover:bg-blue-50/30 dark:hover:bg-blue-800/20 transition-all duration-200 animate-in fade-in-0 slide-in-from-top-1"
-                      style={{ animationDelay: `${(scalarKeys.length + index) * 50}ms` }}
-                    >
-                      <td className="px-2 py-3 text-sm text-gray-900 dark:text-gray-100 border-r border-blue-200/50 border-b border-blue-200/50 dark:border-gray-700 transition-all duration-200 hover:bg-blue-50/50 dark:hover:bg-blue-800/30 text-center align-middle" style={{ 
-                        maxWidth: "140px", 
-                        wordWrap: "break-word", 
-                        whiteSpace: "normal",
-                        lineHeight: "1.4"
+                      style={{
+                        animationDelay: `${(scalarKeys.length + index) * 50}ms`,
                       }}>
+                      <td
+                        className="px-2 py-3 text-sm text-gray-900 dark:text-gray-100 border-r border-blue-200/50 border-b border-blue-200/50 dark:border-gray-700 transition-all duration-200 hover:bg-blue-50/50 dark:hover:bg-blue-800/30 text-center align-middle"
+                        style={{
+                          maxWidth: "140px",
+                          wordWrap: "break-word",
+                          whiteSpace: "normal",
+                          lineHeight: "1.4",
+                        }}>
                         <div className="flex items-center justify-center min-h-[20px]">
                           <strong>{k}</strong>
                         </div>
                       </td>
-                      <td className="px-2 py-3 text-sm text-gray-500 dark:text-gray-400 border-r border-blue-200/50 border-b border-blue-200/50 dark:border-gray-700 transition-all duration-200 hover:bg-blue-50/50 dark:hover:bg-blue-800/30 text-center align-middle" style={{ 
-                        maxWidth: "150px", 
-                        wordWrap: "break-word", 
-                        whiteSpace: "normal",
-                        lineHeight: "1.4"
-                      }}>
+                      <td
+                        className="px-2 py-3 text-sm text-gray-500 dark:text-gray-400 border-r border-blue-200/50 border-b border-blue-200/50 dark:border-gray-700 transition-all duration-200 hover:bg-blue-50/50 dark:hover:bg-blue-800/30 text-center align-middle"
+                        style={{
+                          maxWidth: "150px",
+                          wordWrap: "break-word",
+                          whiteSpace: "normal",
+                          lineHeight: "1.4",
+                        }}>
                         <div className="flex items-center justify-center min-h-[20px]">
                           <span className="italic">{short(v)}</span>
                         </div>
@@ -553,9 +567,10 @@ function InfoLevel({
                       </td>
                       <td className="px-1 py-3 text-center border-b border-blue-200/50 dark:border-gray-700 transition-all duration-200 align-middle">
                         <button
-                          onClick={() => setOpen((s) => ({ ...s, [rowKey]: !s[rowKey] }))}
-                          className="p-1.5 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-800 rounded transition-colors duration-150 text-sm font-mono"
-                        >
+                          onClick={() =>
+                            setOpen((s) => ({ ...s, [rowKey]: !s[rowKey] }))
+                          }
+                          className="p-1.5 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-800 rounded transition-colors duration-150 text-sm font-mono">
                           {isOpen ? "▾" : "▸"}
                         </button>
                       </td>
@@ -563,7 +578,9 @@ function InfoLevel({
 
                     {isOpen && (
                       <tr>
-                        <td colSpan={4} className="px-2 py-2 bg-gray-50/50 dark:bg-gray-800/50 border-b border-blue-200/50 dark:border-gray-700">
+                        <td
+                          colSpan={4}
+                          className="px-2 py-2 bg-gray-50/50 dark:bg-gray-800/50 border-b border-blue-200/50 dark:border-gray-700">
                           <Nest>
                             <NextLevelKeys
                               host={value}
@@ -600,20 +617,27 @@ function InfoLevel({
       return (
         <div className="border border-gray-200 dark:border-gray-700 shadow-sm rounded-lg p-6 bg-white dark:bg-gray-800">
           <div className="flex items-center justify-center min-h-[100px]">
-            <span className="text-gray-500 dark:text-gray-400 italic">Empty array</span>
+            <span className="text-gray-500 dark:text-gray-400 italic">
+              Empty array
+            </span>
           </div>
         </div>
       );
     }
 
     // Array of objects? → show SCALAR columns only + actions + expand (per row)
-    const allObjects = arr.every((x) => x && typeof x === "object" && !Array.isArray(x));
+    const allObjects = arr.every(
+      (x) => x && typeof x === "object" && !Array.isArray(x)
+    );
     if (allObjects) {
       // union of keys, but we will display only scalar keys as columns
       const keySet = new Set<string>();
-      for (const o of arr.slice(0, maxCols)) for (const k of Object.keys(o)) keySet.add(k);
+      for (const o of arr.slice(0, maxCols))
+        for (const k of Object.keys(o)) keySet.add(k);
       const allCols = [...keySet];
-      const scalarCols = allCols.filter((c) => arr.some((o: any) => isScalar(o?.[c]))); // keep columns that are scalar in at least one row
+      const scalarCols = allCols.filter((c) =>
+        arr.some((o: any) => isScalar(o?.[c]))
+      ); // keep columns that are scalar in at least one row
       const nestedCols = allCols.filter((c) => !scalarCols.includes(c));
 
       return (
@@ -624,35 +648,32 @@ function InfoLevel({
               scrollbarWidth: "thin",
               scrollbarColor: "#3b82f6 #dbeafe",
               maxHeight: "60vh",
-            }}
-          >
-            <table className="w-full border-collapse text-sm" style={{ tableLayout: "auto" }}>
+            }}>
+            <table
+              className="w-full border-collapse text-sm"
+              style={{ tableLayout: "auto" }}>
               <thead className="sticky top-0 z-20">
                 <tr className="bg-gradient-to-r from-blue-100 to-indigo-100 dark:bg-gradient-to-r dark:from-blue-900 dark:to-blue-800 dark:border-b dark:border-gray-700 border-b border-blue-300 shadow-sm">
                   <th
                     className="px-2 py-2 text-center text-xs font-semibold text-blue-800 dark:text-blue-200 bg-gradient-to-b from-blue-100 to-blue-200 dark:bg-gradient-to-b dark:from-blue-900 dark:to-blue-800 border-r border-blue-300 dark:border-gray-700 select-none transition-all duration-200"
-                    style={{ width: "40px" }}
-                  >
+                    style={{ width: "40px" }}>
                     #
                   </th>
                   {scalarCols.map((c) => (
                     <th
                       key={c}
-                      className="px-2 py-2 text-center text-xs font-semibold text-blue-800 dark:text-blue-200 bg-gradient-to-b from-blue-100 to-blue-200 dark:bg-gradient-to-b dark:from-blue-900 dark:to-blue-800 border-r border-blue-300 dark:border-gray-700 select-none transition-all duration-200 whitespace-nowrap"
-                    >
+                      className="px-2 py-2 text-center text-xs font-semibold text-blue-800 dark:text-blue-200 bg-gradient-to-b from-blue-100 to-blue-200 dark:bg-gradient-to-b dark:from-blue-900 dark:to-blue-800 border-r border-blue-300 dark:border-gray-700 select-none transition-all duration-200 whitespace-nowrap">
                       {c}
                     </th>
                   ))}
                   <th
                     className="px-1 py-2 text-center text-xs font-semibold text-blue-800 dark:text-blue-200 bg-gradient-to-b from-blue-100 to-blue-200 dark:bg-gradient-to-b dark:from-blue-900 dark:to-blue-800 border-r border-blue-300 dark:border-gray-700 select-none transition-all duration-200"
-                    style={{ width: "50px" }}
-                  >
+                    style={{ width: "50px" }}>
                     Actions
                   </th>
                   <th
                     className="px-1 py-2 text-center text-xs font-semibold text-blue-800 dark:text-blue-200 bg-gradient-to-b from-blue-100 to-blue-200 dark:bg-gradient-to-b dark:from-blue-900 dark:to-blue-800 select-none transition-all duration-200"
-                    style={{ width: "40px" }}
-                  >
+                    style={{ width: "40px" }}>
                     Expand
                   </th>
                 </tr>
@@ -667,8 +688,7 @@ function InfoLevel({
                     <React.Fragment key={rowKey}>
                       <tr
                         className="hover:bg-blue-50/30 dark:hover:bg-blue-800/20 transition-all duration-200 animate-in fade-in-0 slide-in-from-top-1"
-                        style={{ animationDelay: `${idx * 50}ms` }}
-                      >
+                        style={{ animationDelay: `${idx * 50}ms` }}>
                         <td className="px-2 py-2 text-center text-xs text-gray-500 dark:text-gray-400 font-mono bg-gradient-to-b from-blue-50 to-blue-100 dark:from-blue-900 dark:to-blue-800 border-r border-blue-200/50 border-b border-blue-200/50 dark:border-gray-700 transition-all duration-200">
                           {idx}
                         </td>
@@ -679,18 +699,19 @@ function InfoLevel({
                             <td
                               key={c}
                               className="px-2 py-3 text-sm text-gray-900 dark:text-gray-100 border-r border-blue-200/50 border-b border-blue-200/50 dark:border-gray-700 transition-all duration-200 hover:bg-blue-50/50 dark:hover:bg-blue-800/30 text-center align-middle"
-                              style={{ 
-                                maxWidth: "150px", 
-                                wordWrap: "break-word", 
+                              style={{
+                                maxWidth: "150px",
+                                wordWrap: "break-word",
                                 whiteSpace: "normal",
-                                lineHeight: "1.4"
-                              }}
-                            >
+                                lineHeight: "1.4",
+                              }}>
                               <div className="flex items-center justify-center min-h-[20px]">
                                 <EditableScalar
                                   value={v}
                                   readOnly={!canEditScalar?.(cellPath, v)}
-                                  onCommit={(next) => onEditScalar?.(cellPath, next)}
+                                  onCommit={(next) =>
+                                    onEditScalar?.(cellPath, next)
+                                  }
                                 />
                               </div>
                             </td>
@@ -754,9 +775,10 @@ function InfoLevel({
                         <td className="px-1 py-3 text-center border-b border-blue-200/50 dark:border-gray-700 transition-all duration-200 align-middle">
                           {nestedKeys.length > 0 && (
                             <button
-                              onClick={() => setOpen((s) => ({ ...s, [rowKey]: !s[rowKey] }))}
-                              className="p-1.5 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-800 rounded transition-colors duration-150 text-sm font-mono"
-                            >
+                              onClick={() =>
+                                setOpen((s) => ({ ...s, [rowKey]: !s[rowKey] }))
+                              }
+                              className="p-1.5 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-800 rounded transition-colors duration-150 text-sm font-mono">
                               {isOpen ? "▾" : "▸"}
                             </button>
                           )}
@@ -767,8 +789,7 @@ function InfoLevel({
                         <tr>
                           <td
                             colSpan={scalarCols.length + 3}
-                            className="px-2 py-2 bg-gray-50/50 dark:bg-gray-800/50 border-b border-blue-200/50 dark:border-gray-700"
-                          >
+                            className="px-2 py-2 bg-gray-50/50 dark:bg-gray-800/50 border-b border-blue-200/50 dark:border-gray-700">
                             <Nest>
                               <NextLevelKeys
                                 host={row}
@@ -809,20 +830,18 @@ function InfoLevel({
               scrollbarWidth: "thin",
               scrollbarColor: "#3b82f6 #dbeafe",
               maxHeight: "60vh",
-            }}
-          >
-            <table className="w-full border-collapse text-sm" style={{ tableLayout: "auto" }}>
+            }}>
+            <table
+              className="w-full border-collapse text-sm"
+              style={{ tableLayout: "auto" }}>
               <thead className="sticky top-0 z-20">
                 <tr className="bg-gradient-to-r from-blue-100 to-indigo-100 dark:bg-gradient-to-r dark:from-blue-900 dark:to-blue-800 dark:border-b dark:border-gray-700 border-b border-blue-300 shadow-sm">
                   <th
                     className="px-2 py-2 text-center text-xs font-semibold text-blue-800 dark:text-blue-200 bg-gradient-to-b from-blue-100 to-blue-200 dark:bg-gradient-to-b dark:from-blue-900 dark:to-blue-800 border-r border-blue-300 dark:border-gray-700 select-none transition-all duration-200"
-                    style={{ width: "40px" }}
-                  >
+                    style={{ width: "40px" }}>
                     #
                   </th>
-                  <th
-                    className="px-2 py-2 text-center text-xs font-semibold text-blue-800 dark:text-blue-200 bg-gradient-to-b from-blue-100 to-blue-200 dark:bg-gradient-to-b dark:from-blue-900 dark:to-blue-800 transition-all duration-200 whitespace-nowrap"
-                  >
+                  <th className="px-2 py-2 text-center text-xs font-semibold text-blue-800 dark:text-blue-200 bg-gradient-to-b from-blue-100 to-blue-200 dark:bg-gradient-to-b dark:from-blue-900 dark:to-blue-800 transition-all duration-200 whitespace-nowrap">
                     value
                   </th>
                 </tr>
@@ -832,16 +851,19 @@ function InfoLevel({
                   <tr
                     key={i}
                     className="hover:bg-blue-50/30 dark:hover:bg-blue-800/20 transition-all duration-200 animate-in fade-in-0 slide-in-from-top-1"
-                    style={{ animationDelay: `${i * 50}ms` }}
-                  >
+                    style={{ animationDelay: `${i * 50}ms` }}>
                     <td className="px-2 py-2 text-center text-xs text-gray-500 dark:text-gray-400 font-mono bg-gradient-to-b from-blue-50 to-blue-100 dark:from-blue-900 dark:to-blue-800 border-r border-blue-200/50 border-b border-blue-200/50 dark:border-gray-700 transition-all duration-200">
                       {i}
                     </td>
-                    <td className="px-2 py-2 text-sm text-gray-900 dark:text-gray-100 border-b border-blue-200/50 dark:border-gray-700 transition-all duration-200 hover:bg-blue-50/50 dark:hover:bg-blue-800/30" style={{ width: "1%" }}>
+                    <td
+                      className="px-2 py-2 text-sm text-gray-900 dark:text-gray-100 border-b border-blue-200/50 dark:border-gray-700 transition-all duration-200 hover:bg-blue-50/50 dark:hover:bg-blue-800/30"
+                      style={{ width: "1%" }}>
                       <EditableScalar
                         value={v}
                         readOnly={!canEditScalar?.(pathJoin(path, i), v)}
-                        onCommit={(next) => onEditScalar?.(pathJoin(path, i), next)}
+                        onCommit={(next) =>
+                          onEditScalar?.(pathJoin(path, i), next)
+                        }
                       />
                     </td>
                   </tr>
@@ -862,26 +884,23 @@ function InfoLevel({
             scrollbarWidth: "thin",
             scrollbarColor: "#3b82f6 #dbeafe",
             maxHeight: "60vh",
-          }}
-        >
-          <table className="w-full border-collapse text-sm" style={{ tableLayout: "auto" }}>
+          }}>
+          <table
+            className="w-full border-collapse text-sm"
+            style={{ tableLayout: "auto" }}>
             <thead className="sticky top-0 z-20">
               <tr className="bg-gradient-to-r from-blue-100 to-indigo-100 dark:bg-gradient-to-r dark:from-blue-900 dark:to-blue-800 dark:border-b dark:border-gray-700 border-b border-blue-300 shadow-sm">
                 <th
                   className="px-2 py-2 text-center text-xs font-semibold text-blue-800 dark:text-blue-200 bg-gradient-to-b from-blue-100 to-blue-200 dark:bg-gradient-to-b dark:from-blue-900 dark:to-blue-800 border-r border-blue-300 dark:border-gray-700 select-none transition-all duration-200"
-                  style={{ width: "40px" }}
-                >
+                  style={{ width: "40px" }}>
                   #
                 </th>
-                <th
-                  className="px-2 py-2 text-center text-xs font-semibold text-blue-800 dark:text-blue-200 bg-gradient-to-b from-blue-100 to-blue-200 dark:bg-gradient-to-b dark:from-blue-900 dark:to-blue-800 border-r border-blue-300 dark:border-gray-700 select-none transition-all duration-200 whitespace-nowrap"
-                >
+                <th className="px-2 py-2 text-center text-xs font-semibold text-blue-800 dark:text-blue-200 bg-gradient-to-b from-blue-100 to-blue-200 dark:bg-gradient-to-b dark:from-blue-900 dark:to-blue-800 border-r border-blue-300 dark:border-gray-700 select-none transition-all duration-200 whitespace-nowrap">
                   value
                 </th>
                 <th
                   className="px-1 py-2 text-center text-xs font-semibold text-blue-800 dark:text-blue-200 bg-gradient-to-b from-blue-100 to-blue-200 dark:bg-gradient-to-b dark:from-blue-900 dark:to-blue-800 select-none transition-all duration-200"
-                  style={{ width: "40px" }}
-                >
+                  style={{ width: "40px" }}>
                   Expand
                 </th>
               </tr>
@@ -894,37 +913,43 @@ function InfoLevel({
                   <React.Fragment key={i}>
                     <tr
                       className="hover:bg-blue-50/30 dark:hover:bg-blue-800/20 transition-all duration-200 animate-in fade-in-0 slide-in-from-top-1"
-                      style={{ animationDelay: `${i * 50}ms` }}
-                    >
+                      style={{ animationDelay: `${i * 50}ms` }}>
                       <td className="px-2 py-3 text-center text-xs text-gray-500 dark:text-gray-400 font-mono bg-gradient-to-b from-blue-50 to-blue-100 dark:from-blue-900 dark:to-blue-800 border-r border-blue-200/50 border-b border-blue-200/50 dark:border-gray-700 transition-all duration-200 align-middle">
                         <div className="flex items-center justify-center min-h-[20px]">
                           {i}
                         </div>
                       </td>
-                      <td className="px-2 py-3 text-sm text-gray-900 dark:text-gray-100 border-r border-blue-200/50 border-b border-blue-200/50 dark:border-gray-700 transition-all duration-200 hover:bg-blue-50/50 dark:hover:bg-blue-800/30 text-center align-middle" style={{ 
-                        maxWidth: "200px", 
-                        wordWrap: "break-word", 
-                        whiteSpace: "normal",
-                        lineHeight: "1.4"
-                      }}>
+                      <td
+                        className="px-2 py-3 text-sm text-gray-900 dark:text-gray-100 border-r border-blue-200/50 border-b border-blue-200/50 dark:border-gray-700 transition-all duration-200 hover:bg-blue-50/50 dark:hover:bg-blue-800/30 text-center align-middle"
+                        style={{
+                          maxWidth: "200px",
+                          wordWrap: "break-word",
+                          whiteSpace: "normal",
+                          lineHeight: "1.4",
+                        }}>
                         <div className="flex items-center justify-center min-h-[20px]">
                           {!nested ? (
                             <EditableScalar
                               value={v}
                               readOnly={!canEditScalar?.(pathJoin(path, i), v)}
-                              onCommit={(next) => onEditScalar?.(pathJoin(path, i), next)}
+                              onCommit={(next) =>
+                                onEditScalar?.(pathJoin(path, i), next)
+                              }
                             />
                           ) : (
-                            <span className="text-gray-500 dark:text-gray-400 italic">{short(v)}</span>
+                            <span className="text-gray-500 dark:text-gray-400 italic">
+                              {short(v)}
+                            </span>
                           )}
                         </div>
                       </td>
                       <td className="px-1 py-3 text-center border-b border-blue-200/50 dark:border-gray-700 transition-all duration-200 align-middle">
                         {nested ? (
                           <button
-                            onClick={() => setOpen((s) => ({ ...s, [i]: !s[i] }))}
-                            className="p-1.5 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-800 rounded transition-colors duration-150 text-sm font-mono"
-                          >
+                            onClick={() =>
+                              setOpen((s) => ({ ...s, [i]: !s[i] }))
+                            }
+                            className="p-1.5 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-800 rounded transition-colors duration-150 text-sm font-mono">
                             {isOpen ? "▾" : "▸"}
                           </button>
                         ) : null}
@@ -934,8 +959,7 @@ function InfoLevel({
                       <tr>
                         <td
                           colSpan={3}
-                          className="px-2 py-2 bg-gray-50/50 dark:bg-gray-800/50 border-b border-blue-200/50 dark:border-gray-700"
-                        >
+                          className="px-2 py-2 bg-gray-50/50 dark:bg-gray-800/50 border-b border-blue-200/50 dark:border-gray-700">
                           <Nest>
                             <InfoLevel
                               value={v}
@@ -1015,7 +1039,7 @@ function NextLevelKeys({
   maxRows: number;
 }) {
   const [activeTab, setActiveTab] = useState(keys[0] || "");
-  
+
   if (!keys.length) {
     return <div style={{ color: "#6b7280" }}>No nested fields.</div>;
   }
@@ -1027,7 +1051,7 @@ function NextLevelKeys({
     <div>
       {/* Nested Tabs */}
       <Tabs tabs={keys} value={activeTab} onChange={setActiveTab} />
-      
+
       {/* Tab Content */}
       <InfoLevel
         value={activeValue}

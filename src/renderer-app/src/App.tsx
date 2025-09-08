@@ -961,13 +961,26 @@ export default function App() {
                               activeFile
                             );
                             if (jsonData && !jsonData.error) {
-                              setMeta({ isJson: true, data: jsonData, path: activeFile });
-                              showToast("success", "Value updated successfully!");
+                              setMeta({
+                                isJson: true,
+                                data: jsonData,
+                                path: activeFile,
+                              });
+                              showToast(
+                                "success",
+                                "Value updated successfully!"
+                              );
                             } else {
-                              showToast("error", "Failed to refresh data after update");
+                              showToast(
+                                "error",
+                                "Failed to refresh data after update"
+                              );
                             }
                           } else {
-                            showToast("error", result.error || "Failed to update");
+                            showToast(
+                              "error",
+                              result.error || "Failed to update"
+                            );
                           }
                         } catch (error) {
                           console.error("Edit error:", error);
