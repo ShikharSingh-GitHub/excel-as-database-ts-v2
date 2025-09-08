@@ -1,8 +1,8 @@
-import { LayoutGrid, RefreshCw, Table } from "lucide-react";
+import { Info, LayoutGrid, RefreshCw, Table } from "lucide-react";
 import React from "react";
 import Tooltip from "./Tooltip";
 
-export type JsonViewMode = "hierarchical" | "collapsible";
+export type JsonViewMode = "hierarchical" | "collapsible" | "info";
 
 export default function SheetTabs({
   sheets = [],
@@ -84,20 +84,26 @@ export default function SheetTabs({
               content={`Switch to ${
                 jsonViewMode === "hierarchical"
                   ? "Collapsible Table"
+                  : jsonViewMode === "collapsible"
+                  ? "Info View"
                   : "Hierarchical"
               } view`}>
               <button
-                onClick={() =>
-                  onJsonViewModeChange(
+                onClick={() => {
+                  const nextMode =
                     jsonViewMode === "hierarchical"
                       ? "collapsible"
-                      : "hierarchical"
-                  )
-                }
+                      : jsonViewMode === "collapsible"
+                      ? "info"
+                      : "hierarchical";
+                  onJsonViewModeChange(nextMode);
+                }}
                 className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-200 transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-1"
                 aria-label="Toggle JSON view mode">
                 {jsonViewMode === "hierarchical" ? (
                   <Table size={16} />
+                ) : jsonViewMode === "collapsible" ? (
+                  <Info size={16} />
                 ) : (
                   <LayoutGrid size={16} />
                 )}
