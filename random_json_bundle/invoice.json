@@ -1,0 +1,43 @@
+{
+  "invoice_id": "INV-49109",
+  "bill_to": {
+    "id": "f051fc56-b9d9-45fe-b216-00ed15eec693",
+    "name": "Kabir Kapoor",
+    "email": "kabir.kapoor593@example.com",
+    "phone": "+91-8492301787",
+    "roles": [
+      "admin",
+      "viewer"
+    ],
+    "address": {
+      "street": "236 MG Road",
+      "city": "Hyderabad",
+      "postal_code": "302799",
+      "country": "India"
+    },
+    "created_at": "2025-09-10T09:39:03.944582Z",
+    "active": true
+  },
+  "currency": "INR",
+  "items": [
+    {
+      "description": "Product 8",
+      "qty": 3,
+      "unit_price_inr": 1743.88
+    },
+    {
+      "description": "Product 7",
+      "qty": 5,
+      "unit_price_inr": 15175.64
+    },
+    {
+      "description": "Product 5",
+      "qty": 2,
+      "unit_price_inr": 38110.22
+    }
+  ],
+  "subtotal_inr": 157330.28,
+  "tax_inr": 28319.45,
+  "total_inr": 185649.73,
+  "issued_at": "2025-09-10T09:39:03.953286Z"
+}

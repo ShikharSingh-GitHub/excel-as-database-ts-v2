@@ -631,19 +631,341 @@ if (ipcMain) {
           }
         }
 
-        // Add default values for missing fields based on existing data structure
+        // Enhanced: Add default values for missing fields based on existing data structure
+        // including nested structure templates with headers
         if (arr.length > 0) {
           const sampleItem = arr[0];
           Object.keys(sampleItem).forEach((key) => {
             if (!(key in finalRow)) {
               const sampleValue = sampleItem[key];
-              if (typeof sampleValue === "string") finalRow[key] = `New ${key}`;
-              else if (typeof sampleValue === "number") finalRow[key] = 0;
-              else if (typeof sampleValue === "boolean") finalRow[key] = false;
-              else if (Array.isArray(sampleValue)) finalRow[key] = [];
-              else if (typeof sampleValue === "object" && sampleValue !== null)
-                finalRow[key] = {};
-              else finalRow[key] = null;
+              if (typeof sampleValue === "string") {
+                finalRow[key] = `New ${key}`;
+              } else if (typeof sampleValue === "number") {
+                finalRow[key] = 0;
+              } else if (typeof sampleValue === "boolean") {
+                finalRow[key] = false;
+              } else if (Array.isArray(sampleValue)) {
+                // Enhanced: Create array with template structure if it contains objects
+                if (
+                  sampleValue.length > 0 &&
+                  typeof sampleValue[0] === "object" &&
+                  !Array.isArray(sampleValue[0])
+                ) {
+                  // Array of objects - create template with headers from existing data
+                  const templateObj = {};
+                  const allKeys = new Set();
+
+                  // Collect all possible keys from existing objects in this array
+                  sampleValue.slice(0, 5).forEach((obj) => {
+                    if (obj && typeof obj === "object") {
+                      Object.keys(obj).forEach((k) => allKeys.add(k));
+                    }
+                  });
+
+                  // Create template object with placeholder values
+                  allKeys.forEach((k) => {
+                    const sampleVal = sampleValue.find(
+                      (obj) => obj && obj[k] !== undefined
+                    )?.[k];
+                    if (typeof sampleVal === "string") templateObj[k] = "";
+                    else if (typeof sampleVal === "number") templateObj[k] = 0;
+                    else if (typeof sampleVal === "boolean")
+                      templateObj[k] = false;
+                    else if (Array.isArray(sampleVal)) {
+                      // Enhanced: Create deeper nested array templates
+                      if (
+                        sampleVal.length > 0 &&
+                        typeof sampleVal[0] === "object"
+                      ) {
+                        const nestedObj = {};
+                        const nestedKeys = new Set();
+
+                        // Collect keys from all items in nested array
+                        sampleVal.slice(0, 3).forEach((item) => {
+                          if (item && typeof item === "object") {
+                            Object.keys(item).forEach((nk) =>
+                              nestedKeys.add(nk)
+                            );
+                          }
+                        });
+
+                        // Create nested template with proper values
+                        nestedKeys.forEach((nk) => {
+                          const nestedVal = sampleVal.find(
+                            (item) => item && item[nk] !== undefined
+                          )?.[nk];
+                          if (typeof nestedVal === "string") nestedObj[nk] = "";
+                          else if (typeof nestedVal === "number")
+                            nestedObj[nk] = 0;
+                          else if (typeof nestedVal === "boolean")
+                            nestedObj[nk] = false;
+                          else if (Array.isArray(nestedVal))
+                            nestedObj[nk] = []; // Deeper nesting
+                          else if (
+                            typeof nestedVal === "object" &&
+                            nestedVal !== null
+                          )
+                            nestedObj[nk] = {}; // Deeper objects
+                          else nestedObj[nk] = null;
+                        });
+
+                        templateObj[k] = [nestedObj];
+                        console.log(
+                          `  📋 Created nested array template for ${key}.${k}:`,
+                          Object.keys(nestedObj)
+                        );
+                      } else {
+                        templateObj[k] = [];
+                      }
+                    } else if (
+                      typeof sampleVal === "object" &&
+                      sampleVal !== null
+                    ) {
+                      // Enhanced: Create deeper nested object templates
+                      const nestedObj = {};
+                      Object.keys(sampleVal).forEach((nk) => {
+                        const nestedVal = sampleVal[nk];
+                        if (typeof nestedVal === "string") nestedObj[nk] = "";
+                        else if (typeof nestedVal === "number")
+                          nestedObj[nk] = 0;
+                        else if (typeof nestedVal === "boolean")
+                          nestedObj[nk] = false;
+                        else if (Array.isArray(nestedVal)) {
+                          // Handle nested arrays in nested objects
+                          if (
+                            nestedVal.length > 0 &&
+                            typeof nestedVal[0] === "object"
+                          ) {
+                            const deepNestedObj = {};
+                            Object.keys(nestedVal[0]).forEach((dnk) => {
+                              const deepVal = nestedVal[0][dnk];
+                              if (typeof deepVal === "string")
+                                deepNestedObj[dnk] = "";
+                              else if (typeof deepVal === "number")
+                                deepNestedObj[dnk] = 0;
+                              else if (typeof deepVal === "boolean")
+                                deepNestedObj[dnk] = false;
+                              else deepNestedObj[dnk] = null;
+                            });
+                            nestedObj[nk] = [deepNestedObj];
+                            console.log(
+                              `    📋 Created deep nested array template for ${key}.${k}.${nk}:`,
+                              Object.keys(deepNestedObj)
+                            );
+                          } else {
+                            nestedObj[nk] = [];
+                          }
+                        } else if (
+                          typeof nestedVal === "object" &&
+                          nestedVal !== null
+                        )
+                          nestedObj[nk] = {};
+                        else nestedObj[nk] = null;
+                      });
+                      templateObj[k] = nestedObj;
+                      console.log(
+                        `  📋 Created nested object template for ${key}.${k}:`,
+                        Object.keys(nestedObj)
+                      );
+                    } else templateObj[k] = null;
+                  });
+
+                  finalRow[key] = [templateObj]; // Start with one template item
+                  console.log(
+                    `🏗️ Created array template for ${key} with headers:`,
+                    Object.keys(templateObj)
+                  );
+                } else {
+                  finalRow[key] = []; // Empty array for non-object arrays
+                }
+              } else if (
+                typeof sampleValue === "object" &&
+                sampleValue !== null
+              ) {
+                // Enhanced: Create object template with headers from existing data
+                const templateObj = {};
+                const sampleKeys = Object.keys(sampleValue);
+
+                // Analyze multiple sample objects to get all possible keys
+                const allSampleObjects = arr
+                  .slice(0, 5)
+                  .map((item) => item[key])
+                  .filter(
+                    (val) =>
+                      val && typeof val === "object" && !Array.isArray(val)
+                  );
+                const allKeys = new Set();
+
+                allSampleObjects.forEach((obj) => {
+                  Object.keys(obj).forEach((k) => allKeys.add(k));
+                });
+
+                // If no other samples, use the first one
+                if (allKeys.size === 0) {
+                  sampleKeys.forEach((k) => allKeys.add(k));
+                }
+
+                // Create template object with appropriate default values
+                allKeys.forEach((k) => {
+                  const sampleVal =
+                    allSampleObjects.find((obj) => obj[k] !== undefined)?.[k] ||
+                    sampleValue[k];
+                  if (typeof sampleVal === "string") templateObj[k] = "";
+                  else if (typeof sampleVal === "number") templateObj[k] = 0;
+                  else if (typeof sampleVal === "boolean")
+                    templateObj[k] = false;
+                  else if (Array.isArray(sampleVal)) {
+                    // Enhanced: Nested array - create deeper templates if it contains objects
+                    if (
+                      sampleVal.length > 0 &&
+                      typeof sampleVal[0] === "object"
+                    ) {
+                      const nestedTemplate = {};
+                      const nestedKeys = new Set();
+
+                      // Collect all keys from nested array items
+                      sampleVal.slice(0, 3).forEach((item) => {
+                        if (item && typeof item === "object") {
+                          Object.keys(item).forEach((nk) => nestedKeys.add(nk));
+                        }
+                      });
+
+                      // Create comprehensive nested template
+                      nestedKeys.forEach((nk) => {
+                        const nv = sampleVal.find(
+                          (item) => item && item[nk] !== undefined
+                        )?.[nk];
+                        if (typeof nv === "string") nestedTemplate[nk] = "";
+                        else if (typeof nv === "number") nestedTemplate[nk] = 0;
+                        else if (typeof nv === "boolean")
+                          nestedTemplate[nk] = false;
+                        else if (Array.isArray(nv)) {
+                          // Handle arrays within nested arrays
+                          if (nv.length > 0 && typeof nv[0] === "object") {
+                            const deepTemplate = {};
+                            Object.keys(nv[0]).forEach((dk) => {
+                              const dv = nv[0][dk];
+                              if (typeof dv === "string") deepTemplate[dk] = "";
+                              else if (typeof dv === "number")
+                                deepTemplate[dk] = 0;
+                              else if (typeof dv === "boolean")
+                                deepTemplate[dk] = false;
+                              else deepTemplate[dk] = null;
+                            });
+                            nestedTemplate[nk] = [deepTemplate];
+                            console.log(
+                              `    📋 Created deep array template for ${key}.${nk}:`,
+                              Object.keys(deepTemplate)
+                            );
+                          } else {
+                            nestedTemplate[nk] = [];
+                          }
+                        } else if (typeof nv === "object" && nv !== null) {
+                          // Handle objects within nested arrays
+                          const deepObjTemplate = {};
+                          Object.keys(nv).forEach((onk) => {
+                            const ov = nv[onk];
+                            if (typeof ov === "string")
+                              deepObjTemplate[onk] = "";
+                            else if (typeof ov === "number")
+                              deepObjTemplate[onk] = 0;
+                            else if (typeof ov === "boolean")
+                              deepObjTemplate[onk] = false;
+                            else if (Array.isArray(ov))
+                              deepObjTemplate[onk] = [];
+                            else if (typeof ov === "object" && ov !== null)
+                              deepObjTemplate[onk] = {};
+                            else deepObjTemplate[onk] = null;
+                          });
+                          nestedTemplate[nk] = deepObjTemplate;
+                          console.log(
+                            `    📋 Created deep object template for ${key}.${nk}:`,
+                            Object.keys(deepObjTemplate)
+                          );
+                        } else nestedTemplate[nk] = null;
+                      });
+                      templateObj[k] = [nestedTemplate];
+                      console.log(
+                        `  📋 Created nested array template for ${key}.${k}:`,
+                        Object.keys(nestedTemplate)
+                      );
+                    } else {
+                      templateObj[k] = [];
+                    }
+                  } else if (
+                    typeof sampleVal === "object" &&
+                    sampleVal !== null
+                  ) {
+                    // Enhanced: Nested object - create deeper templates
+                    const nestedObjTemplate = {};
+                    Object.keys(sampleVal).forEach((nk) => {
+                      const nv = sampleVal[nk];
+                      if (typeof nv === "string") nestedObjTemplate[nk] = "";
+                      else if (typeof nv === "number")
+                        nestedObjTemplate[nk] = 0;
+                      else if (typeof nv === "boolean")
+                        nestedObjTemplate[nk] = false;
+                      else if (Array.isArray(nv)) {
+                        if (nv.length > 0 && typeof nv[0] === "object") {
+                          const deepArrTemplate = {};
+                          Object.keys(nv[0]).forEach((dk) => {
+                            const dv = nv[0][dk];
+                            if (typeof dv === "string")
+                              deepArrTemplate[dk] = "";
+                            else if (typeof dv === "number")
+                              deepArrTemplate[dk] = 0;
+                            else if (typeof dv === "boolean")
+                              deepArrTemplate[dk] = false;
+                            else deepArrTemplate[dk] = null;
+                          });
+                          nestedObjTemplate[nk] = [deepArrTemplate];
+                          console.log(
+                            `    📋 Created deep nested array for ${key}.${nk}:`,
+                            Object.keys(deepArrTemplate)
+                          );
+                        } else {
+                          nestedObjTemplate[nk] = [];
+                        }
+                      } else if (typeof nv === "object" && nv !== null) {
+                        // Deep nested objects
+                        const deepNestedObj = {};
+                        Object.keys(nv).forEach((dnk) => {
+                          const dnv = nv[dnk];
+                          if (typeof dnv === "string") deepNestedObj[dnk] = "";
+                          else if (typeof dnv === "number")
+                            deepNestedObj[dnk] = 0;
+                          else if (typeof dnv === "boolean")
+                            deepNestedObj[dnk] = false;
+                          else if (Array.isArray(dnv)) deepNestedObj[dnk] = [];
+                          else if (typeof dnv === "object" && dnv !== null)
+                            deepNestedObj[dnk] = {};
+                          else deepNestedObj[dnk] = null;
+                        });
+                        nestedObjTemplate[nk] = deepNestedObj;
+                        console.log(
+                          `    📋 Created deep nested object for ${key}.${nk}:`,
+                          Object.keys(deepNestedObj)
+                        );
+                      } else nestedObjTemplate[nk] = null;
+                    });
+                    templateObj[k] = nestedObjTemplate;
+                    console.log(
+                      `  📋 Created nested object template for ${key}.${k}:`,
+                      Object.keys(nestedObjTemplate)
+                    );
+                  } else {
+                    templateObj[k] = null;
+                  }
+                });
+
+                finalRow[key] = templateObj;
+                console.log(
+                  `🏗️ Created object template for ${key} with headers:`,
+                  Object.keys(templateObj)
+                );
+              } else {
+                finalRow[key] = null;
+              }
             }
           });
         } else {

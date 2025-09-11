@@ -1,0 +1,104 @@
+{
+  "page": 1,
+  "page_size": 5,
+  "total": 12,
+  "data": [
+    {
+      "id": "929d46c6-b0e6-4a3e-9a6c-7c26cbe45f71",
+      "name": "Product 1",
+      "category": "sports",
+      "price_inr": 2600.32,
+      "in_stock": 389,
+      "rating": 4.4,
+      "tags": [
+        "sale",
+        "new"
+      ],
+      "dimensions_cm": {
+        "w": 15.6,
+        "h": 9.0,
+        "d": 24.3
+      },
+      "created_at": "2025-09-10T09:39:03.945854Z"
+    },
+    {
+      "id": "12a4df04-527b-4aa2-b2e8-aa02e8a6bb83",
+      "name": "Product 2",
+      "category": "books",
+      "price_inr": 1136.63,
+      "in_stock": 378,
+      "rating": 2.7,
+      "tags": [
+        "popular"
+      ],
+      "dimensions_cm": {
+        "w": 53.8,
+        "h": 30.8,
+        "d": 35.7
+      },
+      "created_at": "2025-09-10T09:39:03.945898Z"
+    },
+    {
+      "id": "d85bef25-0410-4365-90e4-27fd17e8088a",
+      "name": "Product 3",
+      "category": "beauty",
+      "price_inr": 15791.8,
+      "in_stock": 99,
+      "rating": 4.0,
+      "tags": [
+        "popular",
+        "budget",
+        "eco"
+      ],
+      "dimensions_cm": {
+        "w": 75.5,
+        "h": 30.8,
+        "d": 35.5
+      },
+      "created_at": "2025-09-10T09:39:03.945932Z"
+    },
+    {
+      "id": "ebade36a-f089-4b23-b62b-ed2c8f00b5f4",
+      "name": "Product 4",
+      "category": "fashion",
+      "price_inr": 9623.29,
+      "in_stock": 256,
+      "rating": 4.1,
+      "tags": [
+        "refurbished",
+        "eco",
+        "popular"
+      ],
+      "dimensions_cm": {
+        "w": 50.4,
+        "h": 29.9,
+        "d": 38.4
+      },
+      "created_at": "2025-09-10T09:39:03.945964Z"
+    },
+    {
+      "id": "9b2cfb20-ad17-455b-a7ae-2038b34b8530",
+      "name": "Product 5",
+      "category": "beauty",
+      "price_inr": 38110.22,
+      "in_stock": 193,
+      "rating": 4.5,
+      "tags": [
+        "premium",
+        "popular",
+        "eco"
+      ],
+      "dimensions_cm": {
+        "w": 42.2,
+        "h": 48.3,
+        "d": 33.2
+      },
+      "created_at": "2025-09-10T09:39:03.946000Z"
+    }
+  ],
+  "links": {
+    "self": "/api/v1/products?page=1&page_size=5",
+    "next": "/api/v1/products?page=2&page_size=5",
+    "last": "/api/v1/products?page=3&page_size=5"
+  }
+}

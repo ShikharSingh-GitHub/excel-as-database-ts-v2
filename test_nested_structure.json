@@ -1,0 +1,55 @@
+{
+  "users": [
+    {
+      "id": 1,
+      "name": "John",
+      "profile": {
+        "age": 30,
+        "email": "john@test.com",
+        "preferences": {
+          "theme": "dark",
+          "notifications": true
+        }
+      },
+      "orders": [
+        {
+          "orderId": "A1",
+          "amount": 100,
+          "items": [
+            "item1",
+            "item2"
+          ]
+        },
+        {
+          "orderId": "A2",
+          "amount": 200,
+          "items": [
+            "item3"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Jane",
+      "profile": {
+        "age": 25,
+        "email": "jane@test.com",
+        "preferences": {
+          "theme": "light",
+          "notifications": false
+        }
+      },
+      "orders": [
+        {
+          "orderId": "B1",
+          "amount": 150,
+          "items": [
+            "item4",
+            "item5"
+          ]
+        }
+      ]
+    }
+  ]
+}

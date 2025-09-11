@@ -1,0 +1,64 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Storefront B"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          88.03375806288082,
+          21.852227797300646
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Pickup Point C"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          71.22365097370108,
+          11.576173012425006
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "region": "Service Area"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              83.52478453090725,
+              9.533419648702981
+            ],
+            [
+              84.52478453090725,
+              9.533419648702981
+            ],
+            [
+              84.52478453090725,
+              10.533419648702981
+            ],
+            [
+              83.52478453090725,
+              10.533419648702981
+            ],
+            [
+              83.52478453090725,
+              9.533419648702981
+            ]
+          ]
+        ]
+      }
+    }
+  ]
+}

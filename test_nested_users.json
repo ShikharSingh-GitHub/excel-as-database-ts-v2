@@ -1,0 +1,72 @@
+{
+  "users": [
+    {
+      "id": 1,
+      "name": "John Doe",
+      "profile": {
+        "age": 30,
+        "email": "john@example.com",
+        "preferences": {
+          "theme": "dark",
+          "notifications": true
+        }
+      },
+      "orders": [
+        {
+          "orderId": "ORD001",
+          "amount": 299.99,
+          "items": ["laptop", "mouse"],
+          "status": "completed"
+        },
+        {
+          "orderId": "ORD002",
+          "amount": 49.99,
+          "items": ["keyboard"],
+          "status": "pending"
+        }
+      ],
+      "addresses": [
+        {
+          "type": "home",
+          "street": "123 Main St",
+          "city": "New York",
+          "zipCode": "10001"
+        },
+        {
+          "type": "work",
+          "street": "456 Business Ave",
+          "city": "New York",
+          "zipCode": "10002"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Jane Smith",
+      "profile": {
+        "age": 28,
+        "email": "jane@example.com",
+        "preferences": {
+          "theme": "light",
+          "notifications": false
+        }
+      },
+      "orders": [
+        {
+          "orderId": "ORD003",
+          "amount": 89.99,
+          "items": ["book", "pen"],
+          "status": "shipped"
+        }
+      ],
+      "addresses": [
+        {
+          "type": "home",
+          "street": "789 Oak Rd",
+          "city": "Boston",
+          "zipCode": "02101"
+        }
+      ]
+    }
+  ]
+}

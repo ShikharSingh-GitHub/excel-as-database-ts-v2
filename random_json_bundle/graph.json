@@ -1,0 +1,103 @@
+{
+  "directed": false,
+  "nodes": [
+    {
+      "id": "n0",
+      "label": "Category"
+    },
+    {
+      "id": "n1",
+      "label": "User"
+    },
+    {
+      "id": "n2",
+      "label": "Product"
+    },
+    {
+      "id": "n3",
+      "label": "Category"
+    },
+    {
+      "id": "n4",
+      "label": "Category"
+    },
+    {
+      "id": "n5",
+      "label": "User"
+    },
+    {
+      "id": "n6",
+      "label": "Category"
+    },
+    {
+      "id": "n7",
+      "label": "Product"
+    },
+    {
+      "id": "n8",
+      "label": "Order"
+    },
+    {
+      "id": "n9",
+      "label": "User"
+    }
+  ],
+  "edges": [
+    {
+      "source": "n9",
+      "target": "n8"
+    },
+    {
+      "source": "n7",
+      "target": "n2"
+    },
+    {
+      "source": "n5",
+      "target": "n7"
+    },
+    {
+      "source": "n1",
+      "target": "n4"
+    },
+    {
+      "source": "n6",
+      "target": "n2"
+    },
+    {
+      "source": "n7",
+      "target": "n8"
+    },
+    {
+      "source": "n2",
+      "target": "n3"
+    },
+    {
+      "source": "n0",
+      "target": "n4"
+    },
+    {
+      "source": "n9",
+      "target": "n7"
+    },
+    {
+      "source": "n1",
+      "target": "n9"
+    },
+    {
+      "source": "n7",
+      "target": "n4"
+    },
+    {
+      "source": "n4",
+      "target": "n5"
+    },
+    {
+      "source": "n8",
+      "target": "n4"
+    },
+    {
+      "source": "n4",
+      "target": "n5"
+    }
+  ]
+}

@@ -1,0 +1,217 @@
+[
+  {
+    "id": "929d46c6-b0e6-4a3e-9a6c-7c26cbe45f71",
+    "name": "Product 1",
+    "category": "sports",
+    "price_inr": 2600.32,
+    "in_stock": 389,
+    "rating": 4.4,
+    "tags": [
+      "sale",
+      "new"
+    ],
+    "dimensions_cm": {
+      "w": 15.6,
+      "h": 9.0,
+      "d": 24.3
+    },
+    "created_at": "2025-09-10T09:39:03.945854Z"
+  },
+  {
+    "id": "12a4df04-527b-4aa2-b2e8-aa02e8a6bb83",
+    "name": "Product 2",
+    "category": "books",
+    "price_inr": 1136.63,
+    "in_stock": 378,
+    "rating": 2.7,
+    "tags": [
+      "popular"
+    ],
+    "dimensions_cm": {
+      "w": 53.8,
+      "h": 30.8,
+      "d": 35.7
+    },
+    "created_at": "2025-09-10T09:39:03.945898Z"
+  },
+  {
+    "id": "d85bef25-0410-4365-90e4-27fd17e8088a",
+    "name": "Product 3",
+    "category": "beauty",
+    "price_inr": 15791.8,
+    "in_stock": 99,
+    "rating": 4.0,
+    "tags": [
+      "popular",
+      "budget",
+      "eco"
+    ],
+    "dimensions_cm": {
+      "w": 75.5,
+      "h": 30.8,
+      "d": 35.5
+    },
+    "created_at": "2025-09-10T09:39:03.945932Z"
+  },
+  {
+    "id": "ebade36a-f089-4b23-b62b-ed2c8f00b5f4",
+    "name": "Product 4",
+    "category": "fashion",
+    "price_inr": 9623.29,
+    "in_stock": 256,
+    "rating": 4.1,
+    "tags": [
+      "refurbished",
+      "eco",
+      "popular"
+    ],
+    "dimensions_cm": {
+      "w": 50.4,
+      "h": 29.9,
+      "d": 38.4
+    },
+    "created_at": "2025-09-10T09:39:03.945964Z"
+  },
+  {
+    "id": "9b2cfb20-ad17-455b-a7ae-2038b34b8530",
+    "name": "Product 5",
+    "category": "beauty",
+    "price_inr": 38110.22,
+    "in_stock": 193,
+    "rating": 4.5,
+    "tags": [
+      "premium",
+      "popular",
+      "eco"
+    ],
+    "dimensions_cm": {
+      "w": 42.2,
+      "h": 48.3,
+      "d": 33.2
+    },
+    "created_at": "2025-09-10T09:39:03.946000Z"
+  },
+  {
+    "id": "8f630d8d-0ba6-4d36-adc3-dd68473dfca9",
+    "name": "Product 6",
+    "category": "books",
+    "price_inr": 20773.83,
+    "in_stock": 485,
+    "rating": 4.6,
+    "tags": [
+      "premium",
+      "refurbished"
+    ],
+    "dimensions_cm": {
+      "w": 28.3,
+      "h": 43.7,
+      "d": 5.8
+    },
+    "created_at": "2025-09-10T09:39:03.946033Z"
+  },
+  {
+    "id": "655c03a8-0308-46df-99b3-0b8c6f76bfb1",
+    "name": "Product 7",
+    "category": "sports",
+    "price_inr": 15175.64,
+    "in_stock": 95,
+    "rating": 4.1,
+    "tags": [
+      "new"
+    ],
+    "dimensions_cm": {
+      "w": 62.3,
+      "h": 25.2,
+      "d": 5.9
+    },
+    "created_at": "2025-09-10T09:39:03.946064Z"
+  },
+  {
+    "id": "7288e40d-08e3-4a81-ad78-03e9592a484f",
+    "name": "Product 8",
+    "category": "toys",
+    "price_inr": 1743.88,
+    "in_stock": 355,
+    "rating": 2.6,
+    "tags": [
+      "sale"
+    ],
+    "dimensions_cm": {
+      "w": 75.2,
+      "h": 73.3,
+      "d": 10.5
+    },
+    "created_at": "2025-09-10T09:39:03.946099Z"
+  },
+  {
+    "id": "72e1a8a7-604e-4344-a224-255f0319c8da",
+    "name": "Product 9",
+    "category": "electronics",
+    "price_inr": 27809.67,
+    "in_stock": 173,
+    "rating": 4.0,
+    "tags": [
+      "budget",
+      "premium"
+    ],
+    "dimensions_cm": {
+      "w": 73.1,
+      "h": 74.8,
+      "d": 15.4
+    },
+    "created_at": "2025-09-10T09:39:03.946131Z"
+  },
+  {
+    "id": "3533b9b2-e793-483a-ae08-82f69a57e55b",
+    "name": "Product 10",
+    "category": "home",
+    "price_inr": 9531.6,
+    "in_stock": 194,
+    "rating": 3.0,
+    "tags": [
+      "popular",
+      "budget",
+      "sale"
+    ],
+    "dimensions_cm": {
+      "w": 16.3,
+      "h": 79.2,
+      "d": 2.0
+    },
+    "created_at": "2025-09-10T09:39:03.946175Z"
+  },
+  {
+    "id": "ca28b86f-4694-4043-9916-2e35c6b44c7d",
+    "name": "Product 11",
+    "category": "electronics",
+    "price_inr": 45234.29,
+    "in_stock": 72,
+    "rating": 5.0,
+    "tags": [
+      "budget"
+    ],
+    "dimensions_cm": {
+      "w": 40.7,
+      "h": 57.6,
+      "d": 11.6
+    },
+    "created_at": "2025-09-10T09:39:03.946203Z"
+  },
+  {
+    "id": "ccb99117-7e27-4422-bc3e-54bb153a8bc0",
+    "name": "Product 12",
+    "category": "home",
+    "price_inr": 21239.84,
+    "in_stock": 385,
+    "rating": 4.8,
+    "tags": [
+      "new"
+    ],
+    "dimensions_cm": {
+      "w": 14.8,
+      "h": 71.8,
+      "d": 22.3
+    },
+    "created_at": "2025-09-10T09:39:03.946245Z"
+  }
+]

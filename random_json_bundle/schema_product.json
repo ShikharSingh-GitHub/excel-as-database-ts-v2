@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Product",
+  "type": "object",
+  "required": [
+    "id",
+    "name",
+    "category",
+    "price_inr"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "electronics",
+        "fashion",
+        "home",
+        "sports",
+        "books",
+        "toys",
+        "grocery",
+        "beauty"
+      ]
+    },
+    "price_inr": {
+      "type": "number",
+      "minimum": 0
+    },
+    "in_stock": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "rating": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 5
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "dimensions_cm": {
+      "type": "object",
+      "properties": {
+        "w": {
+          "type": "number",
+          "minimum": 0
+        },
+        "h": {
+          "type": "number",
+          "minimum": 0
+        },
+        "d": {
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "w",
+        "h",
+        "d"
+      ]
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "additionalProperties": false
+}

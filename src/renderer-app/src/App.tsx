@@ -746,20 +746,6 @@ export default function App() {
                   conflict: null,
                 })
               }
-              onEditRow={() => {
-                if (selectedCell && selectedCell.row >= 0) {
-                  const rowData = sheetRows.rows[selectedCell.row] || {};
-                  setModal({
-                    open: true,
-                    mode: "edit",
-                    data: { ...(rowData || {}) },
-                    errors: {},
-                    conflict: null,
-                  });
-                } else {
-                  setToast("❌ No row selected to edit");
-                }
-              }}
               onDeleteRow={() => {
                 if (selectedCell && selectedCell.row >= 0) {
                   const confirmDelete = window.confirm(

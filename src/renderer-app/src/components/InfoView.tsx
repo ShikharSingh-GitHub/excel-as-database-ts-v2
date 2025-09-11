@@ -179,7 +179,11 @@ export default function InfoView({
     if (!filePath) return;
 
     setLoading(true);
-    console.log("🔍 Loading JSON schema for InfoView:", filePath);
+    console.log(
+      "🔍 Loading JSON schema for InfoView:",
+      filePath,
+      "- Data changed, refreshing schema"
+    );
     (window as any).api.json
       .getSchema(filePath)
       .then((result: JsonSchema) => {
@@ -206,7 +210,7 @@ export default function InfoView({
       .finally(() => {
         setLoading(false);
       });
-  }, [filePath]);
+  }, [filePath, data]); // Added 'data' dependency to refresh schema when data changes
 
   // Enhanced CRUD handlers
   const handleEditScalar = useCallback(

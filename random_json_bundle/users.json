@@ -1,0 +1,144 @@
+[
+  {
+    "id": "23e58a83-0fc2-4ee8-91e6-edafda3335dc",
+    "name": "Rohan Banerjee",
+    "email": "rohan.banerjee673@example.com",
+    "phone": "+91-7249342740",
+    "roles": [
+      "admin"
+    ],
+    "address": {
+      "street": "96 Ring Road",
+      "city": "Hyderabad",
+      "postal_code": "854940",
+      "country": "India"
+    },
+    "created_at": "2025-09-10T09:39:03.944529Z",
+    "active": true
+  },
+  {
+    "id": "f051fc56-b9d9-45fe-b216-00ed15eec693",
+    "name": "Kabir Kapoor",
+    "email": "kabir.kapoor593@example.com",
+    "phone": "+91-8492301787",
+    "roles": [
+      "admin",
+      "viewer"
+    ],
+    "address": {
+      "street": "236 MG Road",
+      "city": "Hyderabad",
+      "postal_code": "302799",
+      "country": "India"
+    },
+    "created_at": "2025-09-10T09:39:03.944582Z",
+    "active": true
+  },
+  {
+    "id": "22673b1d-24fc-4563-9a5b-b6773de834d2",
+    "name": "Rohan Verma",
+    "email": "rohan.verma972@example.com",
+    "phone": "+91-7957403942",
+    "roles": [
+      "admin"
+    ],
+    "address": {
+      "street": "44 Ring Road",
+      "city": "Jaipur",
+      "postal_code": "718050",
+      "country": "India"
+    },
+    "created_at": "2025-09-10T09:39:03.944621Z",
+    "active": false
+  },
+  {
+    "id": "c577492f-7e96-413b-9524-cba35e8a6fde",
+    "name": "Isha Sharma",
+    "email": "isha.sharma950@example.com",
+    "phone": "+91-9088943613",
+    "roles": [
+      "admin",
+      "support"
+    ],
+    "address": {
+      "street": "202 JLN Marg",
+      "city": "Jaipur",
+      "postal_code": "198962",
+      "country": "India"
+    },
+    "created_at": "2025-09-10T09:39:03.944662Z",
+    "active": false
+  },
+  {
+    "id": "be8d39f0-c519-4532-8d78-74a19522ccb6",
+    "name": "Aditya Das",
+    "email": "aditya.das521@example.com",
+    "phone": "+91-9091089934",
+    "roles": [
+      "support",
+      "admin"
+    ],
+    "address": {
+      "street": "20 Ring Road",
+      "city": "Jaipur",
+      "postal_code": "560938",
+      "country": "India"
+    },
+    "created_at": "2025-09-10T09:39:03.944692Z",
+    "active": true
+  },
+  {
+    "id": "8cf02a05-c3a3-4271-9ca1-bc6f396de6b4",
+    "name": "Diya Banerjee",
+    "email": "diya.banerjee454@example.com",
+    "phone": "+91-8294002411",
+    "roles": [
+      "seller",
+      "admin"
+    ],
+    "address": {
+      "street": "112 JLN Marg",
+      "city": "Kolkata",
+      "postal_code": "609759",
+      "country": "India"
+    },
+    "created_at": "2025-09-10T09:39:03.944715Z",
+    "active": false
+  },
+  {
+    "id": "88e37fe2-241f-4b1e-9feb-27cdee11f988",
+    "name": "Kabir Patel",
+    "email": "kabir.patel761@example.com",
+    "phone": "+91-7052743133",
+    "roles": [
+      "support",
+      "admin"
+    ],
+    "address": {
+      "street": "118 Link Road",
+      "city": "Bengaluru",
+      "postal_code": "434763",
+      "country": "India"
+    },
+    "created_at": "2025-09-10T09:39:03.944732Z",
+    "active": true
+  },
+  {
+    "id": "13a266a0-fb24-4be8-95d1-24abbbd5e959",
+    "name": "Diya Kapoor",
+    "email": "diya.kapoor382@example.com",
+    "phone": "+91-7893870374",
+    "roles": [
+      "customer",
+      "admin"
+    ],
+    "address": {
+      "street": "8 Station Road",
+      "city": "Hyderabad",
+      "postal_code": "265440",
+      "country": "India"
+    },
+    "created_at": "2025-09-10T09:39:03.944766Z",
+    "active": true
+  }
+]

@@ -1,0 +1,509 @@
+[
+  {
+    "id": "8a87a73d-2d35-4085-b4c6-446bbbc529aa",
+    "user_id": "f051fc56-b9d9-45fe-b216-00ed15eec693",
+    "status": "shipped",
+    "items": [
+      {
+        "product_id": "ca28b86f-4694-4043-9916-2e35c6b44c7d",
+        "name": "Product 11",
+        "unit_price_inr": 45234.29,
+        "qty": 1,
+        "line_total_inr": 45234.29
+      },
+      {
+        "product_id": "ca28b86f-4694-4043-9916-2e35c6b44c7d",
+        "name": "Product 11",
+        "unit_price_inr": 45234.29,
+        "qty": 2,
+        "line_total_inr": 90468.58
+      },
+      {
+        "product_id": "72e1a8a7-604e-4344-a224-255f0319c8da",
+        "name": "Product 9",
+        "unit_price_inr": 27809.67,
+        "qty": 2,
+        "line_total_inr": 55619.34
+      },
+      {
+        "product_id": "ca28b86f-4694-4043-9916-2e35c6b44c7d",
+        "name": "Product 11",
+        "unit_price_inr": 45234.29,
+        "qty": 2,
+        "line_total_inr": 90468.58
+      }
+    ],
+    "subtotal_inr": 281790.79,
+    "tax_inr": 50722.34,
+    "grand_total_inr": 332513.13,
+    "shipping_address_snapshot": {
+      "street": "202 JLN Marg",
+      "city": "Jaipur",
+      "postal_code": "198962",
+      "country": "India"
+    },
+    "created_at": "2025-07-19T09:39:03.947355Z"
+  },
+  {
+    "id": "2ce0c9ee-001d-4eef-a0df-52a939861bde",
+    "user_id": "8cf02a05-c3a3-4271-9ca1-bc6f396de6b4",
+    "status": "delivered",
+    "items": [
+      {
+        "product_id": "655c03a8-0308-46df-99b3-0b8c6f76bfb1",
+        "name": "Product 7",
+        "unit_price_inr": 15175.64,
+        "qty": 2,
+        "line_total_inr": 30351.28
+      },
+      {
+        "product_id": "ebade36a-f089-4b23-b62b-ed2c8f00b5f4",
+        "name": "Product 4",
+        "unit_price_inr": 9623.29,
+        "qty": 2,
+        "line_total_inr": 19246.58
+      }
+    ],
+    "subtotal_inr": 49597.86,
+    "tax_inr": 8927.61,
+    "grand_total_inr": 58525.47,
+    "shipping_address_snapshot": {
+      "street": "44 Ring Road",
+      "city": "Jaipur",
+      "postal_code": "718050",
+      "country": "India"
+    },
+    "created_at": "2025-07-03T09:39:03.947399Z"
+  },
+  {
+    "id": "61c3c7eb-6f1f-4145-98c1-472535355857",
+    "user_id": "22673b1d-24fc-4563-9a5b-b6773de834d2",
+    "status": "shipped",
+    "items": [
+      {
+        "product_id": "ebade36a-f089-4b23-b62b-ed2c8f00b5f4",
+        "name": "Product 4",
+        "unit_price_inr": 9623.29,
+        "qty": 3,
+        "line_total_inr": 28869.87
+      },
+      {
+        "product_id": "72e1a8a7-604e-4344-a224-255f0319c8da",
+        "name": "Product 9",
+        "unit_price_inr": 27809.67,
+        "qty": 2,
+        "line_total_inr": 55619.34
+      }
+    ],
+    "subtotal_inr": 84489.21,
+    "tax_inr": 15208.06,
+    "grand_total_inr": 99697.27,
+    "shipping_address_snapshot": {
+      "street": "44 Ring Road",
+      "city": "Jaipur",
+      "postal_code": "718050",
+      "country": "India"
+    },
+    "created_at": "2025-06-28T09:39:03.947441Z"
+  },
+  {
+    "id": "0a7b9680-ce20-4503-b1e4-28e22fd452b6",
+    "user_id": "22673b1d-24fc-4563-9a5b-b6773de834d2",
+    "status": "delivered",
+    "items": [
+      {
+        "product_id": "ccb99117-7e27-4422-bc3e-54bb153a8bc0",
+        "name": "Product 12",
+        "unit_price_inr": 21239.84,
+        "qty": 1,
+        "line_total_inr": 21239.84
+      },
+      {
+        "product_id": "12a4df04-527b-4aa2-b2e8-aa02e8a6bb83",
+        "name": "Product 2",
+        "unit_price_inr": 1136.63,
+        "qty": 1,
+        "line_total_inr": 1136.63
+      },
+      {
+        "product_id": "7288e40d-08e3-4a81-ad78-03e9592a484f",
+        "name": "Product 8",
+        "unit_price_inr": 1743.88,
+        "qty": 2,
+        "line_total_inr": 3487.76
+      }
+    ],
+    "subtotal_inr": 25864.23,
+    "tax_inr": 4655.56,
+    "grand_total_inr": 30519.79,
+    "shipping_address_snapshot": {
+      "street": "20 Ring Road",
+      "city": "Jaipur",
+      "postal_code": "560938",
+      "country": "India"
+    },
+    "created_at": "2025-08-13T09:39:03.947471Z"
+  },
+  {
+    "id": "0b8fb674-e827-479f-ac88-56e62a3e20f0",
+    "user_id": "88e37fe2-241f-4b1e-9feb-27cdee11f988",
+    "status": "delivered",
+    "items": [
+      {
+        "product_id": "929d46c6-b0e6-4a3e-9a6c-7c26cbe45f71",
+        "name": "Product 1",
+        "unit_price_inr": 2600.32,
+        "qty": 2,
+        "line_total_inr": 5200.64
+      }
+    ],
+    "subtotal_inr": 5200.64,
+    "tax_inr": 936.12,
+    "grand_total_inr": 6136.76,
+    "shipping_address_snapshot": {
+      "street": "118 Link Road",
+      "city": "Bengaluru",
+      "postal_code": "434763",
+      "country": "India"
+    },
+    "created_at": "2025-06-27T09:39:03.947495Z"
+  },
+  {
+    "id": "449769b8-a170-4950-829b-fe5128879373",
+    "user_id": "22673b1d-24fc-4563-9a5b-b6773de834d2",
+    "status": "created",
+    "items": [
+      {
+        "product_id": "ca28b86f-4694-4043-9916-2e35c6b44c7d",
+        "name": "Product 11",
+        "unit_price_inr": 45234.29,
+        "qty": 1,
+        "line_total_inr": 45234.29
+      },
+      {
+        "product_id": "72e1a8a7-604e-4344-a224-255f0319c8da",
+        "name": "Product 9",
+        "unit_price_inr": 27809.67,
+        "qty": 1,
+        "line_total_inr": 27809.67
+      }
+    ],
+    "subtotal_inr": 73043.96,
+    "tax_inr": 13147.91,
+    "grand_total_inr": 86191.87,
+    "shipping_address_snapshot": {
+      "street": "44 Ring Road",
+      "city": "Jaipur",
+      "postal_code": "718050",
+      "country": "India"
+    },
+    "created_at": "2025-08-12T09:39:03.947509Z"
+  },
+  {
+    "id": "d3a43588-a54b-4fd9-a5cb-ef9685f765c6",
+    "user_id": "88e37fe2-241f-4b1e-9feb-27cdee11f988",
+    "status": "shipped",
+    "items": [
+      {
+        "product_id": "ccb99117-7e27-4422-bc3e-54bb153a8bc0",
+        "name": "Product 12",
+        "unit_price_inr": 21239.84,
+        "qty": 2,
+        "line_total_inr": 42479.68
+      }
+    ],
+    "subtotal_inr": 42479.68,
+    "tax_inr": 7646.34,
+    "grand_total_inr": 50126.02,
+    "shipping_address_snapshot": {
+      "street": "236 MG Road",
+      "city": "Hyderabad",
+      "postal_code": "302799",
+      "country": "India"
+    },
+    "created_at": "2025-07-16T09:39:03.947532Z"
+  },
+  {
+    "id": "ab7a7358-d139-4452-8532-335631656aa8",
+    "user_id": "23e58a83-0fc2-4ee8-91e6-edafda3335dc",
+    "status": "delivered",
+    "items": [
+      {
+        "product_id": "655c03a8-0308-46df-99b3-0b8c6f76bfb1",
+        "name": "Product 7",
+        "unit_price_inr": 15175.64,
+        "qty": 2,
+        "line_total_inr": 30351.28
+      },
+      {
+        "product_id": "d85bef25-0410-4365-90e4-27fd17e8088a",
+        "name": "Product 3",
+        "unit_price_inr": 15791.8,
+        "qty": 1,
+        "line_total_inr": 15791.8
+      }
+    ],
+    "subtotal_inr": 46143.08,
+    "tax_inr": 8305.75,
+    "grand_total_inr": 54448.83,
+    "shipping_address_snapshot": {
+      "street": "202 JLN Marg",
+      "city": "Jaipur",
+      "postal_code": "198962",
+      "country": "India"
+    },
+    "created_at": "2025-08-17T09:39:03.947545Z"
+  },
+  {
+    "id": "9e63a12b-1d5c-4ce3-b194-a1828a86f61c",
+    "user_id": "be8d39f0-c519-4532-8d78-74a19522ccb6",
+    "status": "shipped",
+    "items": [
+      {
+        "product_id": "12a4df04-527b-4aa2-b2e8-aa02e8a6bb83",
+        "name": "Product 2",
+        "unit_price_inr": 1136.63,
+        "qty": 2,
+        "line_total_inr": 2273.26
+      },
+      {
+        "product_id": "655c03a8-0308-46df-99b3-0b8c6f76bfb1",
+        "name": "Product 7",
+        "unit_price_inr": 15175.64,
+        "qty": 1,
+        "line_total_inr": 15175.64
+      }
+    ],
+    "subtotal_inr": 17448.9,
+    "tax_inr": 3140.8,
+    "grand_total_inr": 20589.7,
+    "shipping_address_snapshot": {
+      "street": "112 JLN Marg",
+      "city": "Kolkata",
+      "postal_code": "609759",
+      "country": "India"
+    },
+    "created_at": "2025-06-28T09:39:03.947558Z"
+  },
+  {
+    "id": "464351b6-4860-40b2-8c0e-486088615133",
+    "user_id": "c577492f-7e96-413b-9524-cba35e8a6fde",
+    "status": "cancelled",
+    "items": [
+      {
+        "product_id": "d85bef25-0410-4365-90e4-27fd17e8088a",
+        "name": "Product 3",
+        "unit_price_inr": 15791.8,
+        "qty": 1,
+        "line_total_inr": 15791.8
+      },
+      {
+        "product_id": "655c03a8-0308-46df-99b3-0b8c6f76bfb1",
+        "name": "Product 7",
+        "unit_price_inr": 15175.64,
+        "qty": 3,
+        "line_total_inr": 45526.92
+      },
+      {
+        "product_id": "3533b9b2-e793-483a-ae08-82f69a57e55b",
+        "name": "Product 10",
+        "unit_price_inr": 9531.6,
+        "qty": 2,
+        "line_total_inr": 19063.2
+      }
+    ],
+    "subtotal_inr": 80381.92,
+    "tax_inr": 14468.75,
+    "grand_total_inr": 94850.67,
+    "shipping_address_snapshot": {
+      "street": "202 JLN Marg",
+      "city": "Jaipur",
+      "postal_code": "198962",
+      "country": "India"
+    },
+    "created_at": "2025-07-24T09:39:03.947574Z"
+  },
+  {
+    "id": "7223989a-b8f7-4d2f-9d62-527dca88fbb6",
+    "user_id": "23e58a83-0fc2-4ee8-91e6-edafda3335dc",
+    "status": "delivered",
+    "items": [
+      {
+        "product_id": "9b2cfb20-ad17-455b-a7ae-2038b34b8530",
+        "name": "Product 5",
+        "unit_price_inr": 38110.22,
+        "qty": 1,
+        "line_total_inr": 38110.22
+      },
+      {
+        "product_id": "655c03a8-0308-46df-99b3-0b8c6f76bfb1",
+        "name": "Product 7",
+        "unit_price_inr": 15175.64,
+        "qty": 3,
+        "line_total_inr": 45526.92
+      },
+      {
+        "product_id": "ca28b86f-4694-4043-9916-2e35c6b44c7d",
+        "name": "Product 11",
+        "unit_price_inr": 45234.29,
+        "qty": 1,
+        "line_total_inr": 45234.29
+      }
+    ],
+    "subtotal_inr": 128871.43,
+    "tax_inr": 23196.86,
+    "grand_total_inr": 152068.29,
+    "shipping_address_snapshot": {
+      "street": "118 Link Road",
+      "city": "Bengaluru",
+      "postal_code": "434763",
+      "country": "India"
+    },
+    "created_at": "2025-09-02T09:39:03.947588Z"
+  },
+  {
+    "id": "1c8003bf-f6c9-4ef8-b0c4-0a1ad2000cd9",
+    "user_id": "f051fc56-b9d9-45fe-b216-00ed15eec693",
+    "status": "delivered",
+    "items": [
+      {
+        "product_id": "ccb99117-7e27-4422-bc3e-54bb153a8bc0",
+        "name": "Product 12",
+        "unit_price_inr": 21239.84,
+        "qty": 3,
+        "line_total_inr": 63719.52
+      },
+      {
+        "product_id": "655c03a8-0308-46df-99b3-0b8c6f76bfb1",
+        "name": "Product 7",
+        "unit_price_inr": 15175.64,
+        "qty": 2,
+        "line_total_inr": 30351.28
+      },
+      {
+        "product_id": "12a4df04-527b-4aa2-b2e8-aa02e8a6bb83",
+        "name": "Product 2",
+        "unit_price_inr": 1136.63,
+        "qty": 3,
+        "line_total_inr": 3409.89
+      },
+      {
+        "product_id": "9b2cfb20-ad17-455b-a7ae-2038b34b8530",
+        "name": "Product 5",
+        "unit_price_inr": 38110.22,
+        "qty": 3,
+        "line_total_inr": 114330.66
+      }
+    ],
+    "subtotal_inr": 211811.35,
+    "tax_inr": 38126.04,
+    "grand_total_inr": 249937.39,
+    "shipping_address_snapshot": {
+      "street": "96 Ring Road",
+      "city": "Hyderabad",
+      "postal_code": "854940",
+      "country": "India"
+    },
+    "created_at": "2025-07-30T09:39:03.947607Z"
+  },
+  {
+    "id": "1ed590ab-6658-446d-a783-f2ac25198c12",
+    "user_id": "c577492f-7e96-413b-9524-cba35e8a6fde",
+    "status": "shipped",
+    "items": [
+      {
+        "product_id": "12a4df04-527b-4aa2-b2e8-aa02e8a6bb83",
+        "name": "Product 2",
+        "unit_price_inr": 1136.63,
+        "qty": 1,
+        "line_total_inr": 1136.63
+      },
+      {
+        "product_id": "7288e40d-08e3-4a81-ad78-03e9592a484f",
+        "name": "Product 8",
+        "unit_price_inr": 1743.88,
+        "qty": 2,
+        "line_total_inr": 3487.76
+      },
+      {
+        "product_id": "ca28b86f-4694-4043-9916-2e35c6b44c7d",
+        "name": "Product 11",
+        "unit_price_inr": 45234.29,
+        "qty": 2,
+        "line_total_inr": 90468.58
+      }
+    ],
+    "subtotal_inr": 95092.97,
+    "tax_inr": 17116.73,
+    "grand_total_inr": 112209.7,
+    "shipping_address_snapshot": {
+      "street": "236 MG Road",
+      "city": "Hyderabad",
+      "postal_code": "302799",
+      "country": "India"
+    },
+    "created_at": "2025-07-22T09:39:03.947624Z"
+  },
+  {
+    "id": "9ac5585d-d061-4efc-bac4-0dd671ff9d29",
+    "user_id": "c577492f-7e96-413b-9524-cba35e8a6fde",
+    "status": "cancelled",
+    "items": [
+      {
+        "product_id": "ebade36a-f089-4b23-b62b-ed2c8f00b5f4",
+        "name": "Product 4",
+        "unit_price_inr": 9623.29,
+        "qty": 3,
+        "line_total_inr": 28869.87
+      },
+      {
+        "product_id": "7288e40d-08e3-4a81-ad78-03e9592a484f",
+        "name": "Product 8",
+        "unit_price_inr": 1743.88,
+        "qty": 3,
+        "line_total_inr": 5231.64
+      },
+      {
+        "product_id": "ebade36a-f089-4b23-b62b-ed2c8f00b5f4",
+        "name": "Product 4",
+        "unit_price_inr": 9623.29,
+        "qty": 2,
+        "line_total_inr": 19246.58
+      }
+    ],
+    "subtotal_inr": 53348.09,
+    "tax_inr": 9602.66,
+    "grand_total_inr": 62950.75,
+    "shipping_address_snapshot": {
+      "street": "236 MG Road",
+      "city": "Hyderabad",
+      "postal_code": "302799",
+      "country": "India"
+    },
+    "created_at": "2025-07-04T09:39:03.947661Z"
+  },
+  {
+    "id": "be5e75d7-f55b-4d18-aa9b-9e8eb99f57f9",
+    "user_id": "23e58a83-0fc2-4ee8-91e6-edafda3335dc",
+    "status": "shipped",
+    "items": [
+      {
+        "product_id": "655c03a8-0308-46df-99b3-0b8c6f76bfb1",
+        "name": "Product 7",
+        "unit_price_inr": 15175.64,
+        "qty": 3,
+        "line_total_inr": 45526.92
+      }
+    ],
+    "subtotal_inr": 45526.92,
+    "tax_inr": 8194.85,
+    "grand_total_inr": 53721.77,
+    "shipping_address_snapshot": {
+      "street": "44 Ring Road",
+      "city": "Jaipur",
+      "postal_code": "718050",
+      "country": "India"
+    },
+    "created_at": "2025-08-23T09:39:03.947673Z"
+  }
+]

@@ -1,0 +1,95 @@
+{
+  "config": {
+    "testsets": [
+      {
+        "id": "ts1",
+        "name": "Login Tests",
+        "description": "Test login functionality",
+        "testCases": [
+          {
+            "id": "tc1",
+            "name": "Valid Login",
+            "steps": [
+              {
+                "action": "navigate",
+                "url": "https://app.example.com/login",
+                "waitConditions": [
+                  {
+                    "type": "element_visible",
+                    "selector": "#login-form"
+                  }
+                ]
+              },
+              {
+                "action": "input",
+                "selector": "#username",
+                "value": "testuser@example.com",
+                "validation": {
+                  "type": "value_equals",
+                  "expected": "testuser@example.com"
+                }
+              },
+              {
+                "action": "click",
+                "selector": "#login-button",
+                "postActions": [
+                  {
+                    "type": "wait_for_navigation",
+                    "timeout": 5000
+                  }
+                ]
+              }
+            ],
+            "assertions": [
+              {
+                "type": "url_contains",
+                "value": "/dashboard"
+              },
+              {
+                "type": "element_exists",
+                "selector": ".welcome-message"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "ts2",
+        "name": "API Tests",
+        "description": "Test API endpoints",
+        "testCases": [
+          {
+            "id": "tc2",
+            "name": "Get User Profile",
+            "apiConfig": {
+              "method": "GET",
+              "endpoint": "/api/user/profile",
+              "headers": {
+                "Authorization": "Bearer {{token}}",
+                "Content-Type": "application/json"
+              },
+              "retryPolicy": {
+                "maxRetries": 3,
+                "backoffStrategy": "exponential",
+                "delays": [1000, 2000, 4000]
+              }
+            },
+            "expectedResponse": {
+              "statusCode": 200,
+              "body": {
+                "user": {
+                  "id": "{{any}}",
+                  "email": "{{email}}",
+                  "profile": {
+                    "firstName": "{{string}}",
+                    "lastName": "{{string}}"
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

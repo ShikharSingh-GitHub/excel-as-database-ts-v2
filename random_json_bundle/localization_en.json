@@ -1,0 +1,12 @@
+{
+  "app.title": "Acme Store",
+  "nav.home": "Home",
+  "nav.products": "Products",
+  "nav.cart": "Cart",
+  "nav.profile": "Profile",
+  "btn.add_to_cart": "Add to Cart",
+  "btn.checkout": "Checkout",
+  "msg.welcome_user": "Welcome, {name}!",
+  "err.network": "Network error. Please try again.",
+  "err.required": "This field is required."
+}
