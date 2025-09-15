@@ -396,12 +396,52 @@ if (ipcMain) {
       try {
         const { default: fetch } = await import("node-fetch");
 
+        const https = require("https");
+
         const options = {
           method: method.toUpperCase(),
           headers: {
             "Content-Type": "application/json",
           },
         };
+
+        // Configure TLS handling:
+        // - If NODE_EXTRA_CA_CERTS is set, use that CA bundle to validate certificates.
+        // - If ALLOW_SELF_SIGNED=true is set (dev only) then allow self-signed certs (insecure).
+        try {
+          const parsed = new URL(url);
+          if (parsed.protocol === "https:") {
+            let agentOptions = {};
+
+            if (process.env.NODE_EXTRA_CA_CERTS) {
+              try {
+                const caContent = fs.readFileSync(
+                  process.env.NODE_EXTRA_CA_CERTS
+                );
+                agentOptions.ca = caContent;
+              } catch (caErr) {
+                log("WARN", "Failed to read NODE_EXTRA_CA_CERTS file", {
+                  path: process.env.NODE_EXTRA_CA_CERTS,
+                  error: caErr.message,
+                });
+              }
+            }
+
+            if (process.env.ALLOW_SELF_SIGNED === "true") {
+              // Dev-only: allow self-signed certificates. Not recommended for production.
+              agentOptions.rejectUnauthorized = false;
+              log(
+                "WARN",
+                "ALLOW_SELF_SIGNED is enabled — TLS certificate verification disabled"
+              );
+            }
+
+            // Create an https.Agent and pass it to node-fetch for TLS control
+            options.agent = new https.Agent(agentOptions);
+          }
+        } catch (urlErr) {
+          // If URL parsing fails, continue and let fetch report the error
+        }
 
         if (
           payload &&
@@ -411,7 +451,18 @@ if (ipcMain) {
         }
 
         const response = await fetch(url, options);
+
+        // Check if the response was successful
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
         const data = await response.json();
+
+        // Validate that we got some data
+        if (data === null || data === undefined) {
+          throw new Error("API returned empty response");
+        }
 
         return { success: true, data };
       } catch (e) {
@@ -425,14 +476,106 @@ if (ipcMain) {
     }
   );
 
-  ipcMain.handle("json:save", async (event, folderPath, fileName, data) => {
+  ipcMain.handle("json:save", async (event, arg1, arg2, arg3) => {
     try {
-      const filePath = path.join(folderPath, fileName);
-      fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+      let folderPath, fileName, data;
+
+      // Support two calling conventions:
+      // 1) json.save(folderPath, fileName, data)  <-- 3 args
+      // 2) json.save(fileName, data)              <-- 2 args
+      if (typeof arg3 !== "undefined") {
+        // Called as (folderPath, fileName, data) - 3 args
+        folderPath = arg1;
+        fileName = arg2;
+        data = arg3;
+        log(
+          "INFO",
+          "json:save called with 3 args (folderPath, fileName, data)",
+          { folderPath, fileName }
+        );
+      } else if (typeof arg2 !== "undefined") {
+        // Called as (fileName, data) - 2 args
+        fileName = arg1;
+        data = arg2;
+
+        // Default folder: use app documents folder when available, fallback to cwd
+        try {
+          folderPath =
+            app && app.getPath ? app.getPath("documents") : process.cwd();
+        } catch (e) {
+          folderPath = process.cwd();
+        }
+        log("INFO", "json:save called with 2 args (fileName, data)", {
+          fileName,
+          folderPath,
+        });
+      } else {
+        throw new Error(
+          "Invalid arguments: expected (fileName, data) or (folderPath, fileName, data)"
+        );
+      }
+
+      // Validate inputs
+      if (!fileName || typeof fileName !== "string") {
+        throw new Error("fileName must be a non-empty string");
+      }
+
+      if (!folderPath || typeof folderPath !== "string") {
+        throw new Error("folderPath must be a non-empty string");
+      }
+
+      // Validate that we have data to save
+      if (data === null || data === undefined) {
+        throw new Error("No data provided to save");
+      }
+
+      // Ensure the folder exists, create it if it doesn't
+      if (!fs.existsSync(folderPath)) {
+        try {
+          fs.mkdirSync(folderPath, { recursive: true });
+          log("INFO", "Created folder path", { folderPath });
+        } catch (e) {
+          throw new Error(
+            `Failed to create folder: ${folderPath} - ${e.message}`
+          );
+        }
+      }
+
+      // Check if folderPath is actually a directory
+      const stat = fs.statSync(folderPath);
+      if (!stat.isDirectory()) {
+        throw new Error(`Path is not a directory: ${folderPath}`);
+      }
+
+      // Ensure fileName ends with .json
+      const finalFileName = fileName.endsWith(".json")
+        ? fileName
+        : `${fileName}.json`;
+
+      // Build full file path
+      const filePath = path.join(folderPath, finalFileName);
+
+      // Write the file with pretty formatting
+      fs.writeFileSync(filePath, JSON.stringify(data, null, 2), "utf8");
+
+      log("INFO", "JSON file saved successfully", { filePath });
       return { success: true, filePath };
     } catch (e) {
-      log("ERROR", "Failed to save JSON file", { fileName, error: e.message });
-      return { error: "save-error", message: e.message };
+      log("ERROR", "Failed to save JSON file", {
+        error: e.message,
+        args: {
+          arg1:
+            typeof arg1 === "string"
+              ? `${arg1.substring(0, 50)}...`
+              : typeof arg1,
+          arg2:
+            typeof arg2 === "string"
+              ? `${arg2.substring(0, 50)}...`
+              : typeof arg2,
+          arg3: typeof arg3,
+        },
+      });
+      return { error: true, message: e.message };
     }
   });
 

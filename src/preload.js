@@ -89,7 +89,8 @@ contextBridge.exposeInMainWorld("api", {
     write: (filePath, data) => ipcRenderer.invoke("json:write", filePath, data),
     fetch: (url, method, payload) =>
       ipcRenderer.invoke("json:fetch", url, method, payload),
-    save: (fileName, data) => ipcRenderer.invoke("json:save", fileName, data),
+    // Accept either (fileName, data) or (folderPath, fileName, data)
+    save: (...args) => ipcRenderer.invoke("json:save", ...args),
 
     // JSON CRUD operations
     updateScalar: (filePath, path, newValue, oldValue) =>

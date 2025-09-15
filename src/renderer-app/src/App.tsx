@@ -1514,6 +1514,7 @@ export default function App() {
           isOpen={showJsonModal}
           onClose={handleJsonModalClose}
           onSuccess={handleJsonModalSuccess}
+          currentFolder={config?.folderPath}
         />
 
         {/* Status Bar */}
