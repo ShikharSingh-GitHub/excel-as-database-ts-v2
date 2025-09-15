@@ -1,31 +1,37 @@
-import React, { useState } from 'react';
-import { X, Download, Globe, FileText } from 'lucide-react';
-import Toast from './Toast';
+import { Download, FileText, Globe, X } from "lucide-react";
+import React, { useState } from "react";
+import Toast from "./Toast";
 
 interface JsonModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: (fileName: string) => void;
+  currentFolder?: string;
 }
 
-const JsonModal: React.FC<JsonModalProps> = ({ isOpen, onClose, onSuccess }) => {
-  const [url, setUrl] = useState('');
-  const [method, setMethod] = useState<'GET' | 'POST' | 'PUT'>('GET');
-  const [payload, setPayload] = useState('');
-  const [fileName, setFileName] = useState('');
+const JsonModal: React.FC<JsonModalProps> = ({
+  isOpen,
+  onClose,
+  onSuccess,
+  currentFolder,
+}) => {
+  const [url, setUrl] = useState("");
+  const [method, setMethod] = useState<"GET" | "POST" | "PUT">("GET");
+  const [payload, setPayload] = useState("");
+  const [fileName, setFileName] = useState("");
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!url.trim()) {
-      setToast('❌ Please enter a URL');
+      setToast("❌ Please enter a URL");
       return;
     }
 
     if (!fileName.trim()) {
-      setToast('❌ Please enter a file name');
+      setToast("❌ Please enter a file name");
       return;
     }
 
@@ -35,30 +41,61 @@ const JsonModal: React.FC<JsonModalProps> = ({ isOpen, onClose, onSuccess }) => 
     try {
       // Parse payload if provided
       let parsedPayload = null;
-      if (payload.trim() && (method === 'POST' || method === 'PUT')) {
+      if (payload.trim() && (method === "POST" || method === "PUT")) {
         try {
           parsedPayload = JSON.parse(payload);
         } catch (e) {
-          setToast('❌ Invalid JSON payload');
+          setToast("❌ Invalid JSON payload");
           setLoading(false);
           return;
         }
       }
 
       // Fetch data from API
-      const result = await (window as any).api.json.fetch(url, method, parsedPayload);
-      
+      const result = await (window as any).api.json.fetch(
+        url,
+        method,
+        parsedPayload
+      );
+
+      console.log("API fetch result:", result);
+
       if (result.error) {
         setToast(`❌ Failed to fetch data: ${result.message}`);
         setLoading(false);
         return;
       }
 
+      // Validate that we got valid data
+      if (!result || typeof result.data === "undefined") {
+        setToast("❌ No data received from API");
+        setLoading(false);
+        return;
+      }
+
+      console.log("Data to save:", result.data);
+      console.log("Current folder:", currentFolder);
+
       // Save the data as JSON file
-      const saveResult = await (window as any).api.json.save(
-        fileName.endsWith('.json') ? fileName : `${fileName}.json`,
-        result.data
-      );
+      const finalFileName = fileName.endsWith(".json")
+        ? fileName
+        : `${fileName}.json`;
+
+      console.log("💾 Saving JSON file:", {
+        currentFolder,
+        finalFileName,
+        dataSize: JSON.stringify(result.data).length,
+      });
+
+      const saveResult = currentFolder
+        ? await (window as any).api.json.save(
+            currentFolder,
+            finalFileName,
+            result.data
+          )
+        : await (window as any).api.json.save(finalFileName, result.data);
+
+      console.log("💾 Save Result:", saveResult);
 
       if (saveResult.error) {
         setToast(`❌ Failed to save file: ${saveResult.message}`);
@@ -66,20 +103,19 @@ const JsonModal: React.FC<JsonModalProps> = ({ isOpen, onClose, onSuccess }) => 
         return;
       }
 
-      setToast('✅ JSON file created successfully');
+      setToast("✅ JSON file created successfully");
       onSuccess(saveResult.filePath);
-      
+
       // Reset form
-      setUrl('');
-      setPayload('');
-      setFileName('');
-      setMethod('GET');
-      
+      setUrl("");
+      setPayload("");
+      setFileName("");
+      setMethod("GET");
+
       // Close modal after a short delay
       setTimeout(() => {
         onClose();
       }, 1000);
-
     } catch (error) {
       setToast(`❌ Error: ${error}`);
     } finally {
@@ -89,10 +125,10 @@ const JsonModal: React.FC<JsonModalProps> = ({ isOpen, onClose, onSuccess }) => 
 
   const handleClose = () => {
     if (!loading) {
-      setUrl('');
-      setPayload('');
-      setFileName('');
-      setMethod('GET');
+      setUrl("");
+      setPayload("");
+      setFileName("");
+      setMethod("GET");
       setToast(null);
       onClose();
     }
@@ -149,7 +185,9 @@ const JsonModal: React.FC<JsonModalProps> = ({ isOpen, onClose, onSuccess }) => 
             </label>
             <select
               value={method}
-              onChange={(e) => setMethod(e.target.value as 'GET' | 'POST' | 'PUT')}
+              onChange={(e) =>
+                setMethod(e.target.value as "GET" | "POST" | "PUT")
+              }
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
               disabled={loading}>
               <option value="GET">GET</option>
@@ -159,7 +197,7 @@ const JsonModal: React.FC<JsonModalProps> = ({ isOpen, onClose, onSuccess }) => 
           </div>
 
           {/* Payload Input (for POST/PUT) */}
-          {(method === 'POST' || method === 'PUT') && (
+          {(method === "POST" || method === "PUT") && (
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Request Payload (JSON)
@@ -231,7 +269,9 @@ const JsonModal: React.FC<JsonModalProps> = ({ isOpen, onClose, onSuccess }) => 
             <Toast
               message={toast}
               type={
-                toast.includes("❌") || toast.includes("Failed") || toast.includes("Error")
+                toast.includes("❌") ||
+                toast.includes("Failed") ||
+                toast.includes("Error")
                   ? "error"
                   : toast.includes("✅") || toast.includes("successfully")
                   ? "success"
